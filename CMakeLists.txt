@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10)
+project(graph3d)
+
+# Compiler options
+add_library(compiler-flags INTERFACE)
+target_compile_features(compiler-flags INTERFACE cxx_std_23)
+set(msvc "$<COMPILE_LANG_AND_ID:CXX,MSVC>")
+target_compile_options(compiler-flags INTERFACE "$<${msvc}:-W3>")
+target_compile_definitions(compiler-flags INTERFACE "$<$<CONFIG:Debug>:DEBUG>")
+
+set(ENV{VULKAN_SDK} "C:\\VulkanSDK\\1.4.321.1")
+find_package(Vulkan REQUIRED)
+
+list(APPEND CMAKE_PREFIX_PATH "lib\\glfw\\lib-vc2022")
+find_library(glfw NAMES glfw3 REQUIRED)
+
+add_executable(main main.cpp)
+target_sources(main PUBLIC vk.cpp)
+set_target_properties(main PROPERTIES OUTPUT_NAME "graph3d")
+
+target_include_directories(main PUBLIC ".")
+target_include_directories(main PUBLIC ${Vulkan_INCLUDE_DIRS})
+target_include_directories(main PUBLIC "lib\\glfw\\include")
+target_include_directories(main PUBLIC "lib\\glm")
+target_link_libraries(main PUBLIC compiler-flags ${glfw} Vulkan::Vulkan)
