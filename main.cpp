@@ -20,6 +20,12 @@ g3d::VkTop init_top() {
 }
 
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
+	g3d::Camera camera {
+		{4.0f, 4.0f, 4.0f}, // cam position
+		{0.0f, 0.0f, 0.0f}, // coord to look at
+		{0.0f, 0.0f, 1.0f}  // up vector
+	};
+
 	std::vector<g3d::Vertex> vertices {
 		{{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
 		{{-1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
@@ -34,7 +40,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 	while (!device.window().shouldClose()) {
 		g3d::Window::pollEvents();
-		renderer.beginFrame();
+		renderer.beginFrame(camera);
 		model.record(renderer.currentFrameResources());
 		renderer.endFrame();
 	}

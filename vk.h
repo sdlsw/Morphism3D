@@ -455,6 +455,26 @@ public:
 	std::vector<vk::raii::Framebuffer> createFramebuffers(const vk::raii::RenderPass& renderPass);
 };
 
+class Camera {
+private:
+	glm::vec3 _position {0.0f, 0.0f, 0.0f};
+	glm::vec3 _lookAt {0.0f, 1.0f, 0.0f};
+
+	// For this application, +Z is considered "up" due to 3D graphing
+	// conventions.
+	glm::vec3 _up {0.0f, 0.0f, 1.0f};
+public:
+	Camera() {}
+	Camera(
+		const glm::vec3& position,
+		const glm::vec3& lookAt,
+		const glm::vec3& up
+	) : _position{position}, _lookAt{lookAt}, _up{up} {}
+
+	glm::mat4 viewMatrix() const;
+	glm::mat4 perspectiveMatrix(unsigned int width, unsigned int height) const;
+};
+
 // Set of resources that must be duplicated per frame in flight.
 class PerFrameResources {
 private:
@@ -490,7 +510,7 @@ public:
 	auto& imageAvailableSemaphore() { return _imageAvailableSemaphore; }
 	auto& renderFinishedSemaphore() { return _renderFinishedSemaphore; }
 	auto& inFlightFence() { return _inFlightFence; }
-	void updateMvpBuffer(unsigned int width, unsigned int height);
+	void updateMvpBuffer(const Camera& camera, unsigned int width, unsigned int height);
 	void updateViewPerspective(MvpMatrices& mats);
 };
 
@@ -574,7 +594,7 @@ public:
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 
-	void beginFrame();
+	void beginFrame(const Camera& camera);
 	void endFrame();
 
 	template<Renderable T>

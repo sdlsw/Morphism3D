@@ -662,7 +662,7 @@ vk::raii::CommandBuffer PerFrameResources::createCommandBuffer() {
 	return buf;
 }
 
-void PerFrameResources::updateMvpBuffer(unsigned int width, unsigned int height) {
+void PerFrameResources::updateMvpBuffer(const Camera& camera, unsigned int width, unsigned int height) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -670,10 +670,8 @@ void PerFrameResources::updateMvpBuffer(unsigned int width, unsigned int height)
 
 	MvpMatrices mats {};
 	mats.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	mats.view = glm::lookAt(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	mats.proj = glm::perspective(glm::radians(45.0f), width / static_cast<float>(height), 0.1f, 100.0f);
-	mats.proj[1][1] *= -1; // compensate for Vulkan inverted Y clip coord
-
+	mats.view = camera.viewMatrix();
+	mats.proj = camera.perspectiveMatrix(width, height);
 	_mvpBuffer.copyIn(mats);
 }
 
@@ -983,7 +981,25 @@ std::vector<PerFrameResources> Renderer::createPerFrameResources() {
 	return std::move(vec);
 }
 
-void Renderer::beginFrame() {
+glm::mat4 Camera::viewMatrix() const {
+	return glm::lookAt(_position, _lookAt, _up);
+}
+
+glm::mat4 Camera::perspectiveMatrix(unsigned int width, unsigned int height) const {
+	glm::mat4 p = glm::perspective(
+		glm::radians(45.0f),
+		width / static_cast<float>(height),
+		0.1f,
+		100.0f
+	);
+
+	// compensate for Vulkan inverted Y clip coord
+	p[1][1] *= -1;
+
+	return std::move(p);
+}
+
+void Renderer::beginFrame(const Camera& camera) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
 
@@ -994,7 +1010,7 @@ void Renderer::beginFrame() {
 	);
 
 	const auto& extent = _windowResources->swapchainExtent();
-	frameResources.updateMvpBuffer(extent.width, extent.height);
+	frameResources.updateMvpBuffer(camera, extent.width, extent.height);
 
 	// TODO: handle window resize
 	
