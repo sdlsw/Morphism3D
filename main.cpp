@@ -1,6 +1,9 @@
 #include "vk.h"
 
+#include <chrono>
 #include <iostream>
+
+#include <glm/gtc/matrix_transform.hpp>
 
 static const uint32_t WINDOW_INITIAL_WIDTH = 800;
 static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
@@ -20,6 +23,8 @@ g3d::VkTop init_top() {
 }
 
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
 	g3d::Camera camera {
 		{4.0f, 4.0f, 4.0f}, // cam position
 		{0.0f, 0.0f, 0.0f}, // coord to look at
@@ -38,10 +43,22 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	};
 	g3d::Model model { device, vertices, indices };
 
+	g3d::RenderObject obj { device, renderer, std::move(model) };
+
 	while (!device.window().shouldClose()) {
 		g3d::Window::pollEvents();
-		renderer.beginFrame(camera);
-		model.record(renderer.currentFrameResources());
+		auto& ctx = renderer.beginFrame(camera);
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		obj.transform(glm::rotate(
+			glm::mat4(1.0f),
+			time * glm::radians(90.0f),
+			glm::vec3(0.0f, 0.0f, 1.0f)
+		));
+		obj.update(ctx);
+		obj.record(ctx);
+
 		renderer.endFrame();
 	}
 

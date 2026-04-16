@@ -67,8 +67,7 @@ struct Vertex {
 	}
 };
 
-struct MvpMatrices {
-	glm::mat4 model;
+struct CamMatrices {
 	glm::mat4 view;
 	glm::mat4 proj;
 };
@@ -479,7 +478,7 @@ public:
 class PerFrameResources {
 private:
 	GraphDevice* _graphDevice;
-	MappedBuffer<MvpMatrices> _mvpBuffer;
+	MappedBuffer<CamMatrices> _camMats;
 	vk::raii::DescriptorSet _descriptorSet;
 	vk::raii::CommandBuffer _commandBuffer;
 
@@ -497,8 +496,8 @@ public:
 		DescriptorSetFactory& descriptorSetFactory
 	)
 	: _graphDevice { &graphDevice },
-	  _mvpBuffer { *_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer },
-	  _descriptorSet { descriptorSetFactory.makeDescriptorSet(_mvpBuffer) },
+	  _camMats { *_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer },
+	  _descriptorSet { descriptorSetFactory.makeDescriptorSet(_camMats) },
 	  _commandBuffer { createCommandBuffer() },
 	  _imageAvailableSemaphore { _graphDevice->logicalDevice().createSemaphore({}) },
 	  _renderFinishedSemaphore { _graphDevice->logicalDevice().createSemaphore({}) },
@@ -510,14 +509,17 @@ public:
 	auto& imageAvailableSemaphore() { return _imageAvailableSemaphore; }
 	auto& renderFinishedSemaphore() { return _renderFinishedSemaphore; }
 	auto& inFlightFence() { return _inFlightFence; }
-	void updateMvpBuffer(const Camera& camera, unsigned int width, unsigned int height);
-	void updateViewPerspective(MvpMatrices& mats);
+	void updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height);
 };
 
+// Lightweight context object pointing to objects and information required for
+// rendering. Reconstructed each frame, and only valid between
+// Renderer::beginFrame() and Renderer::endFrame()
 class RenderContext {
 private:
 	GraphDevice* _graphDevice;
 	PerFrameResources* _frameResources;
+	vk::raii::PipelineLayout* _pipelineLayout;
 	unsigned int _currentFrame;
 
 public:
@@ -525,15 +527,18 @@ public:
 	RenderContext(
 		GraphDevice& graphDevice,
 		PerFrameResources& frameResources,
+		vk::raii::PipelineLayout& pipelineLayout,
 		unsigned int currentFrame
 	)
 	: _graphDevice { &graphDevice },
 	  _frameResources { &frameResources },
+	  _pipelineLayout { &pipelineLayout },
 	  _currentFrame { currentFrame }
 	{}
 
 	auto& graphDevice() { return *_graphDevice; }
 	auto& frameResources() { return *_frameResources; }
+	auto& pipelineLayout() { return *_pipelineLayout; }
 	auto currentFrame() { return _currentFrame; }
 };
 
@@ -592,9 +597,10 @@ public:
 
 	auto& currentFrameResources() { return _perFrameResources[_currentFrame]; }
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
+	auto& context() { return _renderContext; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 
-	void beginFrame(const Camera& camera);
+	RenderContext& beginFrame(const Camera& camera);
 	void endFrame();
 
 	template<Renderable T>
@@ -625,20 +631,19 @@ public:
 	  _indexCount { indices.size() }
 	{}
 
-	void record(PerFrameResources& resources) const;
+	void record(RenderContext& ctx) const;
 };
 
-/*
 class RenderObject {
 private:
 	GraphDevice* _graphDevice;
 	Renderer* _renderer;
 	Model _model;
-	glm::mat4 _rotation;
-	std::vector<MappedBuffer<MvpMatrices>> _mvpBuffers;
+	glm::mat4 _transform;
+	std::vector<MappedBuffer<glm::mat4>> _transformBuffers;
 	std::vector<vk::raii::DescriptorSet> _descriptorSets;
 
-	std::vector<MappedBuffer<MvpMatrices>> createMvpBuffers();
+	std::vector<MappedBuffer<glm::mat4>> createTransformBuffers();
 	std::vector<vk::raii::DescriptorSet> createDescriptorSets();
 public:
 	RenderObject() = delete;
@@ -650,16 +655,16 @@ public:
 	)
 	: _graphDevice { &graphDevice },
 	  _renderer { &renderer },
-	  _model { model },
-	  _rotation { 1.0f }, // identity
-	  _modelMatrix { createMvpBuffers() },
+	  _model { std::move(model) },
+	  _transform { 1.0f }, // identity
+	  _transformBuffers { createTransformBuffers() },
 	  _descriptorSets { createDescriptorSets() }
 	{}
 
-	glm::mat4& rotation() { return _rotation; }
+	glm::mat4& transform() { return _transform; }
+	void transform(const glm::mat4& transform) { _transform = transform; }
 
-	void update(PerFrameResources& resources) const;
-	void record(PerFrameResources& resources) const;
+	void update(RenderContext& ctx);
+	void record(RenderContext& ctx);
 };
-*/
 }

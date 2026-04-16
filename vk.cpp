@@ -662,17 +662,11 @@ vk::raii::CommandBuffer PerFrameResources::createCommandBuffer() {
 	return buf;
 }
 
-void PerFrameResources::updateMvpBuffer(const Camera& camera, unsigned int width, unsigned int height) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	MvpMatrices mats {};
-	mats.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height) {
+	CamMatrices mats {};
 	mats.view = camera.viewMatrix();
 	mats.proj = camera.perspectiveMatrix(width, height);
-	_mvpBuffer.copyIn(mats);
+	_camMats.copyIn(mats);
 }
 
 BoundBuffer Model::createVertexBuffer(const std::vector<Vertex>& vertices) {
@@ -729,8 +723,8 @@ BoundBuffer Model::createIndexBuffer(const std::vector<uint16_t>& indices) {
 	return destBuffer;
 }
 
-void Model::record(PerFrameResources& resources) const {
-	auto& commandBuffer = resources.commandBuffer();
+void Model::record(RenderContext& ctx) const {
+	auto& commandBuffer = ctx.frameResources().commandBuffer();
 
 	vk::Buffer vertexBuffers[] = {*_vertexBuffer.buffer()};
 	vk::DeviceSize offsets[] = { 0 };
@@ -812,7 +806,7 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 }
 
 DescriptorSetFactory Renderer::createDescriptorSetFactory() {
-	std::vector<vk::DescriptorSetLayoutBinding> mvpLayoutBindings {
+	std::vector<vk::DescriptorSetLayoutBinding> layoutBindings {
 		{
 			.binding = 0,
 			.descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -821,14 +815,21 @@ DescriptorSetFactory Renderer::createDescriptorSetFactory() {
 		}
 	};
 
-	return DescriptorSetFactory(*_graphDevice, std::move(mvpLayoutBindings));
+	return DescriptorSetFactory(*_graphDevice, std::move(layoutBindings));
 }
 
 vk::raii::PipelineLayout Renderer::createPipelineLayout() {
-	vk::DescriptorSetLayout rawDescriptorLayout = *_descriptorSetFactory.descriptorSetLayout();
+	// FIXME FIXME Reusing descriptor set layout multiple times
+	// For now OK since both descriptor sets only consist of one uniform
+	// buffer each, but really need to fix this.
+	std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts {
+		*_descriptorSetFactory.descriptorSetLayout(),
+		*_descriptorSetFactory.descriptorSetLayout()
+	};
+
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo {
-		.setLayoutCount = 1,
-		.pSetLayouts = &rawDescriptorLayout,
+		.setLayoutCount = 2,
+		.pSetLayouts = descriptorSetLayouts.data(),
 		.pushConstantRangeCount = 0,
 		.pPushConstantRanges = nullptr
 	};
@@ -999,7 +1000,7 @@ glm::mat4 Camera::perspectiveMatrix(unsigned int width, unsigned int height) con
 	return std::move(p);
 }
 
-void Renderer::beginFrame(const Camera& camera) {
+RenderContext& Renderer::beginFrame(const Camera& camera) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
 
@@ -1010,7 +1011,7 @@ void Renderer::beginFrame(const Camera& camera) {
 	);
 
 	const auto& extent = _windowResources->swapchainExtent();
-	frameResources.updateMvpBuffer(camera, extent.width, extent.height);
+	frameResources.updateCamMatrices(camera, extent.width, extent.height);
 
 	// TODO: handle window resize
 	
@@ -1062,7 +1063,11 @@ void Renderer::beginFrame(const Camera& camera) {
 	cmdBuffer.setScissor(0, scissor);
 	_currentSwapchainImage = imageIndex;
 
+	updateRenderContext();
+
 	_inFrame = true;
+
+	return _renderContext;
 }
 
 void Renderer::endFrame() {
@@ -1109,17 +1114,19 @@ template<Renderable T>
 void Renderer::record(const T& obj) {
 	obj.record(currentFrameResources());
 }
+*/
 
-void Renderer::updateRenderContext {
+void Renderer::updateRenderContext() {
 	_renderContext = RenderContext(
-		graphDevice,
+		*_graphDevice,
 		currentFrameResources(),
+		_pipelineLayout,
 		_currentFrame
 	);
 }
 
-std::vector<MappedBuffer<MvpMatrices>> RenderObject::createMvpBuffers() {
-	std::vector<MappedBuffer<MvpMatrices>> vec;
+std::vector<MappedBuffer<glm::mat4>> RenderObject::createTransformBuffers() {
+	std::vector<MappedBuffer<glm::mat4>> vec;
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
 		vec.emplace_back(*_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer);
 	}
@@ -1131,28 +1138,29 @@ std::vector<vk::raii::DescriptorSet> RenderObject::createDescriptorSets() {
 
 	std::vector<vk::raii::DescriptorSet> vec;
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		vec.push_back(factory.makeDescriptorSet(_mvpBuffer.buffer()));
+		// FIXME Reusing descriptor set layout
+		vec.push_back(factory.makeDescriptorSet(_transformBuffers[i]));
 	}
 	return vec;
 }
 
-void RenderObject::update(PerFrameResources& resources) {
-	_modelMatrix.copyIn(_rotation);
+void RenderObject::update(RenderContext& ctx) {
+	// very gross to have to do this for every object, probably won't
+	// scale well, but is OK for now due to low object count
+	_transformBuffers[ctx.currentFrame()].copyIn(_transform);
 }
 
-void RenderObject::record(PerFrameResources& resources) {
-	auto& commandBuffer = resources.commandBuffer();
+void RenderObject::record(RenderContext& ctx) {
+	auto& cmdBuffer = ctx.frameResources().commandBuffer();
 
-	vk::DescriptorSet descriptorSets[] = { *frameResources.descriptorSet() };
 	cmdBuffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
-		_pipelineLayout,
-		0,
-		descriptorSets,
+		ctx.pipelineLayout(),
+		1,
+		*_descriptorSets[ctx.currentFrame()],
 		nullptr
 	);
 
-	_model.record(resources);
+	_model.record(ctx);
 }
-*/
 }
