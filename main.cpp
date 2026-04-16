@@ -22,43 +22,66 @@ g3d::VkTop init_top() {
 	return vk_top;
 }
 
-void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
+class TestObject {
+private:
+	// Radians per second
+	float _rotationSpeed;
+	g3d::RenderObject _obj;
 
+public:
+	TestObject(
+		g3d::GraphDevice& device,
+		g3d::Renderer& renderer,
+		float rotationSpeed,
+		float z
+	) :
+		_rotationSpeed {rotationSpeed},
+		_obj {
+			device,
+			renderer,
+			{
+				device,
+				{
+					{{1.0f, 1.0f, z}, {1.0f, 0.0f, 0.0f}},
+					{{-1.0f, 1.0f, z}, {0.0f, 1.0f, 0.0f}},
+					{{-1.0f, -1.0f, z}, {0.0f, 0.0f, 1.0f}},
+					{{1.0f, -1.0f, z}, {1.0f, 1.0f, 1.0f}}
+				},
+				{0, 1, 1, 2, 2, 3, 3, 0}
+			}
+		} {}
+
+	void updateAndRender(g3d::RenderContext& ctx) {
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		_obj.transform(glm::rotate(
+			glm::mat4(1.0f),
+			time * _rotationSpeed,
+			glm::vec3(0.0f, 0.0f, 1.0f)
+		));
+		_obj.update(ctx);
+		_obj.record(ctx);
+	}
+};
+
+void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::Camera camera {
 		{4.0f, 4.0f, 4.0f}, // cam position
 		{0.0f, 0.0f, 0.0f}, // coord to look at
 		{0.0f, 0.0f, 1.0f}  // up vector
 	};
 
-	std::vector<g3d::Vertex> vertices {
-		{{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-		{{-1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-		{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-		{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-
-	};
-	std::vector<uint16_t> indices {
-		{0, 1, 1, 2, 2, 3, 3, 0}
-	};
-	g3d::Model model { device, vertices, indices };
-
-	g3d::RenderObject obj { device, renderer, std::move(model) };
+	TestObject obj1 { device, renderer, glm::radians(90.0f), 0.0f };
+	TestObject obj2 { device, renderer, glm::radians(-120.0f), 1.0f };
 
 	while (!device.window().shouldClose()) {
 		g3d::Window::pollEvents();
-		auto& ctx = renderer.beginFrame(camera);
 
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-		obj.transform(glm::rotate(
-			glm::mat4(1.0f),
-			time * glm::radians(90.0f),
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		));
-		obj.update(ctx);
-		obj.record(ctx);
-
+		auto& renderContext = renderer.beginFrame(camera);
+		obj1.updateAndRender(renderContext);
+		obj2.updateAndRender(renderContext);
 		renderer.endFrame();
 	}
 
