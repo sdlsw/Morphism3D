@@ -16,6 +16,7 @@ find_library(glfw NAMES glfw3 REQUIRED)
 
 add_executable(main main.cpp)
 target_sources(main PUBLIC vk.cpp)
+target_sources(main PUBLIC window.cpp)
 set_target_properties(main PROPERTIES OUTPUT_NAME "graph3d")
 
 target_include_directories(main PUBLIC ".")
