@@ -67,6 +67,20 @@ public:
 	}
 };
 
+class GlobalKeyHandler : public g3d::EventHandler<g3d::KeyEvent> {
+private:
+	const std::string _name = "GlobalKeyHandler";
+
+public:
+	const std::string& name() const override { return _name; }
+
+	void body(g3d::KeyEvent& e) override {
+		if (e.key == GLFW_KEY_ESCAPE && e.action == GLFW_PRESS) {
+			glfwSetWindowShouldClose(e.window, GLFW_TRUE);
+		}
+	}
+};
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::Camera camera {
 		{4.0f, 4.0f, 4.0f}, // cam position
@@ -99,6 +113,10 @@ int main() {
 			WINDOW_INITIAL_WIDTH,
 			WINDOW_INITIAL_HEIGHT
 		};
+
+		GlobalKeyHandler globalKeys;
+		window.inputSystem().registerHandler(globalKeys);
+
 		g3d::GraphDevice graphDevice { vkTop, window };
 		g3d::Renderer renderer { graphDevice };
 

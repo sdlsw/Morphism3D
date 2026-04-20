@@ -3,6 +3,15 @@
 #include <iostream>
 
 namespace g3d {
+InputSystem::~InputSystem() {
+	// Deregister all handlers upon InputSystem destruction, so that the
+	// handlers don't try to dereference a pointer to an InputSystem which
+	// doesn't exist anymore when they're deconstructed themselves.
+	for (const auto& [id, handler] : _allHandlers) {
+		handler->unlink();
+	}
+}
+
 void Window::initWindowingSystem() {
 	std::cerr << "initializing GLFW..." << std::endl;
 	glfwInit();
@@ -29,6 +38,7 @@ Window::Window(std::string title, uint32_t initialWidth, uint32_t initialHeight)
 
 	glfwSetWindowUserPointer(_glfwWindow, this);
 	glfwSetFramebufferSizeCallback(_glfwWindow, frameBufferResizeCallback);
+	glfwSetKeyCallback(_glfwWindow, keyCallback);
 	_glfwWindowCount++;
 
 	std::cerr << "successfully created GLFW window at 0x" << this << std::endl;
@@ -53,6 +63,11 @@ Window* Window::getWrapperPointer(GLFWwindow* window) {
 
 void Window::frameBufferResizeCallback(GLFWwindow* window, int width, int height) {
 	Window::getWrapperPointer(window)->_windowResized = true;
+}
+
+void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	KeyEvent e { window, key, scancode, action, mods };
+	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
 }
 
 void Window::pollEvents() {
