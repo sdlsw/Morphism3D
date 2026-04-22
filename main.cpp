@@ -12,6 +12,8 @@ static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
 static const std::string APPLICATION_NAME = "graph3d";
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 
+static const glm::vec3 INITIAL_LOOK_POSITION {0.0f, 0.0f, 0.0f};
+
 g3d::VkTop init_top() {
 	vk::ApplicationInfo appInfo {
 		.pApplicationName = APPLICATION_NAME.c_str(),
@@ -102,13 +104,34 @@ public:
 	}
 };
 
+class CameraResetHandler : public g3d::EventHandler<g3d::KeyEvent> {
+private:
+	g3d::Camera* _camera;
+
+public:
+	const std::string _name = "CameraResetHandler";
+	const std::string& name() const override { return _name; }
+
+	void body(g3d::KeyEvent& e) override {
+		if (e.key == GLFW_KEY_R && e.action == GLFW_PRESS) {
+			_camera->lookAt(INITIAL_LOOK_POSITION);
+		}
+	}
+
+	CameraResetHandler(g3d::Window& window, g3d::Camera& camera) : _camera {&camera} {
+		window.inputSystem().registerHandler(*this);
+	}
+};
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
 		g3d::CameraMode::fixedLook,
 		{4.0f, 4.0f, 4.0f}, // cam position
-		{0.0f, 0.0f, 0.0f}, // coord to look at
+		INITIAL_LOOK_POSITION,
 		device.window()
 	};
+
+	CameraResetHandler camResetter { device.window(), camController.camera() };
 
 	TestObject obj1 { device, renderer, glm::radians(90.0f), {0.0f, 0.0f, 0.0f} };
 	TestObject obj2 { device, renderer, glm::radians(-120.0f), {0.0f, 0.0f, 1.0f} };
