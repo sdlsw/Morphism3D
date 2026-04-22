@@ -55,14 +55,14 @@ void CameraController::update() {
 
 	if (w ^ s) {
 		auto direction = _camera.forward();
-		float polarity = w ? 1 : -1;
+		float polarity = w ? 1.0f : -1.0f;
 
 		_camera.position(_camera.position() + direction * polarity * _state.speed);
 	}
 
 	if (a ^ d) {
 		auto direction = _camera.right();
-		float polarity = d ? 1 : -1;
+		float polarity = d ? 1.0f : -1.0f;
 
 		_camera.position(_camera.position() + direction * polarity * _state.speed);
 	}

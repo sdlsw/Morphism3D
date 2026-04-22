@@ -9,10 +9,10 @@ class CameraController {
 private:
 	struct _InternalState {
 		bool hasPreviousPos = false;
-		double lastxpos = 0;
-		double lastypos = 0;
-		float sensitivity = 0.005;
-		float speed = 0.5;
+		double lastxpos = 0.0;
+		double lastypos = 0.0;
+		float sensitivity = 0.005f;
+		float speed = 0.5f;
 
 		std::unordered_map<int, bool> directions {
 			{GLFW_KEY_W, false},
