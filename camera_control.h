@@ -68,7 +68,7 @@ public:
 		window.inputSystem().registerHandler(posHandler);
 	}
 
-	const Camera& camera() const { return _camera; }
+	Camera& camera() { return _camera; }
 	void update();
 };
 }
