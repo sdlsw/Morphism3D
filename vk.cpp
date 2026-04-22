@@ -1121,6 +1121,13 @@ void Renderer::updateRenderContext() {
 	);
 }
 
+glm::mat4 Transform::matrix() const {
+	glm::mat4 m { 1.0f };
+	m = glm::translate(m, translation);
+	m = glm::scale(m, scale);
+	return m * rotation;
+}
+
 std::vector<MappedBuffer<glm::mat4>> RenderObject::createTransformBuffers() {
 	std::vector<MappedBuffer<glm::mat4>> vec;
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -1141,9 +1148,9 @@ std::vector<vk::raii::DescriptorSet> RenderObject::createDescriptorSets() {
 }
 
 void RenderObject::update(RenderContext& ctx) {
-	// very gross to have to do this for every object, probably won't
-	// scale well, but is OK for now due to low object count
-	_transformBuffers[ctx.currentFrame()].copyIn(_transform);
+	// TODO probably better to use push constant for per-object transform
+	// instead of a buffer
+	_transformBuffers[ctx.currentFrame()].copyIn(transform.matrix());
 }
 
 void RenderObject::record(RenderContext& ctx) {

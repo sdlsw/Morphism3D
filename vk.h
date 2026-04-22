@@ -636,35 +636,49 @@ public:
 	void record(RenderContext& ctx) const;
 };
 
+struct Transform {
+	// For use in constructors
+	static inline const glm::vec3 default_scale { 1.0f, 1.0f, 1.0f };
+
+	glm::vec3 translation { 0.0f, 0.0f, 0.0f};
+	glm::vec3 scale { 1.0f, 1.0f, 1.0f };
+	glm::mat4 rotation { 1.0f };
+
+	Transform(const glm::vec3& t) : translation {t} {}
+	Transform(const glm::vec3& t, const glm::vec3& s) : translation {t}, scale {s} {}
+	Transform(const glm::vec3& t, const glm::vec3& s, const glm::mat4 r) : translation {t}, scale {s}, rotation {r} {}
+
+	glm::mat4 matrix() const;
+};
+
 class RenderObject {
 private:
 	GraphDevice* _graphDevice;
 	Renderer* _renderer;
 	Model _model;
-	glm::mat4 _transform;
 	std::vector<MappedBuffer<glm::mat4>> _transformBuffers;
 	std::vector<vk::raii::DescriptorSet> _descriptorSets;
 
 	std::vector<MappedBuffer<glm::mat4>> createTransformBuffers();
 	std::vector<vk::raii::DescriptorSet> createDescriptorSets();
 public:
+	Transform transform;
+
 	RenderObject() = delete;
 	RenderObject(RenderObject&&) = default;
 	RenderObject(
 		GraphDevice& graphDevice,
 		Renderer& renderer,
-		Model&& model
+		Model&& model,
+		const Transform& transform
 	)
 	: _graphDevice { &graphDevice },
 	  _renderer { &renderer },
 	  _model { std::move(model) },
-	  _transform { 1.0f }, // identity
+	  transform { transform },
 	  _transformBuffers { createTransformBuffers() },
 	  _descriptorSets { createDescriptorSets() }
 	{}
-
-	glm::mat4& transform() { return _transform; }
-	void transform(const glm::mat4& transform) { _transform = transform; }
 
 	void update(RenderContext& ctx);
 	void record(RenderContext& ctx);

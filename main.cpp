@@ -51,9 +51,9 @@ public:
 					{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}
 				},
 				{0, 1, 1, 2, 2, 3, 3, 0}
-			}
-		},
-		_translation { translation } {}
+			},
+			{ translation }
+		} {}
 
 	void updateAndRender(g3d::RenderContext& ctx) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
@@ -61,11 +61,12 @@ public:
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-		glm::mat4 transform { 1.0f };
-		transform = glm::translate(transform, _translation);
-		transform = glm::rotate(transform, time * _rotationSpeed, glm::vec3(0.0f, 0.0f, 1.0f));
+		_obj.transform.rotation = glm::rotate(
+			{1.0f},
+			time * _rotationSpeed,
+			glm::vec3(0.0f, 0.0f, 1.0f)
+		);
 
-		_obj.transform(transform);
 		_obj.update(ctx);
 		_obj.record(ctx);
 	}
