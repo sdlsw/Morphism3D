@@ -60,6 +60,11 @@ static std::vector<char> readFile(const std::string& filename) {
 }
 
 namespace g3d {
+std::ostream& operator<<(std::ostream& o, const glm::vec3& v) {
+	o << v.x << ", " << v.y << ", " << v.z;
+	return o;
+}
+
 bool QueueFamilyIndices::isComplete() const {
 	return graphicsFamily.has_value() && presentFamily.has_value();
 }
@@ -899,7 +904,7 @@ std::vector<PerFrameResources> Renderer::createPerFrameResources() {
 }
 
 glm::mat4 Camera::viewMatrix() const {
-	return glm::lookAt(_position, _lookAt, _up);
+	return glm::lookAt(_position, lookAt(), _up);
 }
 
 glm::mat4 Camera::perspectiveMatrix(unsigned int width, unsigned int height) const {
@@ -914,6 +919,81 @@ glm::mat4 Camera::perspectiveMatrix(unsigned int width, unsigned int height) con
 	p[1][1] *= -1;
 
 	return std::move(p);
+}
+
+glm::vec3 Camera::lookAt() const {
+	if (_mode == CameraMode::forward) {
+		return _position + _look;
+	} else {
+		return _look;
+	}
+}
+
+void Camera::lookAt(const glm::vec3& lookPosition) {
+	if (_mode == CameraMode::forward) {
+		_look = glm::normalize(lookPosition - _position);
+	} else {
+		_look = lookPosition;
+	}
+
+	recalcDirections();
+}
+
+glm::vec3 Camera::forward() const {
+	if (_mode == CameraMode::forward) {
+		return _look;
+	} else {
+		return glm::normalize(_look - _position);
+	}
+}
+
+void Camera::forward(const glm::vec3& fwd) {
+	if (_mode == CameraMode::forward) {
+		_look = glm::normalize(fwd);
+	} else {
+		throw std::runtime_error("Cannot use Camera::forward(vec) out of forward camera mode");
+	}
+
+	recalcDirections();
+}
+
+void Camera::recalcDirections() {
+	glm::vec3 fwd = forward();
+	_right = glm::normalize(glm::vec3(fwd.y, -fwd.x, 0.0f));
+	_up = glm::cross(_right, fwd);
+}
+
+void Camera::mode(CameraMode newMode) {
+	if (newMode == _mode) return;
+
+	if (_mode == CameraMode::forward) {
+		// newMode is fixedLook
+		_look = lookAt();
+	} else {
+		// newMode is forward
+		_look = forward();
+	}
+
+	_mode = newMode;
+}
+
+void Camera::position(const glm::vec3& newPosition) {
+	_position = newPosition;
+	if (_mode == CameraMode::fixedLook) {
+		recalcDirections();
+	}
+}
+
+void Camera::rotateForward(float horizontal, float vertical) {
+	if (_mode == CameraMode::fixedLook) {
+		throw std::runtime_error("Cannot rotateForward when camera mode is fixedLook");
+	}
+
+	glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), horizontal, _up);
+	rotation = glm::rotate(rotation, vertical, _right);
+
+	_look = glm::vec3(rotation * glm::vec4(_look, 1.0f));
+	recalcDirections();
 }
 
 RenderContext& Renderer::beginFrame(const Camera& camera) {

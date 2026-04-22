@@ -21,6 +21,19 @@ struct KeyEvent {
 	int mods;
 };
 
+struct MouseButtonEvent {
+	GLFWwindow* window;
+	int button;
+	int action;
+	int mods;
+};
+
+struct MousePositionEvent {
+	GLFWwindow* window;
+	double xpos;
+	double ypos;
+};
+
 class InputSystem;
 template<typename E> class EventHandler;
 
@@ -94,6 +107,8 @@ private:
 	// Categorized handlers. Used for actually handling events so we don't
 	// need to iterate over all handler types for one type of event.
 	std::unordered_map<uint64_t, EventHandler<KeyEvent>*> _keyHandlers;
+	std::unordered_map<uint64_t, EventHandler<MouseButtonEvent>*> _mouseButtonHandlers;
+	std::unordered_map<uint64_t, EventHandler<MousePositionEvent>*> _mousePositionHandlers;
 
 	template<typename E>
 	std::unordered_map<uint64_t, EventHandler<E>*>& getCategory() {
@@ -104,7 +119,20 @@ private:
 	// duplicating registerHandler, deregisterHandler, handleEvent, and
 	// EventHandler.
 	template<>
-	std::unordered_map<uint64_t, EventHandler<KeyEvent>*>& getCategory() { return _keyHandlers; }
+	std::unordered_map<uint64_t, EventHandler<KeyEvent>*>& getCategory() {
+		return _keyHandlers;
+	}
+
+	template<>
+	std::unordered_map<uint64_t, EventHandler<MouseButtonEvent>*>& getCategory() {
+		return _mouseButtonHandlers;
+	}
+
+	template<>
+	std::unordered_map<uint64_t, EventHandler<MousePositionEvent>*>& getCategory() {
+		return _mousePositionHandlers;
+	}
+
 public:
 	InputSystem() = default;
 	InputSystem(const InputSystem&) = delete;
@@ -176,6 +204,8 @@ private:
 
 	static void frameBufferResizeCallback(GLFWwindow* window, int width, int height);
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+	static void mousePositionCallback(GLFWwindow* window, double xpos, double ypos);
 
 	GLFWwindow* _glfwWindow = nullptr;
 	bool _windowResized = false;

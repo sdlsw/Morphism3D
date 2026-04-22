@@ -423,24 +423,57 @@ public:
 	std::vector<vk::raii::Framebuffer> createFramebuffers(const vk::raii::RenderPass& renderPass);
 };
 
+enum class CameraMode {
+	forward,
+	fixedLook
+};
+
 class Camera {
 private:
 	glm::vec3 _position {0.0f, 0.0f, 0.0f};
-	glm::vec3 _lookAt {0.0f, 1.0f, 0.0f};
+
+	// In "forward" mode, this is a vector corresponding to the view
+	// direction. In "fixedLook" mode, this vector is a fixed position the
+	// camera is looking at. TODO maybe this is gross? 
+	glm::vec3 _look {0.0f, 1.0f, 0.0f};
 
 	// For this application, +Z is considered "up" due to 3D graphing
 	// conventions.
-	glm::vec3 _up {0.0f, 0.0f, 1.0f};
+	glm::vec3 _up;
+	glm::vec3 _right;
+
+	CameraMode _mode = CameraMode::forward;
+
+	void recalcDirections();
 public:
-	Camera() {}
+	Camera() { recalcDirections(); }
 	Camera(
+		CameraMode mode,
 		const glm::vec3& position,
-		const glm::vec3& lookAt,
-		const glm::vec3& up
-	) : _position{position}, _lookAt{lookAt}, _up{up} {}
+		const glm::vec3& look
+	) : _mode{mode}, _position{position}, _look{look} {
+		recalcDirections();
+	}
+
+	const glm::vec3& up() const { return _up; }
+	const glm::vec3& right() const { return _right; }
 
 	glm::mat4 viewMatrix() const;
 	glm::mat4 perspectiveMatrix(unsigned int width, unsigned int height) const;
+
+	glm::vec3 lookAt() const;
+	void lookAt(const glm::vec3& lookVec);
+
+	glm::vec3 forward() const;
+	void forward(const glm::vec3& lookVec);
+
+	CameraMode mode() const { return _mode; }
+	void mode(CameraMode newMode);
+
+	const glm::vec3& position() const { return _position; }
+	void position(const glm::vec3& newPosition);
+
+	void rotateForward(float horizontal, float vertical);
 };
 
 // Set of resources that must be duplicated per frame in flight.

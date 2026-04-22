@@ -1,3 +1,4 @@
+#include "camera_control.h"
 #include "vk.h"
 #include "window.h"
 
@@ -28,13 +29,14 @@ private:
 	// Radians per second
 	float _rotationSpeed;
 	g3d::RenderObject _obj;
+	glm::vec3 _translation;
 
 public:
 	TestObject(
 		g3d::GraphDevice& device,
 		g3d::Renderer& renderer,
 		float rotationSpeed,
-		float z
+		const glm::vec3& translation
 	) :
 		_rotationSpeed {rotationSpeed},
 		_obj {
@@ -43,60 +45,82 @@ public:
 			{
 				device,
 				{
-					{{1.0f, 1.0f, z}, {1.0f, 0.0f, 0.0f}},
-					{{-1.0f, 1.0f, z}, {0.0f, 1.0f, 0.0f}},
-					{{-1.0f, -1.0f, z}, {0.0f, 0.0f, 1.0f}},
-					{{1.0f, -1.0f, z}, {1.0f, 1.0f, 1.0f}}
+					{{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+					{{-1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+					{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+					{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}
 				},
 				{0, 1, 1, 2, 2, 3, 3, 0}
 			}
-		} {}
+		},
+		_translation { translation } {}
 
 	void updateAndRender(g3d::RenderContext& ctx) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-		_obj.transform(glm::rotate(
-			glm::mat4(1.0f),
-			time * _rotationSpeed,
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		));
+
+		glm::mat4 transform { 1.0f };
+		transform = glm::translate(transform, _translation);
+		transform = glm::rotate(transform, time * _rotationSpeed, glm::vec3(0.0f, 0.0f, 1.0f));
+
+		_obj.transform(transform);
 		_obj.update(ctx);
 		_obj.record(ctx);
 	}
 };
 
-class GlobalKeyHandler : public g3d::EventHandler<g3d::KeyEvent> {
-private:
-	const std::string _name = "GlobalKeyHandler";
-
+class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
 public:
+	const std::string _name = "CursorPosDumper";
+
+	const std::string& name() const override { return _name; }
+
+	void body(g3d::MousePositionEvent& e) override {
+		std::cout << "MousePositionEvent: " << e.xpos << ", " << e.ypos << std::endl;
+	}
+
+	CursorPosDumper(g3d::Window& window) {
+		window.inputSystem().registerHandler(*this);
+	}
+};
+
+class KeyDumper : public g3d::EventHandler<g3d::KeyEvent> {
+public:
+	const std::string _name = "KeyDumper";
+
 	const std::string& name() const override { return _name; }
 
 	void body(g3d::KeyEvent& e) override {
-		if (e.key == GLFW_KEY_ESCAPE && e.action == GLFW_PRESS) {
-			glfwSetWindowShouldClose(e.window, GLFW_TRUE);
-		}
+		std::cout << "KeyEvent: " << e.key << ", " << e.action << std::endl;
+	}
+
+	KeyDumper(g3d::Window& window) {
+		window.inputSystem().registerHandler(*this);
 	}
 };
 
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-	g3d::Camera camera {
+	g3d::CameraController camController {
+		g3d::CameraMode::fixedLook,
 		{4.0f, 4.0f, 4.0f}, // cam position
 		{0.0f, 0.0f, 0.0f}, // coord to look at
-		{0.0f, 0.0f, 1.0f}  // up vector
+		device.window()
 	};
 
-	TestObject obj1 { device, renderer, glm::radians(90.0f), 0.0f };
-	TestObject obj2 { device, renderer, glm::radians(-120.0f), 1.0f };
+	TestObject obj1 { device, renderer, glm::radians(90.0f), {0.0f, 0.0f, 0.0f} };
+	TestObject obj2 { device, renderer, glm::radians(-120.0f), {0.0f, 0.0f, 1.0f} };
+	TestObject obj3 { device, renderer, glm::radians(120.0f), {2.0f, 0.0f, 0.0f} };
 
 	while (!device.window().shouldClose()) {
 		g3d::Window::pollEvents();
+		camController.update();
 
-		auto& renderContext = renderer.beginFrame(camera);
+		auto& renderContext = renderer.beginFrame(camController.camera());
 		obj1.updateAndRender(renderContext);
 		obj2.updateAndRender(renderContext);
+		obj3.updateAndRender(renderContext);
 		renderer.endFrame();
 	}
 
@@ -114,8 +138,11 @@ int main() {
 			WINDOW_INITIAL_HEIGHT
 		};
 
-		GlobalKeyHandler globalKeys;
-		window.inputSystem().registerHandler(globalKeys);
+		CursorPosDumper posDumper { window };
+		posDumper.disable();
+
+		KeyDumper keyDumper { window };
+		keyDumper.disable();
 
 		g3d::GraphDevice graphDevice { vkTop, window };
 		g3d::Renderer renderer { graphDevice };

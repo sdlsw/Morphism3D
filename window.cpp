@@ -39,6 +39,8 @@ Window::Window(std::string title, uint32_t initialWidth, uint32_t initialHeight)
 	glfwSetWindowUserPointer(_glfwWindow, this);
 	glfwSetFramebufferSizeCallback(_glfwWindow, frameBufferResizeCallback);
 	glfwSetKeyCallback(_glfwWindow, keyCallback);
+	glfwSetMouseButtonCallback(_glfwWindow, mouseButtonCallback);
+	glfwSetCursorPosCallback(_glfwWindow, mousePositionCallback);
 	_glfwWindowCount++;
 
 	std::cerr << "successfully created GLFW window at 0x" << this << std::endl;
@@ -67,6 +69,16 @@ void Window::frameBufferResizeCallback(GLFWwindow* window, int width, int height
 
 void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	KeyEvent e { window, key, scancode, action, mods };
+	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
+}
+
+void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+	MouseButtonEvent e { window, button, action, mods };
+	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
+}
+
+void Window::mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
+	MousePositionEvent e { window, xpos, ypos };
 	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
 }
 
