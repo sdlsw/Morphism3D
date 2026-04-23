@@ -52,19 +52,29 @@ void CameraController::update() {
 	bool a = _state.directions[GLFW_KEY_A];
 	bool s = _state.directions[GLFW_KEY_S];
 	bool d = _state.directions[GLFW_KEY_D];
+	bool up = _state.directions[GLFW_KEY_SPACE];
+	bool down = _state.directions[GLFW_KEY_LEFT_SHIFT];
+
+	glm::vec3 move { 0.0f, 0.0f, 0.0f};
 
 	if (w ^ s) {
 		auto direction = _camera.forward();
 		float polarity = w ? 1.0f : -1.0f;
-
-		_camera.position(_camera.position() + direction * polarity * _state.speed);
+		move += direction * polarity;
 	}
 
 	if (a ^ d) {
 		auto direction = _camera.right();
 		float polarity = d ? 1.0f : -1.0f;
-
-		_camera.position(_camera.position() + direction * polarity * _state.speed);
+		move += direction * polarity;
 	}
+
+	if (up ^ down) {
+		auto direction = _camera.up();
+		float polarity = up ? 1.0f : -1.0f;
+		move += direction * polarity;
+	}
+
+	_camera.position(_camera.position() + move * _state.speed);
 }
 }
