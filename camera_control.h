@@ -14,7 +14,7 @@ private:
 		double lastxpos = 0.0;
 		double lastypos = 0.0;
 		float sensitivity = 0.005f;
-		float moveSpeed = 0.5f;
+		float moveSpeed = 0.1f;
 		float scrollSpeed = 0.5f;
 
 		std::unordered_map<int, bool> directions {
