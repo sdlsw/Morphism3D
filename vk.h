@@ -626,7 +626,7 @@ public:
 	Model(
 		GraphDevice& graphDevice,
 		const std::vector<Vertex>& vertices,
-		const std::vector<uint16_t> indices
+		const std::vector<uint16_t>& indices
 	)
 	: _graphDevice { &graphDevice },
 	  _vertexBuffer { createVertexBuffer(vertices) },
