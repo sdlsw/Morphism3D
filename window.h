@@ -223,6 +223,7 @@ public:
 	bool shouldClose();
 	WindowSize size();
 	EventSystem& eventSystem() { return _eventSystem; }
+	void title(const std::string& newTitle);
 
 	vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
 };

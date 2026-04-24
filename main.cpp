@@ -1,4 +1,5 @@
 #include "camera_control.h"
+#include "container.h"
 #include "vk.h"
 #include "window.h"
 
@@ -24,6 +25,15 @@ g3d::VkTop init_top() {
 	};
 	g3d::VkTop vk_top { appInfo };
 	return vk_top;
+}
+
+std::chrono::time_point<std::chrono::high_resolution_clock> now() {
+	return std::chrono::high_resolution_clock::now();
+}
+
+float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_clock>& before) {
+	auto after = now();
+	return std::chrono::duration<float, std::chrono::seconds::period>(after - before).count();
 }
 
 class TestObject {
@@ -58,14 +68,11 @@ public:
 		} {}
 
 	void updateAndRender(g3d::RenderContext& ctx) {
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		static auto startTime = now();
 
 		_obj.transform.rotation = glm::rotate(
 			{1.0f},
-			time * _rotationSpeed,
+			secondsSince(startTime) * _rotationSpeed,
 			glm::vec3(0.0f, 0.0f, 1.0f)
 		);
 
@@ -130,14 +137,16 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		INITIAL_LOOK_POSITION,
 		device.window()
 	};
-
 	CameraResetHandler camResetter { device.window(), camController.camera() };
+	g3d::MovingAverage<float> avgFps { 50 };
 
 	TestObject obj1 { device, renderer, glm::radians(90.0f), {0.0f, 0.0f, 0.0f} };
 	TestObject obj2 { device, renderer, glm::radians(-120.0f), {0.0f, 0.0f, 1.0f} };
 	TestObject obj3 { device, renderer, glm::radians(120.0f), {2.0f, 0.0f, 0.0f} };
 
 	while (!device.window().shouldClose()) {
+		auto frameStartTime = now();
+
 		g3d::Window::pollEvents();
 		camController.update();
 
@@ -146,6 +155,15 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		obj2.updateAndRender(renderContext);
 		obj3.updateAndRender(renderContext);
 		renderer.endFrame();
+
+		// TODO I don't think this is *quite* accurate since endFrame()
+		// is only the submit point for rendering commands; the frame
+		// isn't actually finished drawing until a bit later. For now
+		// seems fine since there's almost 0 work to do and we're
+		// hitting vsync limit.
+		avgFps.put(1.0f / secondsSince(frameStartTime));
+
+		device.window().title(std::format("{} | {:.2f} FPS", APPLICATION_NAME, avgFps.get()));
 	}
 
 	device.logicalDevice().waitIdle();

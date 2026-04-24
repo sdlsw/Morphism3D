@@ -97,6 +97,10 @@ WindowSize Window::size() {
 	return s;
 }
 
+void Window::title(const std::string& newTitle) {
+	glfwSetWindowTitle(_glfwWindow, newTitle.c_str());
+}
+
 vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance& instance) {
 	VkSurfaceKHR surface;
 	VkResult result = glfwCreateWindowSurface(*instance, _glfwWindow, nullptr, &surface);
