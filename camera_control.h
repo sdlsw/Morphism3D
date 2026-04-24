@@ -8,11 +8,14 @@ namespace g3d {
 class CameraController {
 private:
 	struct _InternalState {
+		glm::vec3 initialCenter;
+		glm::vec3 initialPosition;
 		bool hasPreviousPos = false;
 		double lastxpos = 0.0;
 		double lastypos = 0.0;
 		float sensitivity = 0.005f;
 		float speed = 0.5f;
+		float scrollFactor = 1.0f;
 
 		std::unordered_map<int, bool> directions {
 			{GLFW_KEY_W, false},
@@ -25,30 +28,50 @@ private:
 	};
 
 	class _MouseHandler : public EventHandler<MouseButtonEvent> {
-	public:
+	private:
 		const std::string _name = "CameraController::_MouseHandler";
+
+	public:
 		const std::string& name() const override { return _name; }
 		void body(MouseButtonEvent& e) override;
 	};
 
 	class _KeyHandler : public EventHandler<KeyEvent> {
-	public:
+	private:
+		const std::string _name = "CameraController::_KeyHandler";
 		_InternalState* _state;
 		Camera* _camera;
-		const std::string _name = "CameraController::_KeyHandler";
+
+	public:
 		const std::string& name() const override { return _name; }
 		void body(KeyEvent& e) override;
 		_KeyHandler(_InternalState* state, Camera* camera) : _state {state}, _camera {camera} {}
 	};
 
 	class _PosHandler : public EventHandler<MousePositionEvent> {
-	public:
+	private:
+		const std::string _name = "CameraController::_PosHandler";
 		_InternalState* _state;
 		Camera* _camera;
-		const std::string _name = "CameraController::_PosHandler";
+		void handleFixedLook(float xoffset, float yoffset);
+		void handleForward(float xoffset, float yoffset);
+
+	public:
 		const std::string& name() const override { return _name; }
 		void body(MousePositionEvent& e) override;
 		_PosHandler(_InternalState* state, Camera* camera) : _state {state}, _camera {camera} {}
+	};
+
+	class _ScrollHandler : public EventHandler<ScrollEvent> {
+	private:
+		const std::string _name = "CameraController::_ScrollHandler";
+		_InternalState* _state;
+		Camera* _camera;
+
+	public:
+		const std::string& name() const override { return _name; }
+		void body(ScrollEvent& e) override;
+		_ScrollHandler(_InternalState* state, Camera* camera) : _state {state}, _camera {camera} {}
 	};
 
 	Camera _camera;
@@ -56,21 +79,24 @@ private:
 	_MouseHandler mouseHandler;
 	_KeyHandler keyHandler { &_state, &_camera };
 	_PosHandler posHandler { &_state, &_camera };
+	_ScrollHandler scrollHandler { &_state, &_camera };
 
 public:
 	CameraController(
-		CameraMode camMode,
 		const glm::vec3& position,
-		const glm::vec3& look,
+		const glm::vec3& center,
 		Window& window
-	) : _camera { camMode, position, look } {
-		_camera.mode(CameraMode::forward);
+	) : _camera { CameraMode::fixedLook, position, center } {
+		_state.initialPosition = position;
+		_state.initialCenter = center;
 		window.eventSystem().registerHandler(mouseHandler);
 		window.eventSystem().registerHandler(keyHandler);
 		window.eventSystem().registerHandler(posHandler);
+		window.eventSystem().registerHandler(scrollHandler);
 	}
 
 	Camera& camera() { return _camera; }
+	const Camera& camera() const { return _camera; }
 	void update();
 };
 }

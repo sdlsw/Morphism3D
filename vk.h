@@ -474,6 +474,7 @@ public:
 	void position(const glm::vec3& newPosition);
 
 	void rotateForward(float horizontal, float vertical);
+	void rotateAround(const glm::vec3& center, float horizontal, float vertical);
 };
 
 // Set of resources that must be duplicated per frame in flight.

@@ -13,7 +13,8 @@ static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
 static const std::string APPLICATION_NAME = "graph3d";
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 
-static const glm::vec3 INITIAL_LOOK_POSITION {0.0f, 0.0f, 0.0f};
+static const std::string CAM_MODE_FIXED_NAME = "Fixed";
+static const std::string CAM_MODE_FREE_NAME = "Free";
 
 g3d::VkTop init_top() {
 	vk::ApplicationInfo appInfo {
@@ -111,33 +112,35 @@ public:
 	}
 };
 
-class CameraResetHandler : public g3d::EventHandler<g3d::KeyEvent> {
-private:
-	g3d::Camera* _camera;
-
+class ScrollDumper : public g3d::EventHandler<g3d::ScrollEvent> {
 public:
-	const std::string _name = "CameraResetHandler";
+	const std::string _name = "ScrollDumper";
+
 	const std::string& name() const override { return _name; }
 
-	void body(g3d::KeyEvent& e) override {
-		if (e.key == GLFW_KEY_R && e.action == GLFW_PRESS) {
-			_camera->lookAt(INITIAL_LOOK_POSITION);
-		}
+	void body(g3d::ScrollEvent& e) override {
+		std::cout << "ScrollEvent: " << e.xoffset << ", " << e.yoffset << std::endl;
 	}
 
-	CameraResetHandler(g3d::Window& window, g3d::Camera& camera) : _camera {&camera} {
+	ScrollDumper(g3d::Window& window) {
 		window.eventSystem().registerHandler(*this);
 	}
 };
 
+const std::string& camModeName(const g3d::CameraController& controller) {
+	if (controller.camera().mode() == g3d::CameraMode::fixedLook) {
+		return CAM_MODE_FIXED_NAME;
+	} else {
+		return CAM_MODE_FREE_NAME;
+	}
+}
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
-		g3d::CameraMode::fixedLook,
 		{4.0f, 4.0f, 4.0f}, // cam position
-		INITIAL_LOOK_POSITION,
+		{0.0f, 0.0f, 0.0f}, // initial center
 		device.window()
 	};
-	CameraResetHandler camResetter { device.window(), camController.camera() };
 	g3d::MovingAverage<float> avgFps { 50 };
 
 	TestObject obj1 { device, renderer, glm::radians(90.0f), {0.0f, 0.0f, 0.0f} };
@@ -163,7 +166,12 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		// hitting vsync limit.
 		avgFps.put(1.0f / secondsSince(frameStartTime));
 
-		device.window().title(std::format("{} | {:.2f} FPS", APPLICATION_NAME, avgFps.get()));
+		device.window().title(std::format(
+			"{} | Cam Mode: {} | {:.2f} FPS",
+			APPLICATION_NAME,
+			camModeName(camController),
+			avgFps.get()
+		));
 	}
 
 	device.logicalDevice().waitIdle();
@@ -182,9 +190,10 @@ int main() {
 
 		CursorPosDumper posDumper { window };
 		posDumper.disable();
-
 		KeyDumper keyDumper { window };
 		keyDumper.disable();
+		ScrollDumper scrollDumper { window };
+		scrollDumper.disable();
 
 		g3d::GraphDevice graphDevice { vkTop, window };
 		g3d::Renderer renderer { graphDevice };

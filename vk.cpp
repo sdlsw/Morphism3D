@@ -996,6 +996,18 @@ void Camera::rotateForward(float horizontal, float vertical) {
 	recalcDirections();
 }
 
+void Camera::rotateAround(const glm::vec3& center, float horizontal, float vertical) {
+	glm::vec3 diffVec = _position - center;
+
+	glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), horizontal, _up);
+	rotation = glm::rotate(rotation, vertical, _right);
+
+	glm::vec3 newDiffVec = glm::vec3(rotation * glm::vec4(diffVec, 1.0f));
+	_position = center + newDiffVec;
+
+	recalcDirections();
+}
+
 RenderContext& Renderer::beginFrame(const Camera& camera) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];

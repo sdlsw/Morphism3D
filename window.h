@@ -34,6 +34,12 @@ struct MousePositionEvent {
 	double ypos;
 };
 
+struct ScrollEvent {
+	GLFWwindow* window;
+	double xoffset;
+	double yoffset;
+};
+
 class EventSystem;
 template<typename E> class EventHandler;
 
@@ -109,6 +115,7 @@ private:
 	std::unordered_map<uint64_t, EventHandler<KeyEvent>*> _keyHandlers;
 	std::unordered_map<uint64_t, EventHandler<MouseButtonEvent>*> _mouseButtonHandlers;
 	std::unordered_map<uint64_t, EventHandler<MousePositionEvent>*> _mousePositionHandlers;
+	std::unordered_map<uint64_t, EventHandler<ScrollEvent>*> _scrollHandlers;
 
 	template<typename E>
 	std::unordered_map<uint64_t, EventHandler<E>*>& getCategory() {
@@ -131,6 +138,11 @@ private:
 	template<>
 	std::unordered_map<uint64_t, EventHandler<MousePositionEvent>*>& getCategory() {
 		return _mousePositionHandlers;
+	}
+
+	template<>
+	std::unordered_map<uint64_t, EventHandler<ScrollEvent>*>& getCategory() {
+		return _scrollHandlers;
 	}
 
 public:
@@ -206,6 +218,7 @@ private:
 	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 	static void mousePositionCallback(GLFWwindow* window, double xpos, double ypos);
+	static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 	GLFWwindow* _glfwWindow = nullptr;
 	bool _windowResized = false;

@@ -41,6 +41,7 @@ Window::Window(std::string title, uint32_t initialWidth, uint32_t initialHeight)
 	glfwSetKeyCallback(_glfwWindow, keyCallback);
 	glfwSetMouseButtonCallback(_glfwWindow, mouseButtonCallback);
 	glfwSetCursorPosCallback(_glfwWindow, mousePositionCallback);
+	glfwSetScrollCallback(_glfwWindow, scrollCallback);
 	_glfwWindowCount++;
 
 	std::cerr << "successfully created GLFW window at 0x" << this << std::endl;
@@ -79,6 +80,11 @@ void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int
 
 void Window::mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	MousePositionEvent e { window, xpos, ypos };
+	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
+}
+
+void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+	ScrollEvent e { window, xoffset, yoffset };
 	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
 }
 
