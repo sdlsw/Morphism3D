@@ -85,8 +85,7 @@ void CameraController::_ScrollHandler::body(ScrollEvent& e) {
 	// Scroll control only enabled in fixedLook mode
 	if (_camera->mode() == CameraMode::forward) return;
 
-	float speed = _state->speed * _state->scrollFactor;
-	glm::vec3 move = _camera->forward() * speed * static_cast<float>(e.yoffset);
+	glm::vec3 move = _camera->forward() * _state->scrollSpeed * static_cast<float>(e.yoffset);
 
 	if (e.yoffset > 0) {
 		// Make sure we don't overshoot center if moving towards it
@@ -130,6 +129,6 @@ void CameraController::update() {
 		move += direction * polarity;
 	}
 
-	_camera.position(_camera.position() + move * _state.speed);
+	_camera.position(_camera.position() + move * _state.moveSpeed);
 }
 }
