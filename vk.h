@@ -645,6 +645,7 @@ struct Transform {
 	glm::vec3 scale { 1.0f, 1.0f, 1.0f };
 	glm::mat4 rotation { 1.0f };
 
+	Transform() = default;
 	Transform(const glm::vec3& t) : translation {t} {}
 	Transform(const glm::vec3& t, const glm::vec3& s) : translation {t}, scale {s} {}
 	Transform(const glm::vec3& t, const glm::vec3& s, const glm::mat4 r) : translation {t}, scale {s}, rotation {r} {}
