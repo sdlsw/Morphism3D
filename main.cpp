@@ -37,50 +37,71 @@ float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_cl
 	return std::chrono::duration<float, std::chrono::seconds::period>(after - before).count();
 }
 
-class TestObject {
-private:
-	// Radians per second
-	float _rotationSpeed;
-	g3d::RenderObject _obj;
-	glm::vec3 _translation;
+// The function to graph.
+// TODO Allow the user to specify this
+float func(float x, float y) {
+	return 0.3f*x*y;
+}
 
-public:
-	TestObject(
-		g3d::GraphDevice& device,
-		g3d::Renderer& renderer,
-		float rotationSpeed,
-		const glm::vec3& translation
-	) :
-		_rotationSpeed {rotationSpeed},
-		_obj {
-			device,
-			renderer,
-			{
-				device,
-				{
-					{{1.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-					{{-1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-					{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-					{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}
-				},
-				{0, 1, 1, 2, 2, 3, 3, 0}
-			},
-			{ translation }
-		} {}
+template<typename T, typename U>
+T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
+	T u = glm::mix(ul, ur, a);
+	T d = glm::mix(dl, dr, a);
 
-	void updateAndRender(g3d::RenderContext& ctx) {
-		static auto startTime = now();
+	return glm::mix(u, d, b);
+}
 
-		_obj.transform.rotation = glm::rotate(
-			{1.0f},
-			secondsSince(startTime) * _rotationSpeed,
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		);
+std::vector<g3d::Vertex> generate_func_vertices(float range, unsigned int cells) {
+	std::vector<g3d::Vertex> out;
 
-		_obj.update(ctx);
-		_obj.record(ctx);
+	glm::vec3 ul {0.141f, 0.706f, 0.322f}; // green
+	glm::vec3 ur {0.988f, 0.804f, 0.000f}; // yellow orange
+	glm::vec3 dl {0.400f, 0.255f, 0.953f}; // blue violet
+	glm::vec3 dr {1.000f, 0.000f, 0.000f}; // red
+
+	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
+		float lerp_a_y = static_cast<float>(ypt) / static_cast<float>(cells);
+		float y = glm::mix(-range, range, lerp_a_y);
+
+		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
+			float lerp_a_x = static_cast<float>(xpt) / static_cast<float>(cells);
+			float x = glm::mix(-range, range, lerp_a_x);
+
+			out.push_back({
+				{x/range, y/range, func(x, y)/range},
+				lerp2d(ul, ur, dl, dr, lerp_a_x, lerp_a_y)
+			});
+		}
 	}
-};
+
+	return out;
+}
+
+uint16_t idx(unsigned int x, unsigned int y, unsigned int cells) {
+	return y*(cells+1) + x;
+}
+
+std::vector<uint16_t> generate_func_indices(unsigned int cells) {
+	std::vector<uint16_t> out;
+
+	// generate horizontal lines
+	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
+		for (unsigned int xpt = 0; xpt < cells; xpt++) {
+			out.push_back(idx(xpt, ypt, cells));
+			out.push_back(idx(xpt+1, ypt, cells));
+		}
+	}
+
+	// generate vertical lines
+	for (unsigned int xpt = 0; xpt <= cells; xpt++) {
+		for (unsigned int ypt = 0; ypt < cells; ypt++) {
+			out.push_back(idx(xpt, ypt, cells));
+			out.push_back(idx(xpt, ypt+1, cells));
+		}
+	}
+
+	return out;
+}
 
 class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
 public:
@@ -137,15 +158,22 @@ const std::string& camModeName(const g3d::CameraController& controller) {
 
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
-		{4.0f, 4.0f, 4.0f}, // cam position
+		{2.5f, 2.5f, 2.5f}, // cam position
 		{0.0f, 0.0f, 0.0f}, // initial center
 		device.window()
 	};
 	g3d::MovingAverage<float> avgFps { 50 };
 
-	TestObject obj1 { device, renderer, glm::radians(90.0f), {0.0f, 0.0f, 0.0f} };
-	TestObject obj2 { device, renderer, glm::radians(-120.0f), {0.0f, 0.0f, 1.0f} };
-	TestObject obj3 { device, renderer, glm::radians(120.0f), {2.0f, 0.0f, 0.0f} };
+	g3d::RenderObject graphObject {
+		device,
+		renderer,
+		{
+			device,
+			generate_func_vertices(3.0f, 10),
+			generate_func_indices(10)
+		},
+		{}
+	};
 
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
@@ -154,9 +182,8 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		camController.update();
 
 		auto& renderContext = renderer.beginFrame(camController.camera());
-		obj1.updateAndRender(renderContext);
-		obj2.updateAndRender(renderContext);
-		obj3.updateAndRender(renderContext);
+		graphObject.update(renderContext);
+		graphObject.record(renderContext);
 		renderer.endFrame();
 
 		// TODO I don't think this is *quite* accurate since endFrame()
