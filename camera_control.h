@@ -65,9 +65,9 @@ public:
 		Window& window
 	) : _camera { camMode, position, look } {
 		_camera.mode(CameraMode::forward);
-		window.inputSystem().registerHandler(mouseHandler);
-		window.inputSystem().registerHandler(keyHandler);
-		window.inputSystem().registerHandler(posHandler);
+		window.eventSystem().registerHandler(mouseHandler);
+		window.eventSystem().registerHandler(keyHandler);
+		window.eventSystem().registerHandler(posHandler);
 	}
 
 	Camera& camera() { return _camera; }

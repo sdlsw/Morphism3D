@@ -85,7 +85,7 @@ public:
 	}
 
 	CursorPosDumper(g3d::Window& window) {
-		window.inputSystem().registerHandler(*this);
+		window.eventSystem().registerHandler(*this);
 	}
 };
 
@@ -100,7 +100,7 @@ public:
 	}
 
 	KeyDumper(g3d::Window& window) {
-		window.inputSystem().registerHandler(*this);
+		window.eventSystem().registerHandler(*this);
 	}
 };
 
@@ -119,7 +119,7 @@ public:
 	}
 
 	CameraResetHandler(g3d::Window& window, g3d::Camera& camera) : _camera {&camera} {
-		window.inputSystem().registerHandler(*this);
+		window.eventSystem().registerHandler(*this);
 	}
 };
 

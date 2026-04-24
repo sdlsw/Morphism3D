@@ -3,9 +3,9 @@
 #include <iostream>
 
 namespace g3d {
-InputSystem::~InputSystem() {
-	// Deregister all handlers upon InputSystem destruction, so that the
-	// handlers don't try to dereference a pointer to an InputSystem which
+EventSystem::~EventSystem() {
+	// Deregister all handlers upon EventSystem destruction, so that the
+	// handlers don't try to dereference a pointer to an EventSystem which
 	// doesn't exist anymore when they're deconstructed themselves.
 	for (const auto& [id, handler] : _allHandlers) {
 		handler->unlink();
@@ -69,17 +69,17 @@ void Window::frameBufferResizeCallback(GLFWwindow* window, int width, int height
 
 void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	KeyEvent e { window, key, scancode, action, mods };
-	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
+	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
 }
 
 void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 	MouseButtonEvent e { window, button, action, mods };
-	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
+	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
 }
 
 void Window::mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	MousePositionEvent e { window, xpos, ypos };
-	Window::getWrapperPointer(window)->inputSystem().handleEvent(e);
+	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
 }
 
 void Window::pollEvents() {

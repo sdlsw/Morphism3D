@@ -9,8 +9,8 @@
 #include <unordered_map>
 #include <string>
 
-const uint64_t INPUT_HANDLER_NO_ID = 0;
-const std::string INPUT_UNNAMED_HANDLER = "unnamed";
+const uint64_t EVENT_HANDLER_NO_ID = 0;
+const std::string EVENT_HANDLER_UNNAMED = "unnamed";
 
 namespace g3d {
 struct KeyEvent {
@@ -34,39 +34,39 @@ struct MousePositionEvent {
 	double ypos;
 };
 
-class InputSystem;
+class EventSystem;
 template<typename E> class EventHandler;
 
 class BaseEventHandler {
-	friend class InputSystem;
+	friend class EventSystem;
 
 	template<typename E>
 	friend class EventHandler;
 
 private:
 	bool _enabled = true;
-	uint64_t _id = INPUT_HANDLER_NO_ID;
-	InputSystem* _inputSystem = nullptr;
+	uint64_t _id = EVENT_HANDLER_NO_ID;
+	EventSystem* _eventSystem = nullptr;
 
-	void link(InputSystem* isys, uint64_t id) {
+	void link(EventSystem* isys, uint64_t id) {
 		_id = id;
-		_inputSystem = isys;
+		_eventSystem = isys;
 	}
 
 	void unlink() {
-		_id = INPUT_HANDLER_NO_ID;
-		_inputSystem = nullptr;
+		_id = EVENT_HANDLER_NO_ID;
+		_eventSystem = nullptr;
 	}
 
-	bool isLinked() { return _inputSystem != nullptr; }
+	bool isLinked() { return _eventSystem != nullptr; }
 
 protected:
-	InputSystem& inputSystem() {
+	EventSystem& eventSystem() {
 		if (isLinked()) {
-			return *_inputSystem;
+			return *_eventSystem;
 		}
 
-		throw std::runtime_error("Cannot call inputSystem() if handler not linked.");
+		throw std::runtime_error("Cannot call eventSystem() if handler not linked.");
 	}
 
 public:
@@ -82,9 +82,9 @@ public:
 		// Automatically deregister handlers when they go out of scope.
 		// This desctructor is defined here instead of BaseEventHandler
 		// so that the compiler picks the correct instantiation of
-		// InputSystem::deregisterHandler<E>().
+		// EventSystem::deregisterHandler<E>().
 		if (isLinked()) {
-			inputSystem().deregisterHandler(*this);
+			eventSystem().deregisterHandler(*this);
 		}
 	}
 
@@ -93,12 +93,12 @@ public:
 	}
 
 	virtual void body(E& e) {}
-	virtual const std::string& name() const { return INPUT_UNNAMED_HANDLER; }
+	virtual const std::string& name() const { return EVENT_HANDLER_UNNAMED; }
 };
 
-class InputSystem {
+class EventSystem {
 private:
-	uint64_t _nextId = INPUT_HANDLER_NO_ID + 1;
+	uint64_t _nextId = EVENT_HANDLER_NO_ID + 1;
 
 	// Collection of all registered handlers. Used to handle proper
 	// destruction behavior.
@@ -134,9 +134,9 @@ private:
 	}
 
 public:
-	InputSystem() = default;
-	InputSystem(const InputSystem&) = delete;
-	~InputSystem();
+	EventSystem() = default;
+	EventSystem(const EventSystem&) = delete;
+	~EventSystem();
 
 	template<typename E>
 	uint64_t registerHandler(EventHandler<E>& handler) {
@@ -153,7 +153,7 @@ public:
 		category[id] = &handler;
 		handler.link(this, id);
 
-		std::cerr << "InputSystem: Registered handler \"" << handler.name() << "\", id ";
+		std::cerr << "EventSystem: Registered handler \"" << handler.name() << "\", id ";
 		std::cerr << id << std::endl;
 
 		return id;
@@ -165,9 +165,9 @@ public:
 			throw std::runtime_error("Cannot deregister handler that is not registered.");
 		}
 
-		if (handler._inputSystem != this) {
+		if (handler._eventSystem != this) {
 			throw std::runtime_error(
-				"Cannot deregister handler belonging to another InputSystem."
+				"Cannot deregister handler belonging to another EventSystem."
 			);
 		}
 
@@ -178,7 +178,7 @@ public:
 		category.erase(handler._id);
 		handler.unlink();
 
-		std::cerr << "InputSystem: Deregistered handler \"" << handler.name() << "\", id ";
+		std::cerr << "EventSystem: Deregistered handler \"" << handler.name() << "\", id ";
 		std::cerr << id << std::endl;
 	}
 
@@ -210,7 +210,7 @@ private:
 	GLFWwindow* _glfwWindow = nullptr;
 	bool _windowResized = false;
 
-	InputSystem _inputSystem;
+	EventSystem _eventSystem;
 public:
 	static void pollEvents();
 	static void initWindowingSystem();
@@ -222,7 +222,7 @@ public:
 
 	bool shouldClose();
 	WindowSize size();
-	InputSystem& inputSystem() { return _inputSystem; }
+	EventSystem& eventSystem() { return _eventSystem; }
 
 	vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
 };
