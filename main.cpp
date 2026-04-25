@@ -51,13 +51,29 @@ T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
 	return glm::mix(u, d, b);
 }
 
+// Generates the vertices for a graph model.
+// range - The x, y coordinates of the model vertices always range from
+//         -1.0f to 1.0f. The range determines how those coordinates map to
+//         function input space with a simple relation:
+//
+//             (model_x, model_y, model_z)*range = (graph_x, graph_y, f(graph_x, graph_y))
+//		
+//	   graph_x and graph_y will both range from -range to +range.
+//
+// cells - Determines how many discrete steps to calculate. High values yield
+//         higher accuracy, at the cost of additional vertices.
 std::vector<g3d::Vertex> generate_func_vertices(float range, unsigned int cells) {
 	std::vector<g3d::Vertex> out;
 
-	glm::vec3 ul {0.141f, 0.706f, 0.322f}; // green
-	glm::vec3 ur {0.988f, 0.804f, 0.000f}; // yellow orange
-	glm::vec3 dl {0.400f, 0.255f, 0.953f}; // blue violet
-	glm::vec3 dr {1.000f, 0.000f, 0.000f}; // red
+	// Colors for extreme points of graph.
+	// nxny - (-range, -range)
+	// pxny - (range, -range)
+	// nxpy - (-range, range)
+	// pxpy - (range, range)
+	glm::vec3 nxny {0.141f, 0.706f, 0.322f}; // green
+	glm::vec3 pxny {0.988f, 0.804f, 0.000f}; // yellow orange
+	glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
+	glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
 
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 		float lerp_a_y = static_cast<float>(ypt) / static_cast<float>(cells);
@@ -69,7 +85,7 @@ std::vector<g3d::Vertex> generate_func_vertices(float range, unsigned int cells)
 
 			out.push_back({
 				{x/range, y/range, func(x, y)/range},
-				lerp2d(ul, ur, dl, dr, lerp_a_x, lerp_a_y)
+				lerp2d(nxny, pxny, nxpy, pxpy, lerp_a_x, lerp_a_y)
 			});
 		}
 	}
@@ -78,9 +94,19 @@ std::vector<g3d::Vertex> generate_func_vertices(float range, unsigned int cells)
 }
 
 uint16_t idx(unsigned int x, unsigned int y, unsigned int cells) {
+	// Note: cells+1 here because there's one more point than the number of
+	// cells, for instance:
+	//
+	//  _ _
+	// |_|_|
+	// |_|_|
+	//
+	// 2 cell grid, but 3 points.
 	return y*(cells+1) + x;
 }
 
+// Generates an index list for a graph. The cells value must match the cells
+// value used in generate_func_vertices().
 std::vector<uint16_t> generate_func_indices(unsigned int cells) {
 	std::vector<uint16_t> out;
 
