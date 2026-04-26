@@ -903,6 +903,15 @@ std::vector<PerFrameResources> Renderer::createPerFrameResources() {
 	return std::move(vec);
 }
 
+void Renderer::recreateWindowResources() {
+	_graphDevice->window().pauseWhileMinimized();
+	_graphDevice->logicalDevice().waitIdle();
+
+	_windowResources.reset(new WindowResources(*_graphDevice));
+	_framebuffers.clear();
+	_framebuffers = _windowResources->createFramebuffers(_renderPass);
+}
+
 glm::mat4 Camera::viewMatrix() const {
 	return glm::lookAt(_position, lookAt(), _up);
 }
@@ -1018,6 +1027,12 @@ RenderContext& Renderer::beginFrame(const Camera& camera) {
 		UINT64_MAX, frameResources.imageAvailableSemaphore()
 	);
 
+	if (result == vk::Result::eErrorOutOfDateKHR) {
+		std::cerr << "[RENDERER] beginFrame: Got eErrorOutOfDateKHR, resizing..." << std::endl;
+		recreateWindowResources();
+		return _renderContext;
+	}
+
 	const auto& extent = _windowResources->swapchainExtent();
 	frameResources.updateCamMatrices(camera, extent.width, extent.height);
 
@@ -1110,9 +1125,19 @@ void Renderer::endFrame() {
 		.pSwapchains = swapchains,
 		.pImageIndices = &_currentSwapchainImage
 	};
-	_graphDevice->presentQueue().presentKHR(presentInfo);
+	vk::Result result = _graphDevice->presentQueue().presentKHR(presentInfo);
 
-	// TODO resize stuff
+	bool needWindowResize = (
+		result == vk::Result::eErrorOutOfDateKHR ||
+		result == vk::Result::eSuboptimalKHR ||
+		_graphDevice->window().wasResized()
+	);
+
+	if (needWindowResize) {
+		std::cerr << "[RENDERER] endFrame: window resized" << std::endl;
+		_graphDevice->window().clearResized();
+		recreateWindowResources();
+	}
 
 	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

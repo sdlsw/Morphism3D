@@ -584,6 +584,7 @@ private:
 	std::vector<PerFrameResources> createPerFrameResources();
 
 	void updateRenderContext();
+	void recreateWindowResources();
 public:
 	Renderer() = delete;
 	Renderer(Renderer&&) = default;
@@ -604,6 +605,7 @@ public:
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 
 	RenderContext& beginFrame(const Camera& camera);
+	bool inFrame() const { return _inFrame; }
 	void endFrame();
 
 	template<Renderable T>

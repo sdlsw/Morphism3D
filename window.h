@@ -234,6 +234,9 @@ public:
 	~Window();
 
 	bool shouldClose();
+	bool wasResized() { return _windowResized; }
+	void clearResized() { _windowResized = false; }
+	void pauseWhileMinimized();
 	WindowSize size();
 	EventSystem& eventSystem() { return _eventSystem; }
 	void title(const std::string& newTitle);

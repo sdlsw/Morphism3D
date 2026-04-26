@@ -195,8 +195,8 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		renderer,
 		{
 			device,
-			generate_func_vertices(3.0f, 10),
-			generate_func_indices(10)
+			generate_func_vertices(3.0f, 20),
+			generate_func_indices(20)
 		},
 		{}
 	};
@@ -208,6 +208,11 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		camController.update();
 
 		auto& renderContext = renderer.beginFrame(camController.camera());
+		if (!renderer.inFrame()) {
+			// Indicates we failed to begin the frame for some
+			// outside reason - probably window resize
+			continue;
+		}
 		graphObject.update(renderContext);
 		graphObject.record(renderContext);
 		renderer.endFrame();

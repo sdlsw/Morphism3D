@@ -16,7 +16,7 @@ void Window::initWindowingSystem() {
 	std::cerr << "initializing GLFW..." << std::endl;
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	_glfwInitialized = true;
 }
 
@@ -101,6 +101,16 @@ WindowSize Window::size() {
 	glfwGetFramebufferSize(_glfwWindow, &w, &h);
 	WindowSize s { static_cast<uint32_t>(w), static_cast<uint32_t>(h) };
 	return s;
+}
+
+void Window::pauseWhileMinimized() {
+	int width = 0;
+	int height = 0;
+	glfwGetFramebufferSize(_glfwWindow, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(_glfwWindow, &width, &height);
+		glfwWaitEvents();
+	}
 }
 
 void Window::title(const std::string& newTitle) {
