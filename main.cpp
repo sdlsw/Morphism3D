@@ -182,10 +182,53 @@ const std::string& camModeName(const g3d::CameraController& controller) {
 	}
 }
 
+g3d::RenderObject createAxes(g3d::GraphDevice& device, g3d::Renderer& renderer) {
+	const float arrowLength = 1.2f;
+	const float arrowWidth = 0.1f;
+	const float arrowTipLength = 0.1f;
+
+	glm::vec3 xcolor {1.0f, 0.0f, 0.0f};
+	glm::vec3 ycolor {0.0f, 1.0f, 0.0f};
+	glm::vec3 zcolor {0.2f, 0.2f, 1.0f};
+
+	return {
+		device,
+		renderer,
+		{
+			device,
+			{
+				// X arrow
+				{{0.0f, 0.0f, 0.0f}, xcolor},
+				{{arrowLength, 0.0f, 0.0f}, xcolor},
+				{{arrowLength-arrowTipLength, arrowWidth, 0.0f}, xcolor},
+				{{arrowLength-arrowTipLength, -arrowWidth, 0.0f}, xcolor},
+
+				// Y arrow
+				{{0.0f, 0.0f, 0.0f}, ycolor},
+				{{0.0f, arrowLength, 0.0f}, ycolor},
+				{{arrowWidth, arrowLength-arrowTipLength, 0.0f}, ycolor},
+				{{-arrowWidth, arrowLength-arrowTipLength, 0.0f}, ycolor},
+
+				// Z arrow
+				{{0.0f, 0.0f, 0.0f}, zcolor},
+				{{0.0f, 0.0f, arrowLength}, zcolor},
+				{{arrowWidth, 0.0f, arrowLength-arrowTipLength}, zcolor},
+				{{-arrowWidth, 0.0f, arrowLength-arrowTipLength}, zcolor}
+			},
+			{
+				0, 1, 1, 2, 1, 3,
+				4, 5, 5, 6, 5, 7,
+				8, 9, 9, 10, 9, 11
+			}
+		},
+		{}
+	};
+}
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
-		{2.5f, 2.5f, 2.5f}, // cam position
-		{0.0f, 0.0f, 0.0f}, // initial center
+		{2.5f, -2.5f, 2.5f}, // cam position
+		{0.0f, 0.0f, 0.0f},  // initial center
 		device.window()
 	};
 	g3d::MovingAverage<float> avgFps { 50 };
@@ -200,6 +243,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		},
 		{}
 	};
+	auto axesObject = createAxes(device, renderer);
 
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
@@ -215,6 +259,9 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		}
 		graphObject.update(renderContext);
 		graphObject.record(renderContext);
+
+		axesObject.update(renderContext);
+		axesObject.record(renderContext);
 		renderer.endFrame();
 
 		// TODO I don't think this is *quite* accurate since endFrame()
