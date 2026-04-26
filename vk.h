@@ -660,11 +660,6 @@ private:
 	GraphDevice* _graphDevice;
 	Renderer* _renderer;
 	Model _model;
-	std::vector<MappedBuffer<glm::mat4>> _transformBuffers;
-	std::vector<vk::raii::DescriptorSet> _descriptorSets;
-
-	std::vector<MappedBuffer<glm::mat4>> createTransformBuffers();
-	std::vector<vk::raii::DescriptorSet> createDescriptorSets();
 public:
 	Transform transform;
 
@@ -679,12 +674,9 @@ public:
 	: _graphDevice { &graphDevice },
 	  _renderer { &renderer },
 	  _model { std::move(model) },
-	  transform { transform },
-	  _transformBuffers { createTransformBuffers() },
-	  _descriptorSets { createDescriptorSets() }
+	  transform { transform }
 	{}
 
-	void update(RenderContext& ctx);
 	void record(RenderContext& ctx);
 };
 }

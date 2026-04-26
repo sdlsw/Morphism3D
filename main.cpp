@@ -225,6 +225,22 @@ g3d::RenderObject createAxes(g3d::GraphDevice& device, g3d::Renderer& renderer) 
 	};
 }
 
+class ConstantRotation {
+private:
+	std::chrono::time_point<std::chrono::high_resolution_clock> _start;
+	float _radiansPerSecond;
+	glm::vec3 _axis;
+public:
+	ConstantRotation(float radiansPerSecond, const glm::vec3& axis) :
+		_start { now() },
+		_radiansPerSecond { radiansPerSecond },
+		_axis { axis } {}
+
+	glm::mat4 matrix() {
+		return glm::rotate({1.0f}, secondsSince(_start) * _radiansPerSecond, _axis);
+	}
+};
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
 		{2.5f, -2.5f, 2.5f}, // cam position
@@ -257,10 +273,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 			// outside reason - probably window resize
 			continue;
 		}
-		graphObject.update(renderContext);
 		graphObject.record(renderContext);
-
-		axesObject.update(renderContext);
 		axesObject.record(renderContext);
 		renderer.endFrame();
 

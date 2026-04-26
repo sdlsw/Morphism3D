@@ -740,19 +740,21 @@ DescriptorSetFactory Renderer::createDescriptorSetFactory() {
 }
 
 vk::raii::PipelineLayout Renderer::createPipelineLayout() {
-	// FIXME FIXME Reusing descriptor set layout multiple times
-	// For now OK since both descriptor sets only consist of one uniform
-	// buffer each, but really need to fix this.
-	std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts {
-		*_descriptorSetFactory.descriptorSetLayout(),
+	std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts {
 		*_descriptorSetFactory.descriptorSetLayout()
 	};
 
+	vk::PushConstantRange pcRange {
+		.stageFlags = vk::ShaderStageFlagBits::eVertex,
+		.offset = 0,
+		.size = sizeof(glm::mat4)
+	};
+
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo {
-		.setLayoutCount = 2,
+		.setLayoutCount = 1,
 		.pSetLayouts = descriptorSetLayouts.data(),
-		.pushConstantRangeCount = 0,
-		.pPushConstantRanges = nullptr
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &pcRange
 	};
 	return vk::raii::PipelineLayout(_graphDevice->logicalDevice(), pipelineLayoutInfo);
 }
@@ -1165,42 +1167,16 @@ glm::mat4 Transform::matrix() const {
 	return m * rotation;
 }
 
-std::vector<MappedBuffer<glm::mat4>> RenderObject::createTransformBuffers() {
-	std::vector<MappedBuffer<glm::mat4>> vec;
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		vec.emplace_back(*_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer);
-	}
-	return vec;
-}
-
-std::vector<vk::raii::DescriptorSet> RenderObject::createDescriptorSets() {
-	auto& factory = _renderer->descriptorSetFactory();
-
-	std::vector<vk::raii::DescriptorSet> vec;
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-		// FIXME Reusing descriptor set layout
-		vec.push_back(factory.makeDescriptorSet(_transformBuffers[i]));
-	}
-	return vec;
-}
-
-void RenderObject::update(RenderContext& ctx) {
-	// TODO probably better to use push constant for per-object transform
-	// instead of a buffer
-	_transformBuffers[ctx.currentFrame()].copyIn(transform.matrix());
-}
-
 void RenderObject::record(RenderContext& ctx) {
 	auto& cmdBuffer = ctx.frameResources().commandBuffer();
 
-	cmdBuffer.bindDescriptorSets(
-		vk::PipelineBindPoint::eGraphics,
-		ctx.pipelineLayout(),
-		1,
-		*_descriptorSets[ctx.currentFrame()],
-		nullptr
+	glm::mat4 modelMat = transform.matrix();
+	cmdBuffer.pushConstants<glm::mat4>(
+		*ctx.pipelineLayout(),
+		vk::ShaderStageFlagBits::eVertex,
+		0,
+		modelMat
 	);
-
 	_model.record(ctx);
 }
 }
