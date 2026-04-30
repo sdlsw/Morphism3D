@@ -131,4 +131,22 @@ void CameraController::update() {
 
 	_camera.position(_camera.position() + move * _state.moveSpeed);
 }
+
+void CameraController::disable() {
+	mouseHandler.disable();
+	keyHandler.disable();
+	posHandler.disable();
+	scrollHandler.disable();
+}
+
+void CameraController::enable() {
+	mouseHandler.enable();
+	keyHandler.enable();
+	posHandler.enable();
+	scrollHandler.enable();
+}
+
+bool CameraController::mouseCaptured() {
+	return _window->cursorMode() == GLFW_CURSOR_DISABLED;
+}
 }

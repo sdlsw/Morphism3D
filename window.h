@@ -223,6 +223,9 @@ private:
 	GLFWwindow* _glfwWindow = nullptr;
 	bool _windowResized = false;
 
+	bool _discardMouseEvents = false;
+	bool _discardKeyboardEvents = false;
+
 	EventSystem _eventSystem;
 public:
 	static void pollEvents();
@@ -240,6 +243,18 @@ public:
 	WindowSize size();
 	EventSystem& eventSystem() { return _eventSystem; }
 	void title(const std::string& newTitle);
+
+	// In majority of cases should not use this. This function is used for
+	// integration with ImGui.
+	GLFWwindow* internalWindow() const { return _glfwWindow; }
+
+	// Sets whether mouse/keyboard events will be discarded by the window's
+	// event system.
+	void discardMouseEvents(bool b) { _discardMouseEvents = b; }
+	void discardKeyboardEvents(bool b) { _discardKeyboardEvents = b; }
+
+	// Gets the window's current cursor mode.
+	int cursorMode();
 
 	vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
 };

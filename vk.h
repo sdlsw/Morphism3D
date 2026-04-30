@@ -167,6 +167,7 @@ public:
 	auto& window() { return *_window; }
 	auto& surface() { return _surface; }
 	auto& logicalDevice() { return _device; }
+	auto& physicalDevice() { return *_physicalDevice; }
 	auto& graphicsQueue() { return _graphicsQueue; }
 	auto& presentQueue() { return _presentQueue; }
 	auto& commandPool() { return _commandPool; }
@@ -603,6 +604,10 @@ public:
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
 	auto& context() { return _renderContext; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
+	auto& renderPass() { return _renderPass; }
+	uint32_t swapchainImageCount() {
+		return static_cast<uint32_t>(_windowResources->swapchain().getImages().size());
+	}
 
 	RenderContext& beginFrame(const Camera& camera);
 	bool inFrame() const { return _inFrame; }

@@ -74,6 +74,7 @@ private:
 		_ScrollHandler(_InternalState* state, Camera* camera) : _state {state}, _camera {camera} {}
 	};
 
+	Window* _window;
 	Camera _camera;
 	_InternalState _state;
 	_MouseHandler mouseHandler;
@@ -86,7 +87,7 @@ public:
 		const glm::vec3& position,
 		const glm::vec3& center,
 		Window& window
-	) : _camera { CameraMode::fixedLook, position, center } {
+	) : _window { &window }, _camera { CameraMode::fixedLook, position, center } {
 		_state.initialPosition = position;
 		_state.initialCenter = center;
 		window.eventSystem().registerHandler(mouseHandler);
@@ -98,5 +99,9 @@ public:
 	Camera& camera() { return _camera; }
 	const Camera& camera() const { return _camera; }
 	void update();
+	void disable();
+	void enable();
+
+	bool mouseCaptured();
 };
 }

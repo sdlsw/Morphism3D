@@ -21,8 +21,21 @@ target_sources(main PUBLIC vk.cpp)
 target_sources(main PUBLIC window.cpp)
 set_target_properties(main PROPERTIES OUTPUT_NAME "graph3d")
 
+# Add imgui sources
+target_sources(main PUBLIC "lib\\imgui\\imgui.cpp")
+target_sources(main PUBLIC "lib\\imgui\\imgui_demo.cpp")
+target_sources(main PUBLIC "lib\\imgui\\imgui_draw.cpp")
+target_sources(main PUBLIC "lib\\imgui\\imgui_tables.cpp")
+target_sources(main PUBLIC "lib\\imgui\\imgui_widgets.cpp")
+
+# imgui backends
+target_sources(main PUBLIC "lib\\imgui\\backends\\imgui_impl_glfw.cpp")
+target_sources(main PUBLIC "lib\\imgui\\backends\\imgui_impl_vulkan.cpp")
+
 target_include_directories(main PUBLIC ".")
 target_include_directories(main PUBLIC ${Vulkan_INCLUDE_DIRS})
 target_include_directories(main PUBLIC "lib\\glfw\\include")
 target_include_directories(main PUBLIC "lib\\glm")
+target_include_directories(main PUBLIC "lib\\imgui")
+target_include_directories(main PUBLIC "lib\\imgui\\backends")
 target_link_libraries(main PUBLIC compiler-flags ${glfw} Vulkan::Vulkan)

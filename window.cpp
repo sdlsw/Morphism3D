@@ -17,6 +17,7 @@ void Window::initWindowingSystem() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 	_glfwInitialized = true;
 }
 
@@ -69,23 +70,35 @@ void Window::frameBufferResizeCallback(GLFWwindow* window, int width, int height
 }
 
 void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	KeyEvent e { window, key, scancode, action, mods };
-	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
+	Window* wrapper = Window::getWrapperPointer(window);
+	if (!wrapper->_discardKeyboardEvents) {
+		KeyEvent e { window, key, scancode, action, mods };
+		wrapper->eventSystem().handleEvent(e);
+	}
 }
 
 void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-	MouseButtonEvent e { window, button, action, mods };
-	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
+	Window* wrapper = Window::getWrapperPointer(window);
+	if (!wrapper->_discardMouseEvents) {
+		MouseButtonEvent e { window, button, action, mods };
+		wrapper->eventSystem().handleEvent(e);
+	}
 }
 
 void Window::mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
-	MousePositionEvent e { window, xpos, ypos };
-	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
+	Window* wrapper = Window::getWrapperPointer(window);
+	if (!wrapper->_discardMouseEvents) {
+		MousePositionEvent e { window, xpos, ypos };
+		wrapper->eventSystem().handleEvent(e);
+	}
 }
 
 void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-	ScrollEvent e { window, xoffset, yoffset };
-	Window::getWrapperPointer(window)->eventSystem().handleEvent(e);
+	Window* wrapper = Window::getWrapperPointer(window);
+	if (!wrapper->_discardMouseEvents) {
+		ScrollEvent e { window, xoffset, yoffset };
+		wrapper->eventSystem().handleEvent(e);
+	}
 }
 
 void Window::pollEvents() {
@@ -128,5 +141,9 @@ vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance& instance) {
 
 	vk::raii::SurfaceKHR raiiSurface { instance, surface };
 	return std::move(raiiSurface);
+}
+
+int Window::cursorMode() {
+	return glfwGetInputMode(_glfwWindow, GLFW_CURSOR);
 }
 }
