@@ -1,5 +1,6 @@
 #include "camera_control.h"
 #include "container.h"
+#include "ui.h"
 #include "vk.h"
 #include "window.h"
 
@@ -9,8 +10,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
 
 static const uint32_t WINDOW_INITIAL_WIDTH = 800;
 static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
@@ -31,100 +30,6 @@ g3d::VkTop init_top() {
 	g3d::VkTop vk_top { appInfo };
 	return vk_top;
 }
-
-static void checkVkResult(VkResult error) {
-	if (error == VK_SUCCESS) {
-		return;
-	}
-
-	std::cerr << "[imgui::vulkan] Error: VkResult = " << error << std::endl;
-}
-
-void imGuiInfo(const std::string& message) {
-	std::cerr << "[g3d][ImGui] " << message << std::endl;
-}
-
-void imGuiInit(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-	imGuiInfo("Creating context...");
-	ImGui::CreateContext();
-
-	imGuiInfo("Init Glfw backend...");
-	ImGui_ImplGlfw_InitForVulkan(device.window().internalWindow(), true);
-
-	imGuiInfo("Init Vulkan backend...");
-	ImGui_ImplVulkan_InitInfo initInfo {};
-	initInfo.Instance = *device.vkTop().instance();
-	initInfo.PhysicalDevice = *device.physicalDevice();
-	initInfo.Device = *device.logicalDevice();
-	initInfo.QueueFamily = device.queueFamilies().graphicsFamily.value();
-	initInfo.Queue = *device.graphicsQueue();
-	// Have backend manage its own descriptor pool.
-	initInfo.DescriptorPoolSize = 32;
-	initInfo.MinImageCount = 2;
-	initInfo.ImageCount = renderer.swapchainImageCount();
-	initInfo.PipelineInfoMain.RenderPass = *renderer.renderPass();
-	initInfo.PipelineInfoMain.Subpass = 0;
-	initInfo.CheckVkResultFn = checkVkResult;
-	ImGui_ImplVulkan_Init(&initInfo);
-}
-
-void imGuiShutdown() {
-	imGuiInfo("Shutting down ImplVulkan...");
-	ImGui_ImplVulkan_Shutdown();
-	imGuiInfo("Shutting down ImplGlfw...");
-	ImGui_ImplGlfw_Shutdown();
-	imGuiInfo("Destroying context...");
-	ImGui::DestroyContext();
-}
-
-void imGuiNewFrame() {
-	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-}
-
-// Handles turning on/off input receivers based on what UI elements are being
-// used. Must be called every frame.
-void imGuiHandleControlExclusivity(g3d::Window& window, g3d::CameraController& camController) {
-	ImGuiIO& io = ImGui::GetIO();
-
-	// When ImGui windows are being used, ignore mouse/keyboard inputs to
-	// main application.
-	window.discardMouseEvents(io.WantCaptureMouse);
-	window.discardKeyboardEvents(io.WantCaptureKeyboard);
-
-	// When the camera controller has the mouse captured, do not pass mouse
-	// inputs to ImGui.
-	if (camController.mouseCaptured()) {
-		io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
-	} else {
-		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-	}
-}
-
-void imGuiRecord(g3d::RenderContext& ctx) {
-	ImGui::Render();
-	ImDrawData* drawData = ImGui::GetDrawData();
-	ImGui_ImplVulkan_RenderDrawData(drawData, *ctx.frameResources().commandBuffer());
-}
-
-// Wrapper class for ImGui setup/teardown to make use of C++'s predictable
-// destructor behavior. Cannot be moved or copied.
-class ImGuiWrapper {
-public:
-	ImGuiWrapper(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-		imGuiInit(device, renderer);
-	}
-
-	ImGuiWrapper(const ImGuiWrapper& other) = delete;
-	ImGuiWrapper(ImGuiWrapper&& other) = delete;
-	ImGuiWrapper& operator=(const ImGuiWrapper& other) = delete;
-	ImGuiWrapper& operator=(ImGuiWrapper&& other) = delete;
-
-	~ImGuiWrapper() {
-		imGuiShutdown();
-	}
-};
 
 std::chrono::time_point<std::chrono::high_resolution_clock> now() {
 	return std::chrono::high_resolution_clock::now();
@@ -365,8 +270,8 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		auto frameStartTime = now();
 
 		g3d::Window::pollEvents();
-		imGuiNewFrame();
-		imGuiHandleControlExclusivity(device.window(), camController);
+		g3d::imGuiNewFrame();
+		g3d::imGuiHandleControlExclusivity(device.window(), camController);
 
 		// Entity and camera updates.
 		camController.update();
@@ -387,7 +292,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		}
 		graphObject.record(renderContext);
 		axesObject.record(renderContext);
-		imGuiRecord(renderContext);
+		g3d::imGuiRecord(renderContext);
 		renderer.endFrame();
 
 		// TODO I don't think this is *quite* accurate since endFrame()
@@ -428,7 +333,7 @@ int main() {
 
 		g3d::GraphDevice graphDevice { vkTop, window };
 		g3d::Renderer renderer { graphDevice };
-		ImGuiWrapper imGui { graphDevice, renderer };
+		g3d::ImGuiWrapper imGui { graphDevice, renderer };
 
 		mainloop(graphDevice, renderer);
 	} catch (const std::exception& e) {
