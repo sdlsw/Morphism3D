@@ -45,6 +45,21 @@ static void shutdown() {
 	ImGui::DestroyContext();
 }
 
+static const std::string CAM_MODE_FIXED_NAME = "Fixed";
+static const std::string CAM_MODE_FREE_NAME = "Free";
+static const std::string CAM_MODE_UNKNOWN_NAME = "???";
+
+static const std::string& camModeName(const g3d::CameraMode& mode) {
+	switch (mode) {
+		case g3d::CameraMode::fixedLook:
+			return CAM_MODE_FIXED_NAME;
+		case g3d::CameraMode::forward:
+			return CAM_MODE_FREE_NAME;
+		default:
+			return CAM_MODE_UNKNOWN_NAME;
+	}
+}
+
 namespace g3d {
 ImGuiWrapper::ImGuiWrapper(GraphDevice& device, Renderer& renderer) {
 	init(device, renderer);
@@ -87,5 +102,113 @@ void imGuiRecord(g3d::RenderContext& ctx) {
 	ImGui::Render();
 	ImDrawData* drawData = ImGui::GetDrawData();
 	ImGui_ImplVulkan_RenderDrawData(drawData, *ctx.frameResources().commandBuffer());
+}
+
+void CameraWindow::settingSlider(const std::string& label, float* setting, float defaultValue) {
+	ImGui::SliderFloat(
+		label.c_str(),
+		setting,
+		defaultValue / 5.0f,
+		defaultValue * 3.0f
+	);
+	ImGui::SameLine(ImGui::GetWindowWidth()-50);
+	if (ImGui::Button(std::format("Reset##{}", label).c_str())) {
+		*setting = defaultValue;
+	}
+}
+
+void CameraWindow::settingSliders() {
+	settingSlider(
+		"Sensitivity",
+		&_camController->sensitivity,
+		CameraController::defaultSensitivity
+	);
+	settingSlider(
+		"Freecam Speed",
+		&_camController->moveSpeed,
+		CameraController::defaultMoveSpeed
+	);
+	settingSlider(
+		"Scroll Speed",
+		&_camController->scrollSpeed,
+		CameraController::defaultScrollSpeed
+	);
+}
+
+void CameraWindow::modeSlider() {
+	int currentMode = static_cast<int>(_camController->mode());
+	int sliderMode = currentMode;
+
+	ImGui::SliderInt(
+		"Mode",
+		&sliderMode,
+		0,
+		CameraModeCount-1,
+		camModeName(_camController->mode()).c_str(),
+		ImGuiSliderFlags_NoInput
+	);
+
+	if (sliderMode != currentMode) {
+		_camController->mode(static_cast<CameraMode>(sliderMode));
+	}
+}
+
+void CameraWindow::controlTutorial() {
+	if (ImGui::TreeNode("Controls")) {
+		ImGui::Text("Click outside a window to capture the cursor.");
+		ImGui::Text("ESC - Free cursor");
+		ImGui::Text("E - Toggle camera mode");
+		ImGui::Text("R - Reset camera view");
+
+		if (_camController->mode() == CameraMode::fixedLook) {
+			ImGui::Text("Scroll wheel - Up zooms in, down zooms out");
+			ImGui::Text("Move mouse - Rotate around graph");
+		} else {
+			ImGui::Text("WASD - Standard first person controls");
+			ImGui::Text("Space - Move up");
+			ImGui::Text("Left Shift - Move down");
+			ImGui::Text("Move mouse - Look around");
+		}
+
+		ImGui::TreePop();
+	}
+}
+
+void CameraWindow::show() {
+	if (!open) return;
+
+	ImGui::Begin("Camera", &open);
+	settingSliders();
+	modeSlider();
+	if (ImGui::Button("Reset View")) {
+		_camController->reset();
+	}
+	controlTutorial();
+	ImGui::End();
+}
+
+void Ui::show() {
+	mainMenuBar();
+
+	if (showDemoWindow) {
+		ImGui::ShowDemoWindow(&showDemoWindow);
+	}
+
+	_cameraWindow.show();
+}
+
+void Ui::mainMenuBar() {
+	if (ImGui::BeginMainMenuBar()) {
+		windowMenu();
+		ImGui::EndMainMenuBar();
+	}
+}
+
+void Ui::windowMenu() {
+	if (ImGui::BeginMenu("Window")) {
+		ImGui::MenuItem("Camera", nullptr, &_cameraWindow.open);
+		ImGui::MenuItem("ImGui Demo", nullptr, &showDemoWindow);
+		ImGui::EndMenu();
+	}
 }
 }

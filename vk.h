@@ -424,10 +424,12 @@ public:
 	std::vector<vk::raii::Framebuffer> createFramebuffers(const vk::raii::RenderPass& renderPass);
 };
 
-enum class CameraMode {
-	forward,
+enum class CameraMode : int {
+	forward = 0,
 	fixedLook
 };
+
+inline constexpr unsigned int CameraModeCount = 2;
 
 class Camera {
 private:

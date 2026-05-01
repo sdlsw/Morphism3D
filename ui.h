@@ -23,4 +23,33 @@ void imGuiInfo(const std::string& message);
 void imGuiNewFrame();
 void imGuiRecord(RenderContext& ctx);
 void imGuiHandleControlExclusivity(Window& window, CameraController& camController);
+
+class CameraWindow {
+private:
+	CameraController* _camController;
+	void settingSlider(const std::string& label, float* setting, float defaultValue);
+	void settingSliders();
+	void modeSlider();
+	void controlTutorial();
+
+public:
+	bool open = true;
+	void show();
+
+	CameraWindow(CameraController& camController) : _camController { &camController } {}
+};
+
+class Ui {
+private:
+	CameraWindow _cameraWindow;
+
+	void mainMenuBar();
+	void windowMenu();
+
+public:
+	bool showDemoWindow = false;
+	void show();
+
+	Ui(CameraController& camController) : _cameraWindow { camController } {}
+};
 }

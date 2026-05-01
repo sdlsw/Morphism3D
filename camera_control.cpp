@@ -8,106 +8,110 @@ void CameraController::_MouseHandler::body(MouseButtonEvent& e) {
 }
 
 void CameraController::_KeyHandler::body(KeyEvent& e) {
+	Camera& camera = _this->camera();
+
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode != GLFW_CURSOR_DISABLED) return;
 
 	// Escape cursor capture
 	if (e.key == GLFW_KEY_ESCAPE && e.action == GLFW_PRESS) {
 		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		_state->hasPreviousPos = false;
+		_this->hasPreviousPos = false;
 		return;
 	}
 
 	// Camera reset
 	if (e.key == GLFW_KEY_R && e.action == GLFW_PRESS) {
-		_camera->position(_state->initialPosition);
-		_camera->lookAt(_state->initialCenter);
+		_this->reset();
 		return;
 	}
 
 	// Switch camera mode
 	if (e.key == GLFW_KEY_E && e.action == GLFW_PRESS) {
-		if (_camera->mode() == CameraMode::fixedLook) {
-			_camera->mode(CameraMode::forward);
+		if (_this->mode() == CameraMode::fixedLook) {
+			_this->mode(CameraMode::forward);
 		} else {
-			_camera->mode(CameraMode::fixedLook);
-			_camera->lookAt(_state->initialCenter);
+			_this->mode(CameraMode::fixedLook);
 		}
 	}
 
-	if (_state->directions.contains(e.key)) {
+	if (_this->directions.contains(e.key)) {
 		if (e.action == GLFW_PRESS) {
-			_state->directions[e.key] = true;
+			_this->directions[e.key] = true;
 		}
 
 		if (e.action == GLFW_RELEASE) {
-			_state->directions[e.key] = false;
+			_this->directions[e.key] = false;
 		}
 	}
 }
 
 void CameraController::_PosHandler::handleForward(float xoffset, float yoffset) {
-	_camera->rotateForward(
-		-_state->sensitivity * xoffset,
-		-_state->sensitivity * yoffset
+	_this->camera().rotateForward(
+		-_this->sensitivity * xoffset,
+		-_this->sensitivity * yoffset
 	);
 }
 
 void CameraController::_PosHandler::handleFixedLook(float xoffset, float yoffset) {
-	_camera->rotateAround(
-		_camera->lookAt(),
-		-_state->sensitivity * xoffset,
-		-_state->sensitivity * yoffset
+	Camera& camera = _this->camera();
+
+	camera.rotateAround(
+		camera.lookAt(),
+		-_this->sensitivity * xoffset,
+		-_this->sensitivity * yoffset
 	);
 }
 
 void CameraController::_PosHandler::body(MousePositionEvent& e) {
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode == GLFW_CURSOR_DISABLED) {
-		if (_state->hasPreviousPos) {
-			float xoffset = static_cast<float>(e.xpos - _state->lastxpos);
-			float yoffset = static_cast<float>(e.ypos - _state->lastypos);
+		if (_this->hasPreviousPos) {
+			float xoffset = static_cast<float>(e.xpos - _this->lastxpos);
+			float yoffset = static_cast<float>(e.ypos - _this->lastypos);
 
-			if (_camera->mode() == CameraMode::forward) {
+			if (_this->mode() == CameraMode::forward) {
 				handleForward(xoffset, yoffset);
 			} else {
 				handleFixedLook(xoffset, yoffset);
 			}
 		}
 
-		_state->lastxpos = e.xpos;
-		_state->lastypos = e.ypos;
-		_state->hasPreviousPos = true;
+		_this->lastxpos = e.xpos;
+		_this->lastypos = e.ypos;
+		_this->hasPreviousPos = true;
 	}
 }
 
 void CameraController::_ScrollHandler::body(ScrollEvent& e) {
-	// Scroll control only enabled in fixedLook mode
-	if (_camera->mode() == CameraMode::forward) return;
+	Camera& camera = _this->camera();
 
-	glm::vec3 move = _camera->forward() * _state->scrollSpeed * static_cast<float>(e.yoffset);
+	// Scroll control only enabled in fixedLook mode
+	if (_this->mode() == CameraMode::forward) return;
+
+	glm::vec3 move = camera.forward() * _this->scrollSpeed * static_cast<float>(e.yoffset);
 
 	if (e.yoffset > 0) {
 		// Make sure we don't overshoot center if moving towards it
 		float dToNew = glm::length(move);
-		float dToCenter = glm::distance(_camera->position(), _camera->lookAt());
+		float dToCenter = glm::distance(camera.position(), camera.lookAt());
 
 		if (dToCenter < dToNew) return;
 	}
 
-	_camera->position(_camera->position() + move);
+	camera.position(camera.position() + move);
 }
 
 void CameraController::update() {
 	// Ignore first person movement if camera is looking at a fixed point
 	if (_camera.mode() == CameraMode::fixedLook) return;
 
-	bool w = _state.directions[GLFW_KEY_W];
-	bool a = _state.directions[GLFW_KEY_A];
-	bool s = _state.directions[GLFW_KEY_S];
-	bool d = _state.directions[GLFW_KEY_D];
-	bool up = _state.directions[GLFW_KEY_SPACE];
-	bool down = _state.directions[GLFW_KEY_LEFT_SHIFT];
+	bool w = directions[GLFW_KEY_W];
+	bool a = directions[GLFW_KEY_A];
+	bool s = directions[GLFW_KEY_S];
+	bool d = directions[GLFW_KEY_D];
+	bool up = directions[GLFW_KEY_SPACE];
+	bool down = directions[GLFW_KEY_LEFT_SHIFT];
 
 	glm::vec3 move { 0.0f, 0.0f, 0.0f};
 
@@ -129,7 +133,7 @@ void CameraController::update() {
 		move += direction * polarity;
 	}
 
-	_camera.position(_camera.position() + move * _state.moveSpeed);
+	_camera.position(_camera.position() + move * moveSpeed);
 }
 
 void CameraController::disable() {
@@ -148,5 +152,17 @@ void CameraController::enable() {
 
 bool CameraController::mouseCaptured() {
 	return _window->cursorMode() == GLFW_CURSOR_DISABLED;
+}
+
+void CameraController::reset() {
+	_camera.position(initialPosition);
+	_camera.lookAt(initialCenter);
+}
+
+void CameraController::mode(const CameraMode& mode) {
+	_camera.mode(mode);
+	if (mode == CameraMode::fixedLook) {
+		_camera.lookAt(initialCenter);
+	}
 }
 }

@@ -16,9 +16,6 @@ static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
 static const std::string APPLICATION_NAME = "graph3d";
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 
-static const std::string CAM_MODE_FIXED_NAME = "Fixed";
-static const std::string CAM_MODE_FREE_NAME = "Free";
-
 g3d::VkTop init_top() {
 	vk::ApplicationInfo appInfo {
 		.pApplicationName = APPLICATION_NAME.c_str(),
@@ -177,14 +174,6 @@ public:
 	}
 };
 
-const std::string& camModeName(const g3d::CameraController& controller) {
-	if (controller.camera().mode() == g3d::CameraMode::fixedLook) {
-		return CAM_MODE_FIXED_NAME;
-	} else {
-		return CAM_MODE_FREE_NAME;
-	}
-}
-
 g3d::RenderObject createAxes(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	const float arrowLength = 1.2f;
 	const float arrowWidth = 0.1f;
@@ -266,6 +255,8 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	};
 	auto axesObject = createAxes(device, renderer);
 
+	g3d::Ui ui { camController };
+
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
 
@@ -277,11 +268,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		camController.update();
 
 		// UI updates.
-		// For now, demo window is always shown.
-		bool showDemoWindow = true;
-		if (showDemoWindow) {
-			ImGui::ShowDemoWindow(&showDemoWindow);
-		}
+		ui.show();
 
 		// Draw the frame.
 		auto& renderContext = renderer.beginFrame(camController.camera());
@@ -303,9 +290,8 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		avgFps.put(1.0f / secondsSince(frameStartTime));
 
 		device.window().title(std::format(
-			"{} | Cam Mode: {} | {:.2f} FPS",
+			"{} | {:.2f} FPS",
 			APPLICATION_NAME,
-			camModeName(camController),
 			avgFps.get()
 		));
 	}
