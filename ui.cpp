@@ -60,6 +60,8 @@ static const std::string& camModeName(const g3d::CameraMode& mode) {
 	}
 }
 
+static const std::string SETTING_IGNORED_FREE_TOOLTIP = "This setting is ignored in freecam mode.";
+
 namespace g3d {
 ImGuiWrapper::ImGuiWrapper(GraphDevice& device, Renderer& renderer) {
 	init(device, renderer);
@@ -104,17 +106,46 @@ void imGuiRecord(g3d::RenderContext& ctx) {
 	ImGui_ImplVulkan_RenderDrawData(drawData, *ctx.frameResources().commandBuffer());
 }
 
-void CameraWindow::settingSlider(const std::string& label, float* setting, float defaultValue) {
-	ImGui::SliderFloat(
-		label.c_str(),
-		setting,
-		defaultValue / 5.0f,
-		defaultValue * 3.0f
-	);
+void CameraWindow::resetButton(
+	const std::string& resetFor,
+	float* setting,
+	float defaultValue
+) {
 	ImGui::SameLine(ImGui::GetWindowWidth()-50);
-	if (ImGui::Button(std::format("Reset##{}", label).c_str())) {
+	if (ImGui::Button(std::format("Reset##{}", resetFor).c_str())) {
 		*setting = defaultValue;
 	}
+}
+
+void CameraWindow::settingSlider(
+	const std::string& label,
+	float* setting,
+	float defaultValue,
+	float minValue,
+	float maxValue
+) {
+	ImGui::SliderFloat(label.c_str(), setting, minValue, maxValue);
+	resetButton(label, setting, defaultValue);
+}
+
+void CameraWindow::settingSlider(
+	const std::string& label,
+	float* setting,
+	float defaultValue
+) {
+	settingSlider(label, setting, defaultValue, defaultValue / 5.0f, defaultValue * 3.0f);
+}
+
+void CameraWindow::projectionSlider() {
+	bool disabled = _camController->mode() == CameraMode::forward;
+	float* setting = &_camController->camera().projectionMix;
+
+	ImGui::BeginDisabled(disabled);
+	ImGui::SliderFloat( "Projection", setting, 0.0f, 1.0f);
+	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP);
+	resetButton("Projection", setting, Camera::defaultProjectionMix);
+	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP);
+	ImGui::EndDisabled();
 }
 
 void CameraWindow::settingSliders() {
@@ -179,6 +210,7 @@ void CameraWindow::show() {
 
 	ImGui::Begin("Camera", &open);
 	settingSliders();
+	projectionSlider();
 	modeSlider();
 	if (ImGui::Button("Reset View")) {
 		_camController->reset();

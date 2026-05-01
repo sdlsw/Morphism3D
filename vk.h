@@ -449,6 +449,12 @@ private:
 
 	void recalcDirections();
 public:
+	static inline const float defaultProjectionMix = 0.0f;
+
+	// Determines the mixture of perspective vs. orthographic projection.
+	// 0 is entirely perspective, 1 is entirely orthographic.
+	float projectionMix = 0.0f;
+
 	Camera() { recalcDirections(); }
 	Camera(
 		CameraMode mode,
@@ -462,7 +468,7 @@ public:
 	const glm::vec3& right() const { return _right; }
 
 	glm::mat4 viewMatrix() const;
-	glm::mat4 perspectiveMatrix(unsigned int width, unsigned int height) const;
+	glm::mat4 projectionMatrix(unsigned int width, unsigned int height) const;
 
 	glm::vec3 lookAt() const;
 	void lookAt(const glm::vec3& lookVec);

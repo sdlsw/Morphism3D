@@ -586,7 +586,7 @@ vk::raii::CommandBuffer PerFrameResources::createCommandBuffer() {
 void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height) {
 	CamMatrices mats {};
 	mats.view = camera.viewMatrix();
-	mats.proj = camera.perspectiveMatrix(width, height);
+	mats.proj = camera.projectionMatrix(width, height);
 	_camMats.copyIn(mats);
 }
 
@@ -918,18 +918,46 @@ glm::mat4 Camera::viewMatrix() const {
 	return glm::lookAt(_position, lookAt(), _up);
 }
 
-glm::mat4 Camera::perspectiveMatrix(unsigned int width, unsigned int height) const {
-	glm::mat4 p = glm::perspective(
+glm::mat4 Camera::projectionMatrix(unsigned int width, unsigned int height) const {
+	float fheight = static_cast<float>(height);
+	float fwidth = static_cast<float>(width);
+	float aspect = fwidth / fheight;
+
+	glm::mat4 perspective = glm::perspective(
 		glm::radians(45.0f),
-		width / static_cast<float>(height),
+		aspect,
 		0.1f,
 		100.0f
 	);
 
 	// compensate for Vulkan inverted Y clip coord
-	p[1][1] *= -1;
+	perspective[1][1] *= -1;
 
-	return std::move(p);
+	// In forward mode, ignore orthographic setting, since it doesn't
+	// really make sense.
+	if (_mode == CameraMode::forward) {
+		return std::move(perspective);
+	}
+
+	// Scale the orthographic prism's horizontal and vertical sizes
+	// relative to distance to lookAt point, sort of faking a perspective
+	// divide. This allows moving the camera towards and away from the
+	// center to zoom in and out, as it does in pure perspective
+	// projection, making the transition between perspective and
+	// orthographic much smoother.
+	float orthoScale = glm::distance(_position, lookAt()) / 2.0f;
+	glm::mat4 ortho = glm::ortho(
+		-aspect * orthoScale, aspect * orthoScale,
+		-1.0f * orthoScale, 1.0f * orthoScale,
+		-100.0f,
+		100.0f
+	);
+	ortho[1][1] *= -1;
+
+	// glm doesn't support mixing matrices, so have to do it myself here
+	glm::mat4 mixed = perspective * (1.0f - projectionMix) + ortho * projectionMix;
+
+	return std::move(mixed);
 }
 
 glm::vec3 Camera::lookAt() const {

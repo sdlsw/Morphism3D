@@ -27,8 +27,21 @@ void imGuiHandleControlExclusivity(Window& window, CameraController& camControll
 class CameraWindow {
 private:
 	CameraController* _camController;
-	void settingSlider(const std::string& label, float* setting, float defaultValue);
+	void resetButton(const std::string& resetFor, float* setting, float defaultValue);
+	void settingSlider(
+		const std::string& label,
+		float* setting,
+		float defaultValue,
+		float minValue,
+		float maxValue
+	);
+	void settingSlider(
+		const std::string& label,
+		float* setting,
+		float defaultValue
+	);
 	void settingSliders();
+	void projectionSlider();
 	void modeSlider();
 	void controlTutorial();
 
