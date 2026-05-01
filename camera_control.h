@@ -108,5 +108,6 @@ public:
 	void reset();
 	CameraMode mode() const { return _camera.mode(); }
 	void mode(const CameraMode& mode);
+	void align(const glm::vec3& axis);
 };
 }

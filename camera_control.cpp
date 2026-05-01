@@ -165,4 +165,11 @@ void CameraController::mode(const CameraMode& mode) {
 		_camera.lookAt(initialCenter);
 	}
 }
+
+void CameraController::align(const glm::vec3& axis) {
+	auto& pos = _camera.position();
+	float dist = glm::distance(initialCenter, pos);
+	_camera.position(initialCenter + axis*dist);
+	_camera.lookAt(initialCenter);
+}
 }

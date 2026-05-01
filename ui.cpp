@@ -142,9 +142,9 @@ void CameraWindow::projectionSlider() {
 
 	ImGui::BeginDisabled(disabled);
 	ImGui::SliderFloat( "Projection", setting, 0.0f, 1.0f);
-	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP);
+	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP.c_str());
 	resetButton("Projection", setting, Camera::defaultProjectionMix);
-	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP);
+	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP.c_str());
 	ImGui::EndDisabled();
 }
 
@@ -184,6 +184,31 @@ void CameraWindow::modeSlider() {
 	}
 }
 
+void CameraWindow::alignButtons() {
+	std::vector<std::pair<std::string, glm::vec3>> axes {
+		{"+X", {1.0f, 0.0f, 0.0f}},
+		{"-X", {-1.0f, 0.0f, 0.0f}},
+		{"+Y", {0.0f, 1.0f, 0.0f}},
+		{"-Y", {0.0f, -1.0f, 0.0f}},
+		{"+Z", {0.0f, 0.0f, 1.0f}},
+		{"-Z", {0.0f, 0.0f, -1.0f}}
+	};
+
+	ImGui::SeparatorText("Align");
+	bool isfirst = true;
+	for (const auto& [label, axis] : axes) {
+		if (isfirst) {
+			isfirst = false;
+		} else {
+			ImGui::SameLine();
+		}
+
+		if (ImGui::Button(label.c_str())) {
+			_camController->align(axis);
+		}
+	}
+}
+
 void CameraWindow::controlTutorial() {
 	if (ImGui::TreeNode("Controls")) {
 		ImGui::Text("Click outside a window to capture the cursor.");
@@ -215,6 +240,7 @@ void CameraWindow::show() {
 	if (ImGui::Button("Reset View")) {
 		_camController->reset();
 	}
+	alignButtons();
 	controlTutorial();
 	ImGui::End();
 }

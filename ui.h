@@ -43,6 +43,7 @@ private:
 	void settingSliders();
 	void projectionSlider();
 	void modeSlider();
+	void alignButtons();
 	void controlTutorial();
 
 public:
