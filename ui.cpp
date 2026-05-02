@@ -4,6 +4,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+#include <glm/gtc/type_ptr.hpp>
+
 static void checkVkResult(VkResult error) {
 	if (error == VK_SUCCESS) {
 		return;
@@ -60,7 +62,8 @@ static const std::string& camModeName(const g3d::CameraMode& mode) {
 	}
 }
 
-static const std::string SETTING_IGNORED_FREE_TOOLTIP = "This setting is ignored in freecam mode.";
+static const std::string PERSPECTIVE_FIXED_IN_FREE_TOOLTIP = "This setting is fixed to 1 in Free mode.";
+static const std::string POSITION_DISABLED_FIXED_TOOLTIP = "Position is set automatically in Fixed mode.";
 
 namespace g3d {
 ImGuiWrapper::ImGuiWrapper(GraphDevice& device, Renderer& renderer) {
@@ -138,13 +141,17 @@ void CameraWindow::settingSlider(
 
 void CameraWindow::projectionSlider() {
 	bool disabled = _camController->mode() == CameraMode::forward;
-	float* setting = &_camController->camera().projectionMix;
+
+	float fixed = Camera::defaultProjectionMix;
+	float* setting = disabled ? &fixed : &_camController->camera().projectionMix;
 
 	ImGui::BeginDisabled(disabled);
-	ImGui::SliderFloat( "Projection", setting, 0.0f, 1.0f);
-	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP.c_str());
-	resetButton("Projection", setting, Camera::defaultProjectionMix);
-	if (disabled) ImGui::SetItemTooltip(SETTING_IGNORED_FREE_TOOLTIP.c_str());
+	// TODO Should use BeginGroup/EndGroup for this, but it messes with
+	// the spacing of the Reset button. Will figure it out later.
+	ImGui::SliderFloat("Perspective", setting, 0.0f, 1.0f);
+	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
+	resetButton("Perspective", setting, Camera::defaultProjectionMix);
+	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
 	ImGui::EndDisabled();
 }
 
@@ -184,27 +191,48 @@ void CameraWindow::modeSlider() {
 	}
 }
 
+void CameraWindow::transformDrags() {
+	bool positionDisabled = _camController->mode() == CameraMode::fixedLook;
+
+	ImGui::BeginDisabled(positionDisabled);
+	ImGui::DragFloat3(
+		"Position",
+		glm::value_ptr(_camController->camera().position),
+		0.025f,
+		-FLT_MAX, FLT_MAX
+	);
+	if (positionDisabled) {
+		ImGui::SetItemTooltip(POSITION_DISABLED_FIXED_TOOLTIP.c_str());
+	}
+	ImGui::EndDisabled();
+
+	// Note: No need to limit angle here since the camera will apply modulo
+	// 2pi on update.
+	ImGui::DragFloat2(
+		"Angles",
+		glm::value_ptr(_camController->camera().angles),
+		0.025f,
+		-FLT_MAX, FLT_MAX
+	);
+}
+
 void CameraWindow::alignButtons() {
-	std::vector<std::pair<std::string, glm::vec3>> axes {
-		{"+X", {1.0f, 0.0f, 0.0f}},
-		{"-X", {-1.0f, 0.0f, 0.0f}},
-		{"+Y", {0.0f, 1.0f, 0.0f}},
-		{"-Y", {0.0f, -1.0f, 0.0f}},
-		{"+Z", {0.0f, 0.0f, 1.0f}},
-		{"-Z", {0.0f, 0.0f, -1.0f}}
+	auto fullCircle = 2.0f * glm::pi<float>();
+	std::vector<std::pair<std::string, glm::vec2>> axes {
+		{"+X", {fullCircle * 0.75f, 0.0f}},
+		{"-X", {fullCircle * 0.25f, 0.0f}},
+		{"+Y", {0.0f, 0.0f}},
+		{"-Y", {fullCircle * 0.5f, 0.0f}},
+		{"+Z", {fullCircle * 0.5f, fullCircle * 0.25f}},
+		{"-Z", {0.0f, fullCircle * 0.75f}}
 	};
 
-	ImGui::SeparatorText("Align");
-	bool isfirst = true;
-	for (const auto& [label, axis] : axes) {
-		if (isfirst) {
-			isfirst = false;
-		} else {
-			ImGui::SameLine();
-		}
-
+	ImGui::AlignTextToFramePadding();
+	ImGui::Text("Align");
+	for (const auto& [label, angles] : axes) {
+		ImGui::SameLine();
 		if (ImGui::Button(label.c_str())) {
-			_camController->align(axis);
+			_camController->camera().angles = angles;
 		}
 	}
 }
@@ -234,14 +262,24 @@ void CameraWindow::show() {
 	if (!open) return;
 
 	ImGui::Begin("Camera", &open);
+	ImGui::PushItemWidth(200.0f);
+
+	ImGui::SeparatorText("Settings");
 	settingSliders();
 	projectionSlider();
 	modeSlider();
 	if (ImGui::Button("Reset View")) {
 		_camController->reset();
 	}
+
+	ImGui::SeparatorText("Transform");
+	transformDrags();
 	alignButtons();
+
+	ImGui::SeparatorText("Info");
 	controlTutorial();
+
+	ImGui::PopItemWidth();
 	ImGui::End();
 }
 

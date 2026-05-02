@@ -433,57 +433,53 @@ inline constexpr unsigned int CameraModeCount = 2;
 
 class Camera {
 private:
-	glm::vec3 _position {0.0f, 0.0f, 0.0f};
-
-	// In "forward" mode, this is a vector corresponding to the view
-	// direction. In "fixedLook" mode, this vector is a fixed position the
-	// camera is looking at. TODO maybe this is gross? 
-	glm::vec3 _look {0.0f, 1.0f, 0.0f};
-
-	// For this application, +Z is considered "up" due to 3D graphing
-	// conventions.
+	// Directional vectors. Automatically calculated from horizontal and
+	// vertical angle. For this application, +Z is considered "up" due to
+	// 3D graphing conventions.
+	glm::vec3 _forward;
 	glm::vec3 _up;
 	glm::vec3 _right;
 
-	CameraMode _mode = CameraMode::forward;
-
-	void recalcDirections();
+	void modAngles();
+	void updateVectors();
 public:
-	static inline const float defaultProjectionMix = 0.0f;
+	static inline const float defaultProjectionMix = 1.0f;
 
 	// Determines the mixture of perspective vs. orthographic projection.
-	// 0 is entirely perspective, 1 is entirely orthographic.
-	float projectionMix = 0.0f;
+	// 0 is entirely orthographic, 1 is entirely perspective. This setting
+	// is ignored in forward mode.
+	float projectionMix = defaultProjectionMix;
 
-	Camera() { recalcDirections(); }
-	Camera(
-		CameraMode mode,
-		const glm::vec3& position,
-		const glm::vec3& look
-	) : _mode{mode}, _position{position}, _look{look} {
-		recalcDirections();
-	}
+	// Rotation about the X and Z axes, respectively. Values in radians.
+	glm::vec2 angles { 0.0f, 0.0f };
 
+	// Camera position
+	glm::vec3 position { 0.0f, 0.0f, 0.0f};
+
+	// Camera is locked looking at this point if mode is fixedLook.
+	glm::vec3 lookPosition { 0.0f, 0.0f, 0.0f };
+
+	CameraMode mode = CameraMode::forward;
+
+	Camera() { updateVectors(); }
+	Camera(CameraMode _mode) : mode { _mode } { updateVectors(); }
+
+	// Should be called every frame, once all modifications are done.
+	void update();
+
+	const glm::vec3& forward() const { return _forward; }
 	const glm::vec3& up() const { return _up; }
 	const glm::vec3& right() const { return _right; }
 
+	// Sets forward vector directly by calculating horizontal and vertical
+	// angles.
+	void forward(const glm::vec3& fwd);
+
+	// Sets forward vector directly to look at a specific position.
+	void lookAt(const glm::vec3& pos);
+
 	glm::mat4 viewMatrix() const;
 	glm::mat4 projectionMatrix(unsigned int width, unsigned int height) const;
-
-	glm::vec3 lookAt() const;
-	void lookAt(const glm::vec3& lookVec);
-
-	glm::vec3 forward() const;
-	void forward(const glm::vec3& lookVec);
-
-	CameraMode mode() const { return _mode; }
-	void mode(CameraMode newMode);
-
-	const glm::vec3& position() const { return _position; }
-	void position(const glm::vec3& newPosition);
-
-	void rotateForward(float horizontal, float vertical);
-	void rotateAround(const glm::vec3& center, float horizontal, float vertical);
 };
 
 // Set of resources that must be duplicated per frame in flight.

@@ -46,23 +46,6 @@ void CameraController::_KeyHandler::body(KeyEvent& e) {
 	}
 }
 
-void CameraController::_PosHandler::handleForward(float xoffset, float yoffset) {
-	_this->camera().rotateForward(
-		-_this->sensitivity * xoffset,
-		-_this->sensitivity * yoffset
-	);
-}
-
-void CameraController::_PosHandler::handleFixedLook(float xoffset, float yoffset) {
-	Camera& camera = _this->camera();
-
-	camera.rotateAround(
-		camera.lookAt(),
-		-_this->sensitivity * xoffset,
-		-_this->sensitivity * yoffset
-	);
-}
-
 void CameraController::_PosHandler::body(MousePositionEvent& e) {
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode == GLFW_CURSOR_DISABLED) {
@@ -70,11 +53,13 @@ void CameraController::_PosHandler::body(MousePositionEvent& e) {
 			float xoffset = static_cast<float>(e.xpos - _this->lastxpos);
 			float yoffset = static_cast<float>(e.ypos - _this->lastypos);
 
-			if (_this->mode() == CameraMode::forward) {
-				handleForward(xoffset, yoffset);
-			} else {
-				handleFixedLook(xoffset, yoffset);
-			}
+			// When upside down, need to mirror horizontal angle
+			// increments to keep the apparent rotation direction
+			// consistent. TODO allow this behavior to be toggled?
+			float upsideDownCorrection = _this->_camera.up().z < 0.0f ? -1.0f : 1.0f;
+
+			_this->_camera.angles.x += -_this->sensitivity * upsideDownCorrection * xoffset;
+			_this->_camera.angles.y += -_this->sensitivity * yoffset;
 		}
 
 		_this->lastxpos = e.xpos;
@@ -94,18 +79,15 @@ void CameraController::_ScrollHandler::body(ScrollEvent& e) {
 	if (e.yoffset > 0) {
 		// Make sure we don't overshoot center if moving towards it
 		float dToNew = glm::length(move);
-		float dToCenter = glm::distance(camera.position(), camera.lookAt());
+		float dToCenter = glm::distance(camera.position, camera.lookPosition);
 
 		if (dToCenter < dToNew) return;
 	}
 
-	camera.position(camera.position() + move);
+	camera.position += move;
 }
 
-void CameraController::update() {
-	// Ignore first person movement if camera is looking at a fixed point
-	if (_camera.mode() == CameraMode::fixedLook) return;
-
+void CameraController::freeCamUpdate() {
 	bool w = directions[GLFW_KEY_W];
 	bool a = directions[GLFW_KEY_A];
 	bool s = directions[GLFW_KEY_S];
@@ -133,7 +115,16 @@ void CameraController::update() {
 		move += direction * polarity;
 	}
 
-	_camera.position(_camera.position() + move * moveSpeed);
+	_camera.position += move * moveSpeed;
+}
+
+void CameraController::update() {
+	// Ignore first person movement if camera is looking at a fixed point
+	if (_camera.mode == CameraMode::forward) {
+		freeCamUpdate();
+	}
+
+	_camera.update();
 }
 
 void CameraController::disable() {
@@ -155,21 +146,17 @@ bool CameraController::mouseCaptured() {
 }
 
 void CameraController::reset() {
-	_camera.position(initialPosition);
+	_camera.position = initialPosition;
 	_camera.lookAt(initialCenter);
 }
 
 void CameraController::mode(const CameraMode& mode) {
-	_camera.mode(mode);
-	if (mode == CameraMode::fixedLook) {
-		_camera.lookAt(initialCenter);
-	}
+	_camera.mode = mode;
 }
 
 void CameraController::align(const glm::vec3& axis) {
-	auto& pos = _camera.position();
-	float dist = glm::distance(initialCenter, pos);
-	_camera.position(initialCenter + axis*dist);
+	float dist = glm::distance(initialCenter, _camera.position);
+	_camera.position = initialCenter + axis*dist;
 	_camera.lookAt(initialCenter);
 }
 }

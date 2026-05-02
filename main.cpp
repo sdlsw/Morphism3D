@@ -264,11 +264,11 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		g3d::imGuiNewFrame();
 		g3d::imGuiHandleControlExclusivity(device.window(), camController);
 
-		// Entity and camera updates.
-		camController.update();
-
 		// UI updates.
 		ui.show();
+
+		// Entity and camera updates.
+		camController.update();
 
 		// Draw the frame.
 		auto& renderContext = renderer.beginFrame(camController.camera());

@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 #ifndef NDEBUG
 static const bool ENABLE_VALIDATION_LAYERS = false;
@@ -914,8 +915,61 @@ void Renderer::recreateWindowResources() {
 	_framebuffers = _windowResources->createFramebuffers(_renderPass);
 }
 
+void Camera::modAngles() {
+	auto fullCircle = 2.0f * glm::pi<float>();
+
+	if (angles.x > fullCircle || angles.x < 0) {
+		angles.x = glm::mod(angles.x, fullCircle);
+	}
+
+	if (angles.y > fullCircle || angles.y < 0) {
+		angles.y = glm::mod(angles.y, fullCircle);
+	}
+}
+
+void Camera::updateVectors() {
+	glm::mat4 hrot = glm::rotate(glm::mat4(1.0f), angles.x, {0.0f, 0.0f, 1.0f});
+	_right = glm::vec3(hrot * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+	glm::mat4 vrot = glm::rotate(glm::mat4(1.0f), angles.y, _right);
+	_forward = glm::vec3(vrot * hrot * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+	_up = glm::vec3(vrot * glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+}
+
+void Camera::update() {
+	modAngles();
+	updateVectors();
+
+	// In fixedLook mode, position is automatically updated based on angles
+	if (mode == CameraMode::fixedLook) {
+		position = lookPosition - glm::distance(lookPosition, position)*_forward;
+	}
+}
+
+void Camera::forward(const glm::vec3& fwd) {
+	angles.x = glm::acos(fwd.y / glm::length(glm::vec2(fwd.x, fwd.y)));
+	if (fwd.x > 0.0f) angles.x = 2.0f*glm::pi<float>() - angles.x;
+
+	glm::mat4 hrot = glm::rotate(glm::mat4(1.0f), angles.x, {0.0f, 0.0f, 1.0f});
+	glm::vec3 right = glm::vec3(hrot * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+	angles.y = glm::orientedAngle(
+		glm::normalize(glm::vec3(fwd.x, fwd.y, 0.0f)),
+		glm::normalize(fwd),
+		right
+	);
+}
+
+void Camera::lookAt(const glm::vec3& pos) {
+	forward(pos - position);
+}
+
 glm::mat4 Camera::viewMatrix() const {
-	return glm::lookAt(_position, lookAt(), _up);
+	if (mode == CameraMode::forward) {
+		return glm::lookAt(position, position + _forward, _up);
+	} else {
+		return glm::lookAt(position, lookPosition, _up);
+	}
 }
 
 glm::mat4 Camera::projectionMatrix(unsigned int width, unsigned int height) const {
@@ -934,8 +988,8 @@ glm::mat4 Camera::projectionMatrix(unsigned int width, unsigned int height) cons
 	perspective[1][1] *= -1;
 
 	// In forward mode, ignore orthographic setting, since it doesn't
-	// really make sense.
-	if (_mode == CameraMode::forward) {
+	// make sense.
+	if (mode == CameraMode::forward) {
 		return std::move(perspective);
 	}
 
@@ -945,7 +999,7 @@ glm::mat4 Camera::projectionMatrix(unsigned int width, unsigned int height) cons
 	// center to zoom in and out, as it does in pure perspective
 	// projection, making the transition between perspective and
 	// orthographic much smoother.
-	float orthoScale = glm::distance(_position, lookAt()) / 2.0f;
+	float orthoScale = glm::distance(position, lookPosition) / 2.0f;
 	glm::mat4 ortho = glm::ortho(
 		-aspect * orthoScale, aspect * orthoScale,
 		-1.0f * orthoScale, 1.0f * orthoScale,
@@ -955,96 +1009,9 @@ glm::mat4 Camera::projectionMatrix(unsigned int width, unsigned int height) cons
 	ortho[1][1] *= -1;
 
 	// glm doesn't support mixing matrices, so have to do it myself here
-	glm::mat4 mixed = perspective * (1.0f - projectionMix) + ortho * projectionMix;
+	glm::mat4 mixed = ortho * (1.0f - projectionMix) + perspective * projectionMix;
 
 	return std::move(mixed);
-}
-
-glm::vec3 Camera::lookAt() const {
-	if (_mode == CameraMode::forward) {
-		return _position + _look;
-	} else {
-		return _look;
-	}
-}
-
-void Camera::lookAt(const glm::vec3& lookPosition) {
-	if (_mode == CameraMode::forward) {
-		_look = glm::normalize(lookPosition - _position);
-	} else {
-		_look = lookPosition;
-	}
-
-	recalcDirections();
-}
-
-glm::vec3 Camera::forward() const {
-	if (_mode == CameraMode::forward) {
-		return _look;
-	} else {
-		return glm::normalize(_look - _position);
-	}
-}
-
-void Camera::forward(const glm::vec3& fwd) {
-	if (_mode == CameraMode::forward) {
-		_look = glm::normalize(fwd);
-	} else {
-		throw std::runtime_error("Cannot use Camera::forward(vec) out of forward camera mode");
-	}
-
-	recalcDirections();
-}
-
-void Camera::recalcDirections() {
-	glm::vec3 fwd = forward();
-	_right = glm::normalize(glm::vec3(fwd.y, -fwd.x, 0.0f));
-	_up = glm::cross(_right, fwd);
-}
-
-void Camera::mode(CameraMode newMode) {
-	if (newMode == _mode) return;
-
-	if (_mode == CameraMode::forward) {
-		// newMode is fixedLook
-		_look = lookAt();
-	} else {
-		// newMode is forward
-		_look = forward();
-	}
-
-	_mode = newMode;
-}
-
-void Camera::position(const glm::vec3& newPosition) {
-	_position = newPosition;
-	if (_mode == CameraMode::fixedLook) {
-		recalcDirections();
-	}
-}
-
-void Camera::rotateForward(float horizontal, float vertical) {
-	if (_mode == CameraMode::fixedLook) {
-		throw std::runtime_error("Cannot rotateForward when camera mode is fixedLook");
-	}
-
-	glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), horizontal, _up);
-	rotation = glm::rotate(rotation, vertical, _right);
-
-	_look = glm::vec3(rotation * glm::vec4(_look, 1.0f));
-	recalcDirections();
-}
-
-void Camera::rotateAround(const glm::vec3& center, float horizontal, float vertical) {
-	glm::vec3 diffVec = _position - center;
-
-	glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), horizontal, _up);
-	rotation = glm::rotate(rotation, vertical, _right);
-
-	glm::vec3 newDiffVec = glm::vec3(rotation * glm::vec4(diffVec, 1.0f));
-	_position = center + newDiffVec;
-
-	recalcDirections();
 }
 
 RenderContext& Renderer::beginFrame(const Camera& camera) {

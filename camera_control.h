@@ -46,8 +46,6 @@ private:
 	private:
 		const std::string _name = "CameraController::_PosHandler";
 		CameraController* _this;
-		void handleFixedLook(float xoffset, float yoffset);
-		void handleForward(float xoffset, float yoffset);
 
 	public:
 		const std::string& name() const override { return _name; }
@@ -73,6 +71,7 @@ private:
 	_PosHandler posHandler { this };
 	_ScrollHandler scrollHandler { this };
 
+	void freeCamUpdate();
 public:
 	static inline const float defaultSensitivity = 0.005f;
 	static inline const float defaultMoveSpeed = 0.1f;
@@ -88,10 +87,14 @@ public:
 		Window& window
 	)
 	: _window { &window },
-	  _camera { CameraMode::fixedLook, position, center },
+	  _camera { CameraMode::fixedLook },
 	  initialPosition { position },
 	  initialCenter { center }
 	{
+		_camera.position = position;
+		_camera.lookPosition = center;
+		_camera.lookAt(center);
+
 		window.eventSystem().registerHandler(mouseHandler);
 		window.eventSystem().registerHandler(keyHandler);
 		window.eventSystem().registerHandler(posHandler);
@@ -106,7 +109,7 @@ public:
 
 	bool mouseCaptured();
 	void reset();
-	CameraMode mode() const { return _camera.mode(); }
+	CameraMode mode() const { return _camera.mode; }
 	void mode(const CameraMode& mode);
 	void align(const glm::vec3& axis);
 };
