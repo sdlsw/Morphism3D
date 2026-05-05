@@ -110,12 +110,11 @@ void imGuiRecord(g3d::RenderContext& ctx) {
 }
 
 void CameraWindow::resetButton(
-	const std::string& resetFor,
 	float* setting,
 	float defaultValue
 ) {
 	ImGui::SameLine(ImGui::GetWindowWidth()-50);
-	if (ImGui::Button(std::format("Reset##{}", resetFor).c_str())) {
+	if (ImGui::Button(std::format("Reset##{}", ImGui::GetItemID()).c_str())) {
 		*setting = defaultValue;
 	}
 }
@@ -128,7 +127,7 @@ void CameraWindow::settingSlider(
 	float maxValue
 ) {
 	ImGui::SliderFloat(label.c_str(), setting, minValue, maxValue);
-	resetButton(label, setting, defaultValue);
+	resetButton(setting, defaultValue);
 }
 
 void CameraWindow::settingSlider(
@@ -150,7 +149,7 @@ void CameraWindow::projectionSlider() {
 	// the spacing of the Reset button. Will figure it out later.
 	ImGui::SliderFloat("Perspective", setting, 0.0f, 1.0f);
 	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
-	resetButton("Perspective", setting, Camera::defaultProjectionMix);
+	resetButton(setting, Camera::defaultProjectionMix);
 	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
 	ImGui::EndDisabled();
 }
