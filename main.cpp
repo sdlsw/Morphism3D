@@ -1,5 +1,6 @@
 #include "camera_control.h"
 #include "container.h"
+#include "graph.h"
 #include "ui.h"
 #include "vk.h"
 #include "window.h"
@@ -35,229 +36,6 @@ std::chrono::time_point<std::chrono::high_resolution_clock> now() {
 float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_clock>& before) {
 	auto after = now();
 	return std::chrono::duration<float, std::chrono::seconds::period>(after - before).count();
-}
-
-// The function to graph.
-// TODO Allow the user to specify this
-float func(float x, float y) {
-	return 0.3f*x*y;
-}
-
-template<typename T, typename U>
-T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
-	T u = glm::mix(ul, ur, a);
-	T d = glm::mix(dl, dr, a);
-
-	return glm::mix(u, d, b);
-}
-
-// Generates the vertices for a graph model.
-// range - The x, y coordinates of the model vertices always range from
-//         -1.0f to 1.0f. The range determines how those coordinates map to
-//         function input space with a simple relation:
-//
-//             (model_x, model_y, model_z)*range = (graph_x, graph_y, f(graph_x, graph_y))
-//		
-//	   graph_x and graph_y will both range from -range to +range.
-//
-// cells - Determines how many discrete steps to calculate. High values yield
-//         higher accuracy, at the cost of additional vertices.
-std::vector<g3d::Vertex> generateFuncVertices(float range, unsigned int cells) {
-	std::vector<g3d::Vertex> out;
-
-	// Colors for extreme points of graph.
-	// nxny - (-range, -range)
-	// pxny - (range, -range)
-	// nxpy - (-range, range)
-	// pxpy - (range, range)
-	glm::vec3 nxny {0.141f, 0.706f, 0.322f}; // green
-	glm::vec3 pxny {0.988f, 0.804f, 0.000f}; // yellow orange
-	glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
-	glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
-
-	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		float lerp_a_y = static_cast<float>(ypt) / static_cast<float>(cells);
-		float y = glm::mix(-range, range, lerp_a_y);
-
-		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			float lerp_a_x = static_cast<float>(xpt) / static_cast<float>(cells);
-			float x = glm::mix(-range, range, lerp_a_x);
-
-			out.push_back({
-				{x/range, y/range, func(x, y)/range},
-				lerp2d(nxny, pxny, nxpy, pxpy, lerp_a_x, lerp_a_y)
-			});
-		}
-	}
-
-	return out;
-}
-
-uint16_t idx(unsigned int x, unsigned int y, unsigned int cells) {
-	// Note: cells+1 here because there's one more point than the number of
-	// cells, for instance:
-	//
-	//  _ _
-	// |_|_|
-	// |_|_|
-	//
-	// 2 cell grid, but 3 points.
-	return y*(cells+1) + x;
-}
-
-// Generates an index list for a graph. The cells value must match the cells
-// value used in generateFuncVertices().
-std::vector<uint16_t> generateLineIndices(unsigned int cells) {
-	std::vector<uint16_t> out;
-
-	// generate horizontal lines
-	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		for (unsigned int xpt = 0; xpt < cells; xpt++) {
-			out.push_back(idx(xpt, ypt, cells));
-			out.push_back(idx(xpt+1, ypt, cells));
-		}
-	}
-
-	// generate vertical lines
-	for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-		for (unsigned int ypt = 0; ypt < cells; ypt++) {
-			out.push_back(idx(xpt, ypt, cells));
-			out.push_back(idx(xpt, ypt+1, cells));
-		}
-	}
-
-	return out;
-}
-
-std::vector<uint16_t> generateTriangleIndices(unsigned int cells) {
-	std::vector<uint16_t> out;
-
-	// X and Y correspond to the top left vertex of the quad being
-	// generated.
-	for (unsigned int ypt = 0; ypt < cells; ypt++) {
-		for (unsigned int xpt = 0; xpt < cells; xpt++) {
-			// first tri
-			out.push_back(idx(xpt, ypt, cells));
-			out.push_back(idx(xpt+1, ypt, cells));
-			out.push_back(idx(xpt, ypt+1, cells));
-
-			// second tri
-			out.push_back(idx(xpt+1, ypt, cells));
-			out.push_back(idx(xpt+1, ypt+1, cells));
-			out.push_back(idx(xpt, ypt+1, cells));
-		}
-	}
-
-	return out;
-}
-
-// other2 must be clockwise from other1.
-glm::vec3 calcFaceNormal(
-	const g3d::Vertex& thisVertex,
-	const g3d::Vertex& other1,
-	const g3d::Vertex& other2
-) {
-	return glm::normalize(glm::cross(
-		other1.pos-thisVertex.pos, other2.pos-thisVertex.pos
-	));
-}
-
-glm::vec3 calcVertexNormal(
-	const std::vector<g3d::Vertex>& vertices,
-	unsigned int xpt,
-	unsigned int ypt,
-	unsigned int cells
-) {
-	std::vector<glm::vec3> faceNormals;
-	const g3d::Vertex& thisVertex = vertices[idx(xpt, ypt, cells)];
-
-	if (xpt < cells && ypt < cells) {
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt+1, ypt, cells)],
-			vertices[idx(xpt, ypt+1, cells)]
-		));
-	}
-
-	if (xpt > 0 && ypt < cells) {
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt-1, ypt+1, cells)],
-			vertices[idx(xpt-1, ypt, cells)]
-		));
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt, ypt+1, cells)],
-			vertices[idx(xpt-1, ypt+1, cells)]
-		));
-	}
-
-	if (xpt > 0 && ypt > 0) {
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt-1, ypt, cells)],
-			vertices[idx(xpt, ypt-1, cells)]
-		));
-	}
-
-	if (xpt < cells && ypt > 0) {
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt+1, ypt-1, cells)],
-			vertices[idx(xpt+1, ypt, cells)]
-		));
-		faceNormals.push_back(calcFaceNormal(
-			thisVertex,
-			vertices[idx(xpt, ypt-1, cells)],
-			vertices[idx(xpt+1, ypt-1, cells)]
-		));
-	}
-
-	glm::vec3 sum {};
-	for (const auto& v : faceNormals) {
-		sum += v;
-	}
-
-	return sum / static_cast<float>(faceNormals.size());
-}
-
-std::vector<glm::vec3> generateSurfaceVertexNormals(
-	const std::vector<g3d::Vertex>& vertices,
-	unsigned int cells
-) {
-	std::vector<glm::vec3> normals;
-
-	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			normals.push_back(calcVertexNormal(vertices, xpt, ypt, cells));
-		}
-	}
-
-	return normals;
-}
-
-// Renders the generated vertex normals of a set of vertices.
-std::pair<std::vector<g3d::Vertex>, std::vector<uint16_t>> renderNormals(
-	const std::vector<g3d::Vertex>& vertices,
-	const std::vector<glm::vec3>& normals
-) {
-	std::pair<std::vector<g3d::Vertex>, std::vector<uint16_t>> out;
-	glm::vec3 color {1.0f, 1.0f, 1.0f};
-	float normLength = 0.1f;
-
-	// Copy vertices but with different color
-	for (const auto& v : vertices) {
-		out.first.push_back({v.pos, color});
-	}
-
-	// Push out every vertex by scaled normal and generate line
-	for (size_t i = 0; i < vertices.size(); i++) {
-		out.first.push_back({vertices[i].pos + normals[i]*normLength, color});
-		out.second.push_back(static_cast<uint16_t>(i));
-		out.second.push_back(static_cast<uint16_t>(i + vertices.size()));
-	}
-
-	return std::move(out);
 }
 
 class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
@@ -364,6 +142,13 @@ public:
 	}
 };
 
+// The function to graph. TODO let the user specify this
+struct TestFunc {
+	float eval(float x, float y) const {
+		return 0.3f*x*y;
+	}
+};
+
 void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	g3d::CameraController camController {
 		{2.5f, -2.5f, 2.5f}, // cam position
@@ -378,49 +163,12 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 	float gridLoft = 0.002f;
 	unsigned int cells = 20;
-	auto funcVerts = generateFuncVertices(3.0f, cells);
+	float range = 3.0f;
 
-	g3d::RenderObject surfaceObject {
-		device,
-		renderer,
-		{
-			device,
-			funcVerts,
-			generateTriangleIndices(cells)
-		},
-		{}
-	};
-
-	auto vertexNormals = generateSurfaceVertexNormals(funcVerts, cells);
-	auto renderedNormals = renderNormals(funcVerts, vertexNormals);
-
-	g3d::RenderObject normalsObject {
-		device,
-		renderer,
-		{
-			device,
-			renderedNormals.first,
-			renderedNormals.second
-		},
-		{}
-	};
-
-	// Note: Taking advantage of the fact that the Model constructor copies
-	// the vertex/index vectors
-	for (auto& vert : funcVerts) {
-		vert.color = {0.1f, 0.1f, 0.1f};
-	}
-
-	g3d::RenderObject gridObject {
-		device,
-		renderer,
-		{
-			device,
-			funcVerts,
-			generateLineIndices(cells)
-		},
-		{}
-	};
+	g3d::Graph<TestFunc> graph { {}, cells, range };
+	auto surfaceObject = graph.makeSurfaceObject(device, renderer);
+	auto gridObject = graph.makeGridObject(device, renderer);
+	auto normalsObject = graph.makeNormalObject(device, renderer);
 
 	auto axesObject = createAxes(device, renderer);
 
