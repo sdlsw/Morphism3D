@@ -1,8 +1,6 @@
 #pragma once
 
-#include "vk.h"
-
-#include <glm/glm.hpp>
+#include "vk_renderer.h"
 
 #include <concepts>
 #include <vector>

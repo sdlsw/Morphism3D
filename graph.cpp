@@ -1,7 +1,5 @@
 #include "graph.h"
 
-#include "vk.h"
-
 namespace g3d {
 std::vector<g3d::Vertex> recolor(
 	const std::vector<g3d::Vertex>& verts,
