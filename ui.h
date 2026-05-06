@@ -1,6 +1,7 @@
 #pragma once
 
 #include "camera_control.h"
+#include "container.h"
 #include "vk.h"
 
 #include <string>
@@ -51,12 +52,26 @@ public:
 	bool open = true;
 	void show();
 
+	CameraWindow() = delete;
 	CameraWindow(CameraController& camController) : _camController { &camController } {}
+};
+
+class RenderWindow {
+private:
+	RenderSettings* _renderSettings;
+
+public:
+	bool open = true;
+	void show();
+
+	RenderWindow() = delete;
+	RenderWindow(RenderSettings& renderSettings) : _renderSettings { &renderSettings } {}
 };
 
 class Ui {
 private:
 	CameraWindow _cameraWindow;
+	RenderWindow _renderWindow;
 
 	void mainMenuBar();
 	void windowMenu();
@@ -65,6 +80,12 @@ public:
 	bool showDemoWindow = false;
 	void show();
 
-	Ui(CameraController& camController) : _cameraWindow { camController } {}
+	Ui(
+		CameraController& camController,
+		RenderSettings& renderSettings
+	)
+	: _cameraWindow { camController },
+	  _renderWindow { renderSettings }
+	{}
 };
 }

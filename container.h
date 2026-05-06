@@ -32,4 +32,10 @@ public:
 		return sum / static_cast<T>(_contents.size());
 	}
 };
+
+struct RenderSettings {
+	bool renderAxes = true;
+	bool renderGrid = true;
+	bool renderNormals = false;
+};
 }

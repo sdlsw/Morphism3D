@@ -404,6 +404,150 @@ void MappedBuffer<T>::copyIn(const T& obj) {
 	memcpy(_ptr, &obj, sizeof(T));
 }
 
+vk::raii::Pipeline PipelineBuilder::build() {
+	if (_vertexShader.size() == 0) {
+		throw std::runtime_error("Vertex shader must be specified");
+	}
+
+	if (_fragmentShader.size() == 0) {
+		throw std::runtime_error("Fragment shader must be specified");
+	}
+
+	// SHADERS
+	vk::raii::ShaderModule vertModule = _graphDevice->loadShader(_vertexShader);
+	vk::raii::ShaderModule fragModule = _graphDevice->loadShader(_fragmentShader);
+
+	vk::PipelineShaderStageCreateInfo vertShaderInfo {
+		.stage = vk::ShaderStageFlagBits::eVertex,
+		.module = vertModule,
+		.pName = "main"
+	};
+
+	vk::PipelineShaderStageCreateInfo fragShaderInfo {
+		.stage = vk::ShaderStageFlagBits::eFragment,
+		.module = fragModule,
+		.pName = "main"
+	};
+
+	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
+
+	// DYNAMIC STATE
+	std::array<vk::DynamicState, 2> dynamicStates {
+		vk::DynamicState::eViewport, vk::DynamicState::eScissor
+	};
+
+	vk::PipelineDynamicStateCreateInfo dynamicStateInfo {
+		.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+		.pDynamicStates = dynamicStates.data()
+	};
+
+	// VERTEX INPUT
+	auto bindingDescription = Vertex::getBindingDescription();
+	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+	vk::PipelineVertexInputStateCreateInfo vertexInputInfo {
+		.vertexBindingDescriptionCount = 1,
+		.pVertexBindingDescriptions = &bindingDescription,
+		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+		.pVertexAttributeDescriptions = attributeDescriptions.data()
+	};
+
+	// INPUT ASSEMBLY
+	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo {
+		.topology = _topology,
+		.primitiveRestartEnable = vk::False
+	};
+
+	// PORT STATE (DYNAMIC)
+	vk::PipelineViewportStateCreateInfo viewportInfo {
+		.viewportCount = 1,
+		.scissorCount = 1
+	};
+
+	// RASTERIZER
+	vk::PipelineRasterizationStateCreateInfo rasterInfo {
+		.depthClampEnable = vk::False,
+		.rasterizerDiscardEnable = vk::False,
+		.polygonMode = vk::PolygonMode::eFill,
+		.cullMode = vk::CullModeFlagBits::eNone,
+		.frontFace = vk::FrontFace::eCounterClockwise,
+		.depthBiasEnable = vk::False,
+		.depthBiasConstantFactor = 0.0f,
+		.depthBiasClamp = 0.0f,
+		.depthBiasSlopeFactor = 0.0f,
+		.lineWidth = 1.0f
+	};
+
+	// MULTISAMPLING
+	vk::PipelineMultisampleStateCreateInfo multisampleInfo {
+		.rasterizationSamples = vk::SampleCountFlagBits::e1,
+		.sampleShadingEnable = vk::False,
+		.minSampleShading = 1.0f,
+		.pSampleMask = nullptr,
+		.alphaToCoverageEnable = vk::False,
+		.alphaToOneEnable = vk::False
+	};
+
+	// COLOR BLENDING
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment {
+		.blendEnable = vk::False,
+		.srcColorBlendFactor = vk::BlendFactor::eOne,
+		.dstColorBlendFactor = vk::BlendFactor::eZero,
+		.colorBlendOp = vk::BlendOp::eAdd,
+		.srcAlphaBlendFactor = vk::BlendFactor::eOne,
+		.dstAlphaBlendFactor = vk::BlendFactor::eZero,
+		.alphaBlendOp = vk::BlendOp::eAdd,
+		.colorWriteMask = (
+			vk::ColorComponentFlagBits::eR |
+			vk::ColorComponentFlagBits::eG |
+			vk::ColorComponentFlagBits::eB |
+			vk::ColorComponentFlagBits::eA
+		)
+	};
+	std::array<float, 4> blendConstants { 0.0f, 0.0f, 0.0f, 0.0f };
+	vk::PipelineColorBlendStateCreateInfo colorBlendInfo {
+		.logicOpEnable = vk::False,
+		.logicOp = vk::LogicOp::eCopy,
+		.attachmentCount = 1,
+		.pAttachments = &colorBlendAttachment,
+		.blendConstants = blendConstants
+	};
+
+	// DEPTH / STENCIL
+	vk::PipelineDepthStencilStateCreateInfo depthStencilInfo {
+		.depthTestEnable = vk::True,
+		.depthWriteEnable = vk::True,
+		.depthCompareOp = vk::CompareOp::eLess,
+		.depthBoundsTestEnable = vk::False,
+		.stencilTestEnable = vk::False,
+		.minDepthBounds = 0.0f,
+		.maxDepthBounds = 1.0f
+	};
+
+	// PIPELINE
+	vk::GraphicsPipelineCreateInfo pipelineInfo {
+		.stageCount = 2,
+		.pStages = shaderStages,
+
+		.pVertexInputState = &vertexInputInfo,
+		.pInputAssemblyState = &inputAssemblyInfo,
+		.pViewportState = &viewportInfo,
+		.pRasterizationState = &rasterInfo,
+		.pMultisampleState = &multisampleInfo,
+		.pDepthStencilState = &depthStencilInfo,
+		.pColorBlendState = &colorBlendInfo,
+		.pDynamicState = &dynamicStateInfo,
+
+		.layout = *_pipelineLayout,
+		.renderPass = *_renderPass,
+		.subpass = 0,
+
+		.basePipelineHandle = {},
+		.basePipelineIndex = -1
+	};
+
+	return vk::raii::Pipeline(_graphDevice->logicalDevice(), nullptr, pipelineInfo);
+}
+
 vk::raii::ImageView ImageResource::createView() const {
 	vk::ImageViewCreateInfo info {
 		.image = _image,
@@ -760,140 +904,29 @@ vk::raii::PipelineLayout Renderer::createPipelineLayout() {
 	return vk::raii::PipelineLayout(_graphDevice->logicalDevice(), pipelineLayoutInfo);
 }
 
-vk::raii::Pipeline Renderer::createGraphicsPipeline() {
-	// SHADERS
-	vk::raii::ShaderModule vertModule = _graphDevice->loadShader("vert.spv");
-	vk::raii::ShaderModule fragModule = _graphDevice->loadShader("frag.spv");
+vk::raii::Pipeline Renderer::createLinePipeline() {
+	return PipelineBuilder(*_graphDevice, _pipelineLayout, _renderPass)
+		.withVertexShader("vert.spv")
+		.withFragmentShader("frag.spv")
+		.withTopology(vk::PrimitiveTopology::eLineList)
+		.build();
+}
 
-	vk::PipelineShaderStageCreateInfo vertShaderInfo {
-		.stage = vk::ShaderStageFlagBits::eVertex,
-		.module = vertModule,
-		.pName = "main"
-	};
+vk::raii::Pipeline Renderer::createTrianglePipeline() {
+	return PipelineBuilder(*_graphDevice, _pipelineLayout, _renderPass)
+		.withVertexShader("vert.spv")
+		.withFragmentShader("frag.spv")
+		.withTopology(vk::PrimitiveTopology::eTriangleList)
+		.build();
+}
 
-	vk::PipelineShaderStageCreateInfo fragShaderInfo {
-		.stage = vk::ShaderStageFlagBits::eFragment,
-		.module = fragModule,
-		.pName = "main"
-	};
+std::unordered_map<RenderMode, vk::raii::Pipeline> Renderer::createPipelines() {
+	std::unordered_map<RenderMode, vk::raii::Pipeline> out;
 
-	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
+	out.emplace(RenderMode::line, createLinePipeline());
+	out.emplace(RenderMode::triangle, createTrianglePipeline());
 
-	// DYNAMIC STATE
-	std::array<vk::DynamicState, 2> dynamicStates {
-		vk::DynamicState::eViewport, vk::DynamicState::eScissor
-	};
-
-	vk::PipelineDynamicStateCreateInfo dynamicStateInfo {
-		.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
-		.pDynamicStates = dynamicStates.data()
-	};
-
-	// VERTEX INPUT
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
-	vk::PipelineVertexInputStateCreateInfo vertexInputInfo {
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &bindingDescription,
-		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-		.pVertexAttributeDescriptions = attributeDescriptions.data()
-	};
-
-	// INPUT ASSEMBLY
-	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo {
-		.topology = vk::PrimitiveTopology::eLineList,
-		.primitiveRestartEnable = vk::False
-	};
-
-	// PORT STATE (DYNAMIC)
-	vk::PipelineViewportStateCreateInfo viewportInfo {
-		.viewportCount = 1,
-		.scissorCount = 1
-	};
-
-	// RASTERIZER
-	vk::PipelineRasterizationStateCreateInfo rasterInfo {
-		.depthClampEnable = vk::False,
-		.rasterizerDiscardEnable = vk::False,
-		.polygonMode = vk::PolygonMode::eFill,
-		.cullMode = vk::CullModeFlagBits::eNone,
-		.frontFace = vk::FrontFace::eCounterClockwise,
-		.depthBiasEnable = vk::False,
-		.depthBiasConstantFactor = 0.0f,
-		.depthBiasClamp = 0.0f,
-		.depthBiasSlopeFactor = 0.0f,
-		.lineWidth = 1.0f
-	};
-
-	// MULTISAMPLING
-	vk::PipelineMultisampleStateCreateInfo multisampleInfo {
-		.rasterizationSamples = vk::SampleCountFlagBits::e1,
-		.sampleShadingEnable = vk::False,
-		.minSampleShading = 1.0f,
-		.pSampleMask = nullptr,
-		.alphaToCoverageEnable = vk::False,
-		.alphaToOneEnable = vk::False
-	};
-
-	// COLOR BLENDING
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment {
-		.blendEnable = vk::False,
-		.srcColorBlendFactor = vk::BlendFactor::eOne,
-		.dstColorBlendFactor = vk::BlendFactor::eZero,
-		.colorBlendOp = vk::BlendOp::eAdd,
-		.srcAlphaBlendFactor = vk::BlendFactor::eOne,
-		.dstAlphaBlendFactor = vk::BlendFactor::eZero,
-		.alphaBlendOp = vk::BlendOp::eAdd,
-		.colorWriteMask = (
-			vk::ColorComponentFlagBits::eR |
-			vk::ColorComponentFlagBits::eG |
-			vk::ColorComponentFlagBits::eB |
-			vk::ColorComponentFlagBits::eA
-		)
-	};
-	std::array<float, 4> blendConstants { 0.0f, 0.0f, 0.0f, 0.0f };
-	vk::PipelineColorBlendStateCreateInfo colorBlendInfo {
-		.logicOpEnable = vk::False,
-		.logicOp = vk::LogicOp::eCopy,
-		.attachmentCount = 1,
-		.pAttachments = &colorBlendAttachment,
-		.blendConstants = blendConstants
-	};
-
-	// DEPTH / STENCIL
-	vk::PipelineDepthStencilStateCreateInfo depthStencilInfo {
-		.depthTestEnable = vk::True,
-		.depthWriteEnable = vk::True,
-		.depthCompareOp = vk::CompareOp::eLess,
-		.depthBoundsTestEnable = vk::False,
-		.stencilTestEnable = vk::False,
-		.minDepthBounds = 0.0f,
-		.maxDepthBounds = 1.0f
-	};
-
-	// PIPELINE
-	vk::GraphicsPipelineCreateInfo pipelineInfo {
-		.stageCount = 2,
-		.pStages = shaderStages,
-
-		.pVertexInputState = &vertexInputInfo,
-		.pInputAssemblyState = &inputAssemblyInfo,
-		.pViewportState = &viewportInfo,
-		.pRasterizationState = &rasterInfo,
-		.pMultisampleState = &multisampleInfo,
-		.pDepthStencilState = &depthStencilInfo,
-		.pColorBlendState = &colorBlendInfo,
-		.pDynamicState = &dynamicStateInfo,
-
-		.layout = _pipelineLayout,
-		.renderPass = _renderPass,
-		.subpass = 0,
-
-		.basePipelineHandle = {},
-		.basePipelineIndex = -1
-	};
-
-	return vk::raii::Pipeline(_graphDevice->logicalDevice(), nullptr, pipelineInfo);
+	return out;
 }
 
 std::vector<PerFrameResources> Renderer::createPerFrameResources() {
@@ -1057,7 +1090,8 @@ RenderContext& Renderer::beginFrame(const Camera& camera) {
 	};
 
 	cmdBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
-	cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+
+	// per frame descriptor set referring to camera view and proj mats
 	cmdBuffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_pipelineLayout,
@@ -1088,6 +1122,11 @@ RenderContext& Renderer::beginFrame(const Camera& camera) {
 	_inFrame = true;
 
 	return _renderContext;
+}
+
+void Renderer::setMode(RenderMode mode) {
+	auto& cmdBuffer = _renderContext.frameResources().commandBuffer();
+	cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipelines.at(mode));
 }
 
 void Renderer::endFrame() {

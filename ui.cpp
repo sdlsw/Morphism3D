@@ -282,6 +282,20 @@ void CameraWindow::show() {
 	ImGui::End();
 }
 
+void RenderWindow::show() {
+	if (!open) return;
+
+	ImGui::Begin("Render", &open);
+	ImGui::PushItemWidth(200.0f);
+
+	ImGui::Checkbox("Show Axes", &_renderSettings->renderAxes);
+	ImGui::Checkbox("Show Grid", &_renderSettings->renderGrid);
+	ImGui::Checkbox("Show Normals", &_renderSettings->renderNormals);
+
+	ImGui::PopItemWidth();
+	ImGui::End();
+}
+
 void Ui::show() {
 	mainMenuBar();
 
@@ -290,6 +304,7 @@ void Ui::show() {
 	}
 
 	_cameraWindow.show();
+	_renderWindow.show();
 }
 
 void Ui::mainMenuBar() {
@@ -302,6 +317,7 @@ void Ui::mainMenuBar() {
 void Ui::windowMenu() {
 	if (ImGui::BeginMenu("Window")) {
 		ImGui::MenuItem("Camera", nullptr, &_cameraWindow.open);
+		ImGui::MenuItem("Render", nullptr, &_renderWindow.open);
 		ImGui::MenuItem("ImGui Demo", nullptr, &showDemoWindow);
 		ImGui::EndMenu();
 	}

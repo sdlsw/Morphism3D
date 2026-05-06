@@ -62,7 +62,7 @@ T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
 //
 // cells - Determines how many discrete steps to calculate. High values yield
 //         higher accuracy, at the cost of additional vertices.
-std::vector<g3d::Vertex> generate_func_vertices(float range, unsigned int cells) {
+std::vector<g3d::Vertex> generateFuncVertices(float range, unsigned int cells) {
 	std::vector<g3d::Vertex> out;
 
 	// Colors for extreme points of graph.
@@ -106,8 +106,8 @@ uint16_t idx(unsigned int x, unsigned int y, unsigned int cells) {
 }
 
 // Generates an index list for a graph. The cells value must match the cells
-// value used in generate_func_vertices().
-std::vector<uint16_t> generate_func_indices(unsigned int cells) {
+// value used in generateFuncVertices().
+std::vector<uint16_t> generateLineIndices(unsigned int cells) {
 	std::vector<uint16_t> out;
 
 	// generate horizontal lines
@@ -127,6 +127,137 @@ std::vector<uint16_t> generate_func_indices(unsigned int cells) {
 	}
 
 	return out;
+}
+
+std::vector<uint16_t> generateTriangleIndices(unsigned int cells) {
+	std::vector<uint16_t> out;
+
+	// X and Y correspond to the top left vertex of the quad being
+	// generated.
+	for (unsigned int ypt = 0; ypt < cells; ypt++) {
+		for (unsigned int xpt = 0; xpt < cells; xpt++) {
+			// first tri
+			out.push_back(idx(xpt, ypt, cells));
+			out.push_back(idx(xpt+1, ypt, cells));
+			out.push_back(idx(xpt, ypt+1, cells));
+
+			// second tri
+			out.push_back(idx(xpt+1, ypt, cells));
+			out.push_back(idx(xpt+1, ypt+1, cells));
+			out.push_back(idx(xpt, ypt+1, cells));
+		}
+	}
+
+	return out;
+}
+
+// other2 must be clockwise from other1.
+glm::vec3 calcFaceNormal(
+	const g3d::Vertex& thisVertex,
+	const g3d::Vertex& other1,
+	const g3d::Vertex& other2
+) {
+	return glm::normalize(glm::cross(
+		other1.pos-thisVertex.pos, other2.pos-thisVertex.pos
+	));
+}
+
+glm::vec3 calcVertexNormal(
+	const std::vector<g3d::Vertex>& vertices,
+	unsigned int xpt,
+	unsigned int ypt,
+	unsigned int cells
+) {
+	std::vector<glm::vec3> faceNormals;
+	const g3d::Vertex& thisVertex = vertices[idx(xpt, ypt, cells)];
+
+	if (xpt < cells && ypt < cells) {
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt+1, ypt, cells)],
+			vertices[idx(xpt, ypt+1, cells)]
+		));
+	}
+
+	if (xpt > 0 && ypt < cells) {
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt-1, ypt+1, cells)],
+			vertices[idx(xpt-1, ypt, cells)]
+		));
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt, ypt+1, cells)],
+			vertices[idx(xpt-1, ypt+1, cells)]
+		));
+	}
+
+	if (xpt > 0 && ypt > 0) {
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt-1, ypt, cells)],
+			vertices[idx(xpt, ypt-1, cells)]
+		));
+	}
+
+	if (xpt < cells && ypt > 0) {
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt+1, ypt-1, cells)],
+			vertices[idx(xpt+1, ypt, cells)]
+		));
+		faceNormals.push_back(calcFaceNormal(
+			thisVertex,
+			vertices[idx(xpt, ypt-1, cells)],
+			vertices[idx(xpt+1, ypt-1, cells)]
+		));
+	}
+
+	glm::vec3 sum {};
+	for (const auto& v : faceNormals) {
+		sum += v;
+	}
+
+	return sum / static_cast<float>(faceNormals.size());
+}
+
+std::vector<glm::vec3> generateSurfaceVertexNormals(
+	const std::vector<g3d::Vertex>& vertices,
+	unsigned int cells
+) {
+	std::vector<glm::vec3> normals;
+
+	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
+		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
+			normals.push_back(calcVertexNormal(vertices, xpt, ypt, cells));
+		}
+	}
+
+	return normals;
+}
+
+// Renders the generated vertex normals of a set of vertices.
+std::pair<std::vector<g3d::Vertex>, std::vector<uint16_t>> renderNormals(
+	const std::vector<g3d::Vertex>& vertices,
+	const std::vector<glm::vec3>& normals
+) {
+	std::pair<std::vector<g3d::Vertex>, std::vector<uint16_t>> out;
+	glm::vec3 color {1.0f, 1.0f, 1.0f};
+	float normLength = 0.1f;
+
+	// Copy vertices but with different color
+	for (const auto& v : vertices) {
+		out.first.push_back({v.pos, color});
+	}
+
+	// Push out every vertex by scaled normal and generate line
+	for (size_t i = 0; i < vertices.size(); i++) {
+		out.first.push_back({vertices[i].pos + normals[i]*normLength, color});
+		out.second.push_back(static_cast<uint16_t>(i));
+		out.second.push_back(static_cast<uint16_t>(i + vertices.size()));
+	}
+
+	return std::move(out);
 }
 
 class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
@@ -243,19 +374,57 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	// Use last 50 frames to calculate average FPS
 	g3d::MovingAverage<float> avgFps { 50 };
 
-	g3d::RenderObject graphObject {
+	g3d::RenderSettings renderSettings;
+
+	float gridLoft = 0.002f;
+	unsigned int cells = 20;
+	auto funcVerts = generateFuncVertices(3.0f, cells);
+
+	g3d::RenderObject surfaceObject {
 		device,
 		renderer,
 		{
 			device,
-			generate_func_vertices(3.0f, 20),
-			generate_func_indices(20)
+			funcVerts,
+			generateTriangleIndices(cells)
 		},
 		{}
 	};
+
+	auto vertexNormals = generateSurfaceVertexNormals(funcVerts, cells);
+	auto renderedNormals = renderNormals(funcVerts, vertexNormals);
+
+	g3d::RenderObject normalsObject {
+		device,
+		renderer,
+		{
+			device,
+			renderedNormals.first,
+			renderedNormals.second
+		},
+		{}
+	};
+
+	// Note: Taking advantage of the fact that the Model constructor copies
+	// the vertex/index vectors
+	for (auto& vert : funcVerts) {
+		vert.color = {0.1f, 0.1f, 0.1f};
+	}
+
+	g3d::RenderObject gridObject {
+		device,
+		renderer,
+		{
+			device,
+			funcVerts,
+			generateLineIndices(cells)
+		},
+		{}
+	};
+
 	auto axesObject = createAxes(device, renderer);
 
-	g3d::Ui ui { camController };
+	g3d::Ui ui { camController, renderSettings };
 
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
@@ -277,8 +446,28 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 			// outside reason - probably window resize
 			continue;
 		}
-		graphObject.record(renderContext);
-		axesObject.record(renderContext);
+		renderer.setMode(g3d::RenderMode::line);
+
+		if (renderSettings.renderAxes) {
+			axesObject.record(renderContext);
+		}
+
+		// TODO This is really dumb but it doesn't look too terrible...
+		// Look into using textures for the grid, maybe.
+		if (renderSettings.renderGrid) {
+			gridObject.transform.translation = {0.0f, 0.0f, gridLoft};
+			gridObject.record(renderContext);
+			gridObject.transform.translation = {0.0f, 0.0f, -gridLoft};
+			gridObject.record(renderContext);
+		}
+
+		if (renderSettings.renderNormals) {
+			normalsObject.record(renderContext);
+		}
+
+		renderer.setMode(g3d::RenderMode::triangle);
+		surfaceObject.record(renderContext);
+
 		g3d::imGuiRecord(renderContext);
 		renderer.endFrame();
 

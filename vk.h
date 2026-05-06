@@ -333,6 +333,40 @@ public:
 	vk::raii::DescriptorSet makeDescriptorSet(vk::ArrayProxy<BoundBuffer> buffers);
 };
 
+class PipelineBuilder {
+private:
+	GraphDevice* _graphDevice;
+
+	// TODO: For now, just use externally specified pipeline layout and
+	// render pass. Should look into putting them together in the builder.
+	vk::raii::PipelineLayout* _pipelineLayout;
+	vk::raii::RenderPass* _renderPass;
+
+	// Builder variables
+	std::string _vertexShader {};
+	std::string _fragmentShader {};
+	vk::PrimitiveTopology _topology = vk::PrimitiveTopology::eLineList;
+public:
+	PipelineBuilder() = delete;
+	PipelineBuilder(PipelineBuilder&&) = default;
+
+	PipelineBuilder(
+		GraphDevice& graphDevice,
+		vk::raii::PipelineLayout& pipelineLayout,
+		vk::raii::RenderPass& renderPass
+	)
+	: _graphDevice { &graphDevice },
+	  _pipelineLayout { &pipelineLayout },
+	  _renderPass { &renderPass }
+	{}
+
+	PipelineBuilder& withVertexShader(const std::string& s) { _vertexShader = s; return *this; }
+	PipelineBuilder& withFragmentShader(const std::string& s) { _fragmentShader = s; return *this; }
+	PipelineBuilder& withTopology(vk::PrimitiveTopology top) { _topology = top; return *this; }
+
+	vk::raii::Pipeline build();
+};
+
 // Class encapsulating an Image and its view. The view covers the entire image,
 // and some accompanying memory will be allocated and bound to the image.
 class ImageResource {
@@ -555,18 +589,24 @@ concept Renderable = requires(T obj, PerFrameResources& resources) {
 	{ obj.record(resources) };
 };
 
+enum class RenderMode {
+	line,
+	triangle
+};
+
 class Renderer {
 private:
 	unsigned int _currentFrame = 0;
 	unsigned int _currentSwapchainImage = 0;
 	bool _inFrame = false;
+	RenderMode _mode = RenderMode::line;
 
 	GraphDevice* _graphDevice;
 	std::unique_ptr<WindowResources> _windowResources;
 	vk::raii::RenderPass _renderPass;
 	DescriptorSetFactory _descriptorSetFactory;
 	vk::raii::PipelineLayout _pipelineLayout;
-	vk::raii::Pipeline _graphicsPipeline;
+	std::unordered_map<RenderMode, vk::raii::Pipeline> _pipelines;
 	RenderContext _renderContext;
 
 	// Annoying: Framebuffer objects depend upon all the attachments
@@ -584,7 +624,9 @@ private:
 	vk::raii::RenderPass createRenderPass();
 	vk::raii::DescriptorSetLayout createDescriptorSetLayout();
 	vk::raii::PipelineLayout createPipelineLayout();
-	vk::raii::Pipeline createGraphicsPipeline();
+	vk::raii::Pipeline createLinePipeline();
+	vk::raii::Pipeline createTrianglePipeline();
+	std::unordered_map<RenderMode, vk::raii::Pipeline> createPipelines();
 	DescriptorSetFactory createDescriptorSetFactory();
 	std::vector<PerFrameResources> createPerFrameResources();
 
@@ -599,7 +641,7 @@ public:
 	  _renderPass { createRenderPass() },
 	  _descriptorSetFactory { createDescriptorSetFactory() },
 	  _pipelineLayout { createPipelineLayout() },
-	  _graphicsPipeline { createGraphicsPipeline() },
+	  _pipelines { createPipelines() },
 	  _framebuffers { _windowResources->createFramebuffers(_renderPass) },
 	  _perFrameResources { createPerFrameResources() }
 	{}
@@ -615,6 +657,7 @@ public:
 
 	RenderContext& beginFrame(const Camera& camera);
 	bool inFrame() const { return _inFrame; }
+	void setMode(RenderMode mode);
 	void endFrame();
 
 	template<Renderable T>
