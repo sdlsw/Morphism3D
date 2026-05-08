@@ -13,6 +13,39 @@
 #include <vulkan/vulkan_raii.hpp>
 
 namespace g3d {
+// Creates a buffer accessible only to the GPU out of some vector of things.
+template<typename T>
+BoundBuffer makeStaticGPUBuffer(
+	GraphDevice& graphDevice,
+	const std::vector<T>& items,
+	vk::BufferUsageFlags usage
+) {
+	vk::DeviceSize bufferSize = sizeof(items[0]) * items.size();
+
+	UnsafeMappedBuffer stagingBuffer {
+		graphDevice,
+		bufferSize,
+		vk::BufferUsageFlagBits::eTransferSrc
+	};
+
+	BoundBuffer destBuffer {
+		graphDevice,
+		{
+			.size = bufferSize,
+			.usage = (
+				vk::BufferUsageFlagBits::eTransferSrc |
+				usage
+			),
+			.sharingMode = vk::SharingMode::eExclusive
+		}
+	};
+
+	stagingBuffer.unsafeCopyIn(items.data(), bufferSize);
+	stagingBuffer.vkCopyTo(destBuffer);
+
+	return destBuffer;
+}
+
 struct CamMatrices {
 	glm::mat4 view;
 	glm::mat4 proj;

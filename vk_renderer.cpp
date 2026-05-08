@@ -198,57 +198,19 @@ void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int wid
 }
 
 BoundBuffer Model::createVertexBuffer(const std::vector<Vertex>& vertices) {
-	vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-	UnsafeMappedBuffer stagingBuffer {
+	return makeStaticGPUBuffer(
 		*_graphDevice,
-		bufferSize,
-		vk::BufferUsageFlagBits::eTransferSrc
-	};
-
-	BoundBuffer destBuffer {
-		*_graphDevice,
-		{
-			.size = bufferSize,
-			.usage = (
-				vk::BufferUsageFlagBits::eTransferDst |
-				vk::BufferUsageFlagBits::eVertexBuffer
-			),
-			.sharingMode = vk::SharingMode::eExclusive
-		}
-	};
-
-	stagingBuffer.unsafeCopyIn(vertices.data(), bufferSize);
-	stagingBuffer.vkCopyTo(destBuffer);
-
-	return destBuffer;
+		vertices,
+		vk::BufferUsageFlagBits::eVertexBuffer
+	);
 }
 
 BoundBuffer Model::createIndexBuffer(const std::vector<uint16_t>& indices) {
-	vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-	UnsafeMappedBuffer stagingBuffer {
+	return makeStaticGPUBuffer(
 		*_graphDevice,
-		bufferSize,
-		vk::BufferUsageFlagBits::eTransferSrc
-	};
-
-	BoundBuffer destBuffer {
-		*_graphDevice,
-		{
-			.size = bufferSize,
-			.usage = (
-				vk::BufferUsageFlagBits::eTransferDst |
-				vk::BufferUsageFlagBits::eIndexBuffer
-			),
-			.sharingMode = vk::SharingMode::eExclusive
-		}
-	};
-
-	stagingBuffer.unsafeCopyIn(indices.data(), bufferSize);
-	stagingBuffer.vkCopyTo(destBuffer);
-
-	return destBuffer;
+		indices,
+		vk::BufferUsageFlagBits::eIndexBuffer
+	);
 }
 
 void Model::record(RenderContext& ctx) const {
