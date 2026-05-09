@@ -10,12 +10,49 @@
 #include <array>
 
 namespace g3d {
-struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-	static vk::VertexInputBindingDescription getBindingDescription();
-	static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+// Shader input types. Each item is passed in as its own buffer, nothing is
+// interleaved.
+struct Position {
+	static constexpr unsigned int binding = 0;
+	glm::vec3 vec;
+	Position(const glm::vec3& v) : vec {v} {}
+	Position(float x, float y, float z) : vec {x, y, z} {}
 };
+
+struct Color {
+	static constexpr unsigned int binding = 1;
+	glm::vec3 vec;
+	Color(const glm::vec3& v) : vec {v} {};
+	Color(float r, float g, float b) : vec {r, g, b} {}
+};
+
+struct Normal {
+	static constexpr unsigned int binding = 2;
+	glm::vec3 vec;
+	Normal(const glm::vec3& v) : vec {v} {};
+	Normal(float x, float y, float z) : vec {x, y, z} {}
+};
+
+template<typename T>
+vk::VertexInputBindingDescription getVertexBindingDescription() {
+	vk::VertexInputBindingDescription d {
+		.binding = T::binding,
+		.stride = sizeof(T),
+		.inputRate = vk::VertexInputRate::eVertex
+	};
+	return d;
+}
+
+template <typename T>
+vk::VertexInputAttributeDescription getVertexAttributeDescription() {
+	vk::VertexInputAttributeDescription d {
+		.location = T::binding,
+		.binding = T::binding,
+		.format = vk::Format::eR32G32B32Sfloat,
+		.offset = offsetof(Position, vec)
+	};
+	return d;
+}
 
 struct Transform {
 	// For use in constructors

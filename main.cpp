@@ -92,36 +92,46 @@ g3d::RenderObject createAxes(g3d::GraphDevice& device, g3d::Renderer& renderer) 
 	glm::vec3 ycolor {0.0f, 1.0f, 0.0f};
 	glm::vec3 zcolor {0.2f, 0.2f, 1.0f};
 
+	// FIXME This is the same model but rotated 90 degrees a few times.
+	// Redo once I get model sharing working
+	std::vector<g3d::Position> positions {
+		// X arrow
+		{0.0f, 0.0f, 0.0f},
+		{arrowLength, 0.0f, 0.0f},
+		{arrowLength-arrowTipLength, arrowWidth, 0.0f},
+		{arrowLength-arrowTipLength, -arrowWidth, 0.0f},
+
+		// Y arrow
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, arrowLength, 0.0f},
+		{arrowWidth, arrowLength-arrowTipLength, 0.0f},
+		{-arrowWidth, arrowLength-arrowTipLength, 0.0f},
+
+		// Z arrow
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, arrowLength},
+		{arrowWidth, 0.0f, arrowLength-arrowTipLength},
+		{-arrowWidth, 0.0f, arrowLength-arrowTipLength}
+	};
+
+	std::vector<g3d::Color> colors {
+		xcolor, xcolor, xcolor, xcolor,
+		ycolor, ycolor, ycolor, ycolor,
+		zcolor, zcolor, zcolor, zcolor
+	};
+
+	std::vector<uint16_t> indices {
+		0, 1, 1, 2, 1, 3,
+		4, 5, 5, 6, 5, 7,
+		8, 9, 9, 10, 9, 11
+	};
+
 	return {
 		device,
 		renderer,
-		{
-			device,
-			{
-				// X arrow
-				{{0.0f, 0.0f, 0.0f}, xcolor},
-				{{arrowLength, 0.0f, 0.0f}, xcolor},
-				{{arrowLength-arrowTipLength, arrowWidth, 0.0f}, xcolor},
-				{{arrowLength-arrowTipLength, -arrowWidth, 0.0f}, xcolor},
-
-				// Y arrow
-				{{0.0f, 0.0f, 0.0f}, ycolor},
-				{{0.0f, arrowLength, 0.0f}, ycolor},
-				{{arrowWidth, arrowLength-arrowTipLength, 0.0f}, ycolor},
-				{{-arrowWidth, arrowLength-arrowTipLength, 0.0f}, ycolor},
-
-				// Z arrow
-				{{0.0f, 0.0f, 0.0f}, zcolor},
-				{{0.0f, 0.0f, arrowLength}, zcolor},
-				{{arrowWidth, 0.0f, arrowLength-arrowTipLength}, zcolor},
-				{{-arrowWidth, 0.0f, arrowLength-arrowTipLength}, zcolor}
-			},
-			{
-				0, 1, 1, 2, 1, 3,
-				4, 5, 5, 6, 5, 7,
-				8, 9, 9, 10, 9, 11
-			}
-		},
+		positions,
+		colors,
+		indices,
 		{}
 	};
 }

@@ -33,7 +33,7 @@ BoundBuffer makeStaticGPUBuffer(
 		{
 			.size = bufferSize,
 			.usage = (
-				vk::BufferUsageFlagBits::eTransferSrc |
+				vk::BufferUsageFlagBits::eTransferDst |
 				usage
 			),
 			.sharingMode = vk::SharingMode::eExclusive
@@ -282,27 +282,61 @@ public:
 	void endFrame();
 };
 
-class Model {
+template<typename T>
+class StaticVertexAttributes {
 private:
 	GraphDevice* _graphDevice;
-	BoundBuffer _vertexBuffer;
+	BoundBuffer _buffer;
+
+	BoundBuffer createBuffer(const std::vector<T>& attrs) {
+		return makeStaticGPUBuffer(
+			*_graphDevice,
+			attrs,
+			vk::BufferUsageFlagBits::eVertexBuffer
+		);
+	}
+
+public:
+	StaticVertexAttributes() = delete;
+	StaticVertexAttributes(StaticVertexAttributes&&) = default;
+	StaticVertexAttributes(
+		GraphDevice& graphDevice,
+		const std::vector<T>& attrs
+	) : _graphDevice { &graphDevice }, _buffer { createBuffer(attrs) } {}
+
+	void record(RenderContext& ctx) const {
+		auto& commandBuffer = ctx.frameResources().commandBuffer();
+
+		vk::Buffer vertexBuffers[] = {*_buffer.buffer()};
+		vk::DeviceSize offsets[] = { 0 };
+		commandBuffer.bindVertexBuffers(T::binding, vertexBuffers, offsets);
+	}
+};
+
+class StaticMesh {
+private:
+	GraphDevice* _graphDevice;
+	StaticVertexAttributes<Position> _positions;
 	BoundBuffer _indexBuffer;
 
 	size_t _indexCount;
 
-	BoundBuffer createVertexBuffer(const std::vector<Vertex>& vertices);
 	BoundBuffer createIndexBuffer(const std::vector<uint16_t>& indices);
 public:
-	Model() = delete;
-	Model(Model&&) = default;
-	Model(
+	StaticMesh() = delete;
+	StaticMesh(StaticMesh&&) = default;
+	StaticMesh(
 		GraphDevice& graphDevice,
-		const std::vector<Vertex>& vertices,
+		const std::vector<Position>& positions,
 		const std::vector<uint16_t>& indices
 	)
 	: _graphDevice { &graphDevice },
-	  _vertexBuffer { createVertexBuffer(vertices) },
-	  _indexBuffer { createIndexBuffer(indices) },
+	  _positions { graphDevice, positions },
+	  _indexBuffer { makeStaticGPUBuffer(
+		graphDevice,
+		indices,
+		vk::BufferUsageFlagBits::eIndexBuffer
+	  ) },
 	  _indexCount { indices.size() }
 	{}
 
@@ -313,7 +347,8 @@ class RenderObject {
 private:
 	GraphDevice* _graphDevice;
 	Renderer* _renderer;
-	Model _model;
+	StaticMesh _mesh;
+	StaticVertexAttributes<Color> _colors;
 public:
 	Transform transform;
 
@@ -322,12 +357,15 @@ public:
 	RenderObject(
 		GraphDevice& graphDevice,
 		Renderer& renderer,
-		Model&& model,
+		const std::vector<Position>& positions,
+		const std::vector<Color>& colors,
+		const std::vector<uint16_t>& indices,
 		const Transform& transform
 	)
 	: _graphDevice { &graphDevice },
 	  _renderer { &renderer },
-	  _model { std::move(model) },
+	  _mesh { graphDevice, positions, indices },
+	  _colors { graphDevice, colors },
 	  transform { transform }
 	{}
 

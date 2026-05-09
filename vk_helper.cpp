@@ -1,7 +1,6 @@
 #include "vk_helper.h"
 
 #include "vk_constants.h"
-#include "vk_datatypes.h"
 
 #include <fstream>
 #include <iostream>
@@ -133,6 +132,10 @@ vk::raii::Pipeline PipelineBuilder::build() {
 		throw std::runtime_error("Fragment shader must be specified");
 	}
 
+	if (_inputBindings.size() == 0) {
+		throw std::runtime_error("At least one input type must be specified");
+	}
+
 	// SHADERS
 	vk::raii::ShaderModule vertModule = loadShader(*_device, _vertexShader);
 	vk::raii::ShaderModule fragModule = loadShader(*_device, _fragmentShader);
@@ -162,13 +165,11 @@ vk::raii::Pipeline PipelineBuilder::build() {
 	};
 
 	// VERTEX INPUT
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo {
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &bindingDescription,
-		.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
-		.pVertexAttributeDescriptions = attributeDescriptions.data()
+		.vertexBindingDescriptionCount = static_cast<uint32_t>(_inputBindings.size()),
+		.pVertexBindingDescriptions = _inputBindings.data(),
+		.vertexAttributeDescriptionCount = static_cast<uint32_t>(_inputAttributes.size()),
+		.pVertexAttributeDescriptions = _inputAttributes.data()
 	};
 
 	// INPUT ASSEMBLY

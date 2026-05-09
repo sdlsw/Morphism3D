@@ -1,12 +1,10 @@
 #pragma once
 #include "global_defines.h"
 
-// Helper classes and functions that only depend on Vulkan types, not my own.
-//
-// TODO TODO Right now PipelineBuilder depends on my Vertex class. This will be
-// fixed during the implementation of lighting, but for now leave it alone.
+// Helper classes and functions that depend minimally on non-standard types.
 
 #include "vk_concept.h"
+#include "vk_datatypes.h"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -104,6 +102,9 @@ private:
 	vk::raii::PipelineLayout* _pipelineLayout;
 	vk::raii::RenderPass* _renderPass;
 
+	std::vector<vk::VertexInputBindingDescription> _inputBindings;
+	std::vector<vk::VertexInputAttributeDescription> _inputAttributes;
+
 	// Builder variables
 	std::string _vertexShader {};
 	std::string _fragmentShader {};
@@ -125,6 +126,13 @@ public:
 	PipelineBuilder& withVertexShader(const std::string& s) { _vertexShader = s; return *this; }
 	PipelineBuilder& withFragmentShader(const std::string& s) { _fragmentShader = s; return *this; }
 	PipelineBuilder& withTopology(vk::PrimitiveTopology top) { _topology = top; return *this; }
+
+	template<typename T>
+	PipelineBuilder& withInputType() {
+		_inputBindings.push_back(getVertexBindingDescription<T>());
+		_inputAttributes.push_back(getVertexAttributeDescription<T>());
+		return *this;
+	}
 
 	vk::raii::Pipeline build();
 };

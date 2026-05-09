@@ -11,16 +11,13 @@ concept Graphable = requires(F f, float x, float y) {
 	{ f.eval(x, y) } -> std::convertible_to<float>;
 };
 
-std::vector<Vertex> recolor(
-	const std::vector<Vertex>& verts,
-	const glm::vec3& newColor
-);
+std::vector<Color> solidColor(const Color& color, size_t amount);
 
 // other2 must be clockwise from other1.
 glm::vec3 calcTriangleNormal(
-	const Vertex& thisVertex,
-	const Vertex& other1,
-	const Vertex& other2
+	const Position& thisPosition,
+	const Position& other1,
+	const Position& other2
 );
 
 template<typename T, typename U>
@@ -50,7 +47,8 @@ private:
 	float _range;
 	const F* _func;
 
-	std::vector<Vertex> _vertices;
+	std::vector<Position> _positions;
+	std::vector<Color> _colors;
 	std::vector<glm::vec3> _normals;
 
 	glm::vec3 toModelSpace(const glm::vec3& funcSpace) {
@@ -69,53 +67,53 @@ private:
 		return y*(_cells+1) + x;
 	}
 
-	const Vertex& getVertex(unsigned int x, unsigned int y) {
-		return _vertices[idx(x, y)];
+	const Position& getPosition(unsigned int x, unsigned int y) {
+		return _positions[idx(x, y)];
 	}
 
 	glm::vec3 calcVertexNormal(unsigned int x, unsigned int y) {
 		std::vector<glm::vec3> faceNormals;
-		const g3d::Vertex& thisVertex = getVertex(x, y);
+		const Position& thisPosition = getPosition(x, y);
 
 		if (x < _cells && y < _cells) {
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x+1, y),
-				getVertex(x, y+1)
+				thisPosition,
+				getPosition(x+1, y),
+				getPosition(x, y+1)
 			));
 		}
 
 		if (x > 0 && y < _cells) {
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x-1, y+1),
-				getVertex(x-1, y)
+				thisPosition,
+				getPosition(x-1, y+1),
+				getPosition(x-1, y)
 			));
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x, y+1),
-				getVertex(x-1, y+1)
+				thisPosition,
+				getPosition(x, y+1),
+				getPosition(x-1, y+1)
 			));
 		}
 
 		if (x > 0 && y > 0) {
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x-1, y),
-				getVertex(x, y-1)
+				thisPosition,
+				getPosition(x-1, y),
+				getPosition(x, y-1)
 			));
 		}
 
 		if (x < _cells && y > 0) {
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x+1, y-1),
-				getVertex(x+1, y)
+				thisPosition,
+				getPosition(x+1, y-1),
+				getPosition(x+1, y)
 			));
 			faceNormals.push_back(calcTriangleNormal(
-				thisVertex,
-				getVertex(x, y-1),
-				getVertex(x+1, y-1)
+				thisPosition,
+				getPosition(x, y-1),
+				getPosition(x+1, y-1)
 			));
 		}
 
@@ -127,9 +125,7 @@ private:
 		return sum / static_cast<float>(faceNormals.size());
 	}
 
-	std::vector<Vertex> generateVertices() {
-		std::vector<Vertex> out;
-
+	void generateVertices() {
 		// Colors for extreme points of graph.
 		// nxny - (-range, -range)
 		// pxny - (range, -range)
@@ -148,25 +144,18 @@ private:
 				float lerp_a_x = static_cast<float>(xpt) / static_cast<float>(_cells);
 				float x = glm::mix(-_range, _range, lerp_a_x);
 
-				out.push_back({
-					toModelSpace({x, y, _func->eval(x, y)}),
-					lerp2d(nxny, pxny, nxpy, pxpy, lerp_a_x, lerp_a_y)
-				});
+				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
+				_colors.push_back(lerp2d(nxny, pxny, nxpy, pxpy, lerp_a_x, lerp_a_y));
 			}
 		}
-
-		return out;
 	}
-	std::vector<glm::vec3> generateNormals() {
-		std::vector<glm::vec3> normals;
 
+	void generateVertexNormals() {
 		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
 			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
-				normals.push_back(calcVertexNormal(xpt, ypt));
+				_normals.push_back(calcVertexNormal(xpt, ypt));
 			}
 		}
-
-		return normals;
 	}
 
 	std::vector<uint16_t> generateLineIndices() {
@@ -216,25 +205,25 @@ public:
 	Graph(const F& f, unsigned int cells, float range)
 	: _func { &f },
 	  _cells { cells },
-	  _range { range },
-	  _vertices { generateVertices() },
-	  _normals { generateNormals() }
-	{}
+	  _range { range }
+	{
+		generateVertices();
+		generateVertexNormals();
+	}
 
 	auto cells() const { return _cells; }
 	auto range() const { return _range; }
-	const auto& vertices() const { return _vertices; }
+	const auto& positions() const { return _positions; }
+	const auto& colors() const { return _colors; }
 	const auto& normals() const { return _normals; }
 
 	RenderObject makeSurfaceObject(GraphDevice& device, Renderer& renderer) {
 		return {
 			device,
 			renderer,
-			{
-				device,
-				_vertices,
-				generateTriangleIndices()
-			},
+			_positions,
+			_colors,
+			generateTriangleIndices(),
 			{}
 		};
 	}
@@ -245,11 +234,9 @@ public:
 		return {
 			device,
 			renderer,
-			{
-				device,
-				recolor(_vertices, color),
-				generateLineIndices()
-			},
+			_positions,
+			solidColor(color, _positions.size()),
+			generateLineIndices(),
 			{}
 		};
 	}
@@ -257,23 +244,21 @@ public:
 	RenderObject makeNormalObject(GraphDevice& device, Renderer& renderer) {
 		glm::vec3 color { 1.0f, 1.0f, 1.0f };
 		float normLength = 0.1f;
-		std::vector<Vertex> vertices { recolor(_vertices, color) };
+		std::vector<Position> positions { _positions };
 		std::vector<uint16_t> indices {};
 
-		for (size_t i = 0; i < _vertices.size(); i++) {
-			vertices.push_back({_vertices[i].pos + _normals[i]*normLength, color});
+		for (size_t i = 0; i < _positions.size(); i++) {
+			positions.push_back(_positions[i].vec + _normals[i]*normLength);
 			indices.push_back(static_cast<uint16_t>(i));
-			indices.push_back(static_cast<uint16_t>(i + _vertices.size()));
+			indices.push_back(static_cast<uint16_t>(i + _positions.size()));
 		}
 
 		return {
 			device,
 			renderer,
-			{
-				device,
-				vertices,
-				indices
-			},
+			positions,
+			solidColor(color, positions.size()),
+			indices,
 			{}
 		};
 	}

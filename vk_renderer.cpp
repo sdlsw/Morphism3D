@@ -197,15 +197,7 @@ void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int wid
 	_camMats.copyIn(mats);
 }
 
-BoundBuffer Model::createVertexBuffer(const std::vector<Vertex>& vertices) {
-	return makeStaticGPUBuffer(
-		*_graphDevice,
-		vertices,
-		vk::BufferUsageFlagBits::eVertexBuffer
-	);
-}
-
-BoundBuffer Model::createIndexBuffer(const std::vector<uint16_t>& indices) {
+BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) {
 	return makeStaticGPUBuffer(
 		*_graphDevice,
 		indices,
@@ -213,12 +205,10 @@ BoundBuffer Model::createIndexBuffer(const std::vector<uint16_t>& indices) {
 	);
 }
 
-void Model::record(RenderContext& ctx) const {
+void StaticMesh::record(RenderContext& ctx) const {
 	auto& commandBuffer = ctx.frameResources().commandBuffer();
 
-	vk::Buffer vertexBuffers[] = {*_vertexBuffer.buffer()};
-	vk::DeviceSize offsets[] = { 0 };
-	commandBuffer.bindVertexBuffers(0, vertexBuffers, offsets);
+	_positions.record(ctx);
 	commandBuffer.bindIndexBuffer(_indexBuffer.buffer(), 0, vk::IndexType::eUint16);
 	commandBuffer.drawIndexed(static_cast<uint32_t>(_indexCount), 1, 0, 0, 0);
 }
@@ -330,6 +320,8 @@ vk::raii::PipelineLayout Renderer::createPipelineLayout() {
 
 vk::raii::Pipeline Renderer::createLinePipeline() {
 	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
+		.withInputType<Position>()
+		.withInputType<Color>()
 		.withVertexShader("vert.spv")
 		.withFragmentShader("frag.spv")
 		.withTopology(vk::PrimitiveTopology::eLineList)
@@ -338,6 +330,8 @@ vk::raii::Pipeline Renderer::createLinePipeline() {
 
 vk::raii::Pipeline Renderer::createTrianglePipeline() {
 	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
+		.withInputType<Position>()
+		.withInputType<Color>()
 		.withVertexShader("vert.spv")
 		.withFragmentShader("frag.spv")
 		.withTopology(vk::PrimitiveTopology::eTriangleList)
@@ -520,6 +514,7 @@ void RenderObject::record(RenderContext& ctx) {
 		0,
 		modelMat
 	);
-	_model.record(ctx);
+	_colors.record(ctx);
+	_mesh.record(ctx);
 }
 }
