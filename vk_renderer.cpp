@@ -504,17 +504,28 @@ void Renderer::updateRenderContext() {
 	);
 }
 
-void RenderObject::record(RenderContext& ctx) {
-	auto& cmdBuffer = ctx.frameResources().commandBuffer();
-
+void TransformComponent::render() {
+	auto& cmdBuffer = _renderer->currentFrameResources().commandBuffer();
 	glm::mat4 modelMat = transform.matrix();
 	cmdBuffer.pushConstants<glm::mat4>(
-		*ctx.pipelineLayout(),
+		*_renderer->pipelineLayout(),
 		vk::ShaderStageFlagBits::eVertex,
 		0,
 		modelMat
 	);
-	_colors.record(ctx);
-	_mesh.record(ctx);
+}
+
+void populateStaticEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	StaticMesh& mesh,
+	StaticVertexAttributes<Color>& colors
+) {
+	entity.addComponent<TransformComponent>(renderer, transform);
+	entity.addComponent<StaticMeshComponent>(renderer, mesh);
+	entity.addComponent<StaticVertexAttributeComponent<Color>>(renderer, colors);
+
+	entity.setLastRender<StaticMeshComponent>();
 }
 }

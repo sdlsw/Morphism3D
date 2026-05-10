@@ -83,58 +83,89 @@ public:
 	}
 };
 
-g3d::RenderObject createAxes(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-	const float arrowLength = 1.2f;
-	const float arrowWidth = 0.1f;
-	const float arrowTipLength = 0.1f;
+class Axes {
+private:
+	static constexpr float arrowLength = 1.2f;
+	static constexpr float arrowWidth = 0.1f;
+	static constexpr float arrowTipLength = 0.1f;
+	static constexpr unsigned int X = 0;
+	static constexpr unsigned int Y = 1;
+	static constexpr unsigned int Z = 2;
+	static constexpr unsigned int N_AXES = 3;
 
-	glm::vec3 xcolor {1.0f, 0.0f, 0.0f};
-	glm::vec3 ycolor {0.0f, 1.0f, 0.0f};
-	glm::vec3 zcolor {0.2f, 0.2f, 1.0f};
+	g3d::StaticMesh _arrow;
+	std::vector<g3d::StaticVertexAttributes<g3d::Color>> _colors;
+	std::array<g3d::Entity, N_AXES> _axisEntities;
 
-	// FIXME This is the same model but rotated 90 degrees a few times.
-	// Redo once I get model sharing working
-	std::vector<g3d::Position> positions {
-		// X arrow
-		{0.0f, 0.0f, 0.0f},
-		{arrowLength, 0.0f, 0.0f},
-		{arrowLength-arrowTipLength, arrowWidth, 0.0f},
-		{arrowLength-arrowTipLength, -arrowWidth, 0.0f},
+	g3d::StaticMesh createArrowMesh(g3d::GraphDevice& device) {
+		// This arrow is pointing in the X direction.
+		std::vector<g3d::Position> positions {
+			{0.0f, 0.0f, 0.0f},
+			{arrowLength, 0.0f, 0.0f},
+			{arrowLength-arrowTipLength, arrowWidth, 0.0f},
+			{arrowLength-arrowTipLength, -arrowWidth, 0.0f},
+			{arrowLength-arrowTipLength, 0.0f, arrowWidth},
+			{arrowLength-arrowTipLength, 0.0f, -arrowWidth}
+		};
+		std::vector<uint16_t> indices { 0, 1, 1, 2, 1, 3, 1, 4, 1, 5 };
 
-		// Y arrow
-		{0.0f, 0.0f, 0.0f},
-		{0.0f, arrowLength, 0.0f},
-		{arrowWidth, arrowLength-arrowTipLength, 0.0f},
-		{-arrowWidth, arrowLength-arrowTipLength, 0.0f},
+		return {
+			device,
+			positions,
+			indices
+		};
+	}
 
-		// Z arrow
-		{0.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, arrowLength},
-		{arrowWidth, 0.0f, arrowLength-arrowTipLength},
-		{-arrowWidth, 0.0f, arrowLength-arrowTipLength}
-	};
+	std::vector<g3d::StaticVertexAttributes<g3d::Color>> createColors(
+		g3d::GraphDevice& device
+	) {
+		std::vector<g3d::StaticVertexAttributes<g3d::Color>> out;
 
-	std::vector<g3d::Color> colors {
-		xcolor, xcolor, xcolor, xcolor,
-		ycolor, ycolor, ycolor, ycolor,
-		zcolor, zcolor, zcolor, zcolor
-	};
+		for (unsigned int i = 0; i < N_AXES; i++) {
+			g3d::Color c { 0.0f, 0.0f, 0.0f};
+			c.vec[i] = 1.0f;
+			c.vec[(i + 1) % N_AXES] = 0.1f;
+			c.vec[(i + 2) % N_AXES] = 0.1f;
+			std::vector<g3d::Color> solidColor { _arrow.positionCount(), c };
+			out.emplace_back(device, solidColor);
+		}
 
-	std::vector<uint16_t> indices {
-		0, 1, 1, 2, 1, 3,
-		4, 5, 5, 6, 5, 7,
-		8, 9, 9, 10, 9, 11
-	};
+		return out;
+	}
 
-	return {
-		device,
-		renderer,
-		positions,
-		colors,
-		indices,
-		{}
-	};
-}
+	g3d::Transform axisTransform(unsigned int n) {
+		glm::mat4 rotation {1.0f};
+
+		if (n == Y) {
+			glm::vec3 rotAxis {0.0f, 0.0f, 1.0f};
+			rotation = glm::rotate({1.0f}, glm::radians(90.0f), rotAxis);
+		} else if (n == Z) {
+			glm::vec3 rotAxis {0.0f, 1.0f, 0.0f};
+			rotation = glm::rotate({1.0f}, glm::radians(-90.0f), rotAxis);
+		}
+
+		return {{}, g3d::Transform::default_scale, rotation};
+	}
+
+	void populateAxisEntity(g3d::Renderer& renderer, g3d::Entity& entity, unsigned int n) {
+		g3d::populateStaticEntity(renderer, entity, axisTransform(n), _arrow, _colors[n]);
+	}
+public:
+	Axes(g3d::GraphDevice& device, g3d::Renderer& renderer)
+	: _arrow { createArrowMesh(device) },
+	  _colors { createColors(device) }
+	{
+		for (unsigned int i = 0; i < N_AXES; i++) {
+			populateAxisEntity(renderer, _axisEntities[i], i);
+		}
+	}
+
+	void render() {
+		for (auto& axis : _axisEntities) {
+			axis.render();
+		}
+	}
+};
 
 class ConstantRotation {
 private:
@@ -171,16 +202,13 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 	g3d::RenderSettings renderSettings;
 
-	float gridLoft = 0.002f;
 	unsigned int cells = 20;
 	float range = 3.0f;
 
 	g3d::Graph<TestFunc> graph { {}, cells, range };
-	auto surfaceObject = graph.makeSurfaceObject(device, renderer);
-	auto gridObject = graph.makeGridObject(device, renderer);
-	auto normalsObject = graph.makeNormalObject(device, renderer);
+	g3d::GraphEntities graphEntities { device, renderer, graph };
 
-	auto axesObject = createAxes(device, renderer);
+	Axes axes { device, renderer };
 
 	g3d::Ui ui { camController, renderSettings };
 
@@ -207,24 +235,22 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		renderer.setMode(g3d::RenderMode::line);
 
 		if (renderSettings.renderAxes) {
-			axesObject.record(renderContext);
+			axes.render();
 		}
 
 		// TODO This is really dumb but it doesn't look too terrible...
 		// Look into using textures for the grid, maybe.
 		if (renderSettings.renderGrid) {
-			gridObject.transform.translation = {0.0f, 0.0f, gridLoft};
-			gridObject.record(renderContext);
-			gridObject.transform.translation = {0.0f, 0.0f, -gridLoft};
-			gridObject.record(renderContext);
+			graphEntities.gridTop().render();
+			graphEntities.gridBottom().render();
 		}
 
 		if (renderSettings.renderNormals) {
-			normalsObject.record(renderContext);
+			graphEntities.normals().render();
 		}
 
 		renderer.setMode(g3d::RenderMode::triangle);
-		surfaceObject.record(renderContext);
+		graphEntities.surface().render();
 
 		g3d::imGuiRecord(renderContext);
 		renderer.endFrame();

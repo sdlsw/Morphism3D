@@ -1,6 +1,7 @@
 #pragma once
 #include "global_defines.h"
 
+#include "entity.h"
 #include "vk_camera.h"
 #include "vk_constants.h"
 #include "vk_datatypes.h"
@@ -272,6 +273,7 @@ public:
 	auto& context() { return _renderContext; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 	auto& renderPass() { return _renderPass; }
+	auto& pipelineLayout() { return _pipelineLayout; }
 	uint32_t swapchainImageCount() {
 		return static_cast<uint32_t>(_windowResources->swapchain().getImages().size());
 	}
@@ -320,6 +322,7 @@ private:
 	BoundBuffer _indexBuffer;
 
 	size_t _indexCount;
+	size_t _positionCount;
 
 	BoundBuffer createIndexBuffer(const std::vector<uint16_t>& indices);
 public:
@@ -337,38 +340,76 @@ public:
 		indices,
 		vk::BufferUsageFlagBits::eIndexBuffer
 	  ) },
+	  _positionCount { positions.size() },
 	  _indexCount { indices.size() }
 	{}
 
 	void record(RenderContext& ctx) const;
+
+	auto indexCount() const { return _indexCount; }
+	auto positionCount() const { return _positionCount; }
 };
 
-class RenderObject {
+class TransformComponent : public Component {
 private:
-	GraphDevice* _graphDevice;
 	Renderer* _renderer;
-	StaticMesh _mesh;
-	StaticVertexAttributes<Color> _colors;
+
 public:
 	Transform transform;
-
-	RenderObject() = delete;
-	RenderObject(RenderObject&&) = default;
-	RenderObject(
-		GraphDevice& graphDevice,
+	TransformComponent(Renderer& renderer) : _renderer { &renderer } {}
+	TransformComponent(
 		Renderer& renderer,
-		const std::vector<Position>& positions,
-		const std::vector<Color>& colors,
-		const std::vector<uint16_t>& indices,
-		const Transform& transform
+		const Transform& initialTransform
 	)
-	: _graphDevice { &graphDevice },
-	  _renderer { &renderer },
-	  _mesh { graphDevice, positions, indices },
-	  _colors { graphDevice, colors },
-	  transform { transform }
+	: _renderer { &renderer },
+	  transform { initialTransform }
 	{}
 
-	void record(RenderContext& ctx);
+	void render() override;
 };
+
+template<typename T>
+class StaticVertexAttributeComponent : public Component {
+private:
+	Renderer* _renderer;
+	StaticVertexAttributes<T>* _attributes;
+
+public:
+	StaticVertexAttributeComponent(
+		Renderer& renderer,
+		StaticVertexAttributes<T>& attributes
+	)
+	: _renderer { &renderer },
+	  _attributes { &attributes }
+	{}
+
+	void render() override { _attributes->record(_renderer->context()); }
+};
+
+class StaticMeshComponent : public Component {
+private:
+	Renderer* _renderer;
+	StaticMesh* _mesh;
+
+public:
+	StaticMeshComponent(
+		Renderer& renderer,
+		StaticMesh& mesh
+	)
+	: _renderer { &renderer },
+	  _mesh { &mesh }
+	{}
+
+	void render() override { _mesh->record(_renderer->context()); }
+};
+
+// Convenience function for setting up a render entity that never changes
+// except for transform.
+void populateStaticEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	StaticMesh& mesh,
+	StaticVertexAttributes<Color>& colors
+);
 }

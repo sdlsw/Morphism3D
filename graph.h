@@ -47,6 +47,8 @@ private:
 	float _range;
 	const F* _func;
 
+	// TODO Store Positions in func space coordinates and convert to model
+	// space when constructing entities
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
 	std::vector<glm::vec3> _normals;
@@ -158,6 +160,23 @@ private:
 		}
 	}
 
+public:
+	Graph() = delete;
+	Graph(const F& f, unsigned int cells, float range)
+	: _func { &f },
+	  _cells { cells },
+	  _range { range }
+	{
+		generateVertices();
+		generateVertexNormals();
+	}
+
+	auto cells() const { return _cells; }
+	auto range() const { return _range; }
+	const auto& positions() const { return _positions; }
+	const auto& colors() const { return _colors; }
+	const auto& normals() const { return _normals; }
+
 	std::vector<uint16_t> generateLineIndices() {
 		std::vector<uint16_t> out;
 
@@ -179,6 +198,7 @@ private:
 
 		return out;
 	}
+
 	std::vector<uint16_t> generateTriangleIndices() {
 		std::vector<uint16_t> out;
 
@@ -200,67 +220,65 @@ private:
 
 		return out;
 	}
-public:
-	Graph() = delete;
-	Graph(const F& f, unsigned int cells, float range)
-	: _func { &f },
-	  _cells { cells },
-	  _range { range }
-	{
-		generateVertices();
-		generateVertexNormals();
-	}
+};
 
-	auto cells() const { return _cells; }
-	auto range() const { return _range; }
-	const auto& positions() const { return _positions; }
-	const auto& colors() const { return _colors; }
-	const auto& normals() const { return _normals; }
+template<typename T>
+class GraphEntities {
+private:
+	static constexpr float gridLoft = 0.002f;
+	static constexpr float normLength = 0.1f;
 
-	RenderObject makeSurfaceObject(GraphDevice& device, Renderer& renderer) {
-		return {
-			device,
-			renderer,
-			_positions,
-			_colors,
-			generateTriangleIndices(),
-			{}
-		};
-	}
+	// TODO: Split vertex and index buffers into different components
+	// so vertex data can be reused between surface and grid entities.
+	StaticMesh _surfaceMesh;
+	StaticVertexAttributes<Color> _surfaceColors;
+	Entity _surface;
 
-	RenderObject makeGridObject(GraphDevice& device, Renderer& renderer) {
-		glm::vec3 color { 0.1f, 0.1f, 0.1f };
+	StaticMesh _gridMesh;
+	StaticVertexAttributes<Color> _gridColors;
+	Entity _gridTop;
+	Entity _gridBottom;
 
-		return {
-			device,
-			renderer,
-			_positions,
-			solidColor(color, _positions.size()),
-			generateLineIndices(),
-			{}
-		};
-	}
+	StaticMesh _normalMesh;
+	StaticVertexAttributes<Color> _normalColors;
+	Entity _normals;
 
-	RenderObject makeNormalObject(GraphDevice& device, Renderer& renderer) {
-		glm::vec3 color { 1.0f, 1.0f, 1.0f };
-		float normLength = 0.1f;
-		std::vector<Position> positions { _positions };
+	StaticMesh createNormalMesh(GraphDevice& device, Graph<T>& graph) {
+		std::vector<Position> positions { graph.positions() };
 		std::vector<uint16_t> indices {};
 
-		for (size_t i = 0; i < _positions.size(); i++) {
-			positions.push_back(_positions[i].vec + _normals[i]*normLength);
+		for (size_t i = 0; i < graph.positions().size(); i++) {
+			positions.push_back(graph.positions()[i].vec + graph.normals()[i]*normLength);
 			indices.push_back(static_cast<uint16_t>(i));
-			indices.push_back(static_cast<uint16_t>(i + _positions.size()));
+			indices.push_back(static_cast<uint16_t>(i + graph.positions().size()));
 		}
 
-		return {
-			device,
-			renderer,
-			positions,
-			solidColor(color, positions.size()),
-			indices,
-			{}
-		};
+		return { device, positions, indices };
 	}
+public:
+	GraphEntities(
+		GraphDevice& device,
+		Renderer& renderer,
+		Graph<T>& graph
+	)
+	: _surfaceMesh { device, graph.positions(), graph.generateTriangleIndices() },
+	  _surfaceColors { device, graph.colors() },
+	  _gridMesh { device, graph.positions(), graph.generateLineIndices() },
+	  _gridColors { device, solidColor({0.1f, 0.1f, 0.1f}, _gridMesh.positionCount()) },
+	  _normalMesh { createNormalMesh(device, graph) },
+	  _normalColors { device, solidColor({1.0f, 1.0f, 1.0f}, _normalMesh.positionCount()) }
+	{
+		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors);
+
+		populateStaticEntity(renderer, _gridTop, {{0.0f, 0.0f, gridLoft}}, _gridMesh, _gridColors);
+		populateStaticEntity(renderer, _gridBottom, {{0.0f, 0.0f, -gridLoft}}, _gridMesh, _gridColors);
+
+		populateStaticEntity(renderer, _normals, {}, _normalMesh, _normalColors);
+	}
+
+	auto& surface() { return _surface; }
+	auto& gridTop() { return _gridTop; }
+	auto& gridBottom() { return _gridBottom; }
+	auto& normals() { return _normals; }
 };
 }
