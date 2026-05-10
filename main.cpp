@@ -97,7 +97,7 @@ private:
 	std::vector<g3d::StaticVertexAttributes<g3d::Color>> _colors;
 	std::array<g3d::Entity, N_AXES> _axisEntities;
 
-	g3d::StaticMesh createArrowMesh(g3d::GraphDevice& device) {
+	g3d::StaticMesh createArrowMesh(g3d::Renderer& renderer) {
 		// This arrow is pointing in the X direction.
 		std::vector<g3d::Position> positions {
 			{0.0f, 0.0f, 0.0f},
@@ -110,15 +110,13 @@ private:
 		std::vector<uint16_t> indices { 0, 1, 1, 2, 1, 3, 1, 4, 1, 5 };
 
 		return {
-			device,
+			renderer,
 			positions,
 			indices
 		};
 	}
 
-	std::vector<g3d::StaticVertexAttributes<g3d::Color>> createColors(
-		g3d::GraphDevice& device
-	) {
+	std::vector<g3d::StaticVertexAttributes<g3d::Color>> createColors(g3d::Renderer& renderer) {
 		std::vector<g3d::StaticVertexAttributes<g3d::Color>> out;
 
 		for (unsigned int i = 0; i < N_AXES; i++) {
@@ -127,7 +125,7 @@ private:
 			c.vec[(i + 1) % N_AXES] = 0.1f;
 			c.vec[(i + 2) % N_AXES] = 0.1f;
 			std::vector<g3d::Color> solidColor { _arrow.positionCount(), c };
-			out.emplace_back(device, solidColor);
+			out.emplace_back(renderer, solidColor);
 		}
 
 		return out;
@@ -151,9 +149,9 @@ private:
 		g3d::populateStaticEntity(renderer, entity, axisTransform(n), _arrow, _colors[n]);
 	}
 public:
-	Axes(g3d::GraphDevice& device, g3d::Renderer& renderer)
-	: _arrow { createArrowMesh(device) },
-	  _colors { createColors(device) }
+	Axes(g3d::Renderer& renderer)
+	: _arrow { createArrowMesh(renderer) },
+	  _colors { createColors(renderer) }
 	{
 		for (unsigned int i = 0; i < N_AXES; i++) {
 			populateAxisEntity(renderer, _axisEntities[i], i);
@@ -206,9 +204,9 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	float range = 3.0f;
 
 	g3d::Graph<TestFunc> graph { {}, cells, range };
-	g3d::GraphEntities graphEntities { device, renderer, graph };
+	g3d::GraphEntities<TestFunc> graphEntities { renderer, graph };
 
-	Axes axes { device, renderer };
+	Axes axes { renderer };
 
 	g3d::Ui ui { camController, renderSettings };
 

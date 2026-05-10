@@ -243,7 +243,7 @@ private:
 	StaticVertexAttributes<Color> _normalColors;
 	Entity _normals;
 
-	StaticMesh createNormalMesh(GraphDevice& device, Graph<T>& graph) {
+	StaticMesh createNormalMesh(Renderer& renderer, Graph<T>& graph) {
 		std::vector<Position> positions { graph.positions() };
 		std::vector<uint16_t> indices {};
 
@@ -253,20 +253,19 @@ private:
 			indices.push_back(static_cast<uint16_t>(i + graph.positions().size()));
 		}
 
-		return { device, positions, indices };
+		return { renderer, positions, indices };
 	}
 public:
 	GraphEntities(
-		GraphDevice& device,
 		Renderer& renderer,
 		Graph<T>& graph
 	)
-	: _surfaceMesh { device, graph.positions(), graph.generateTriangleIndices() },
-	  _surfaceColors { device, graph.colors() },
-	  _gridMesh { device, graph.positions(), graph.generateLineIndices() },
-	  _gridColors { device, solidColor({0.1f, 0.1f, 0.1f}, _gridMesh.positionCount()) },
-	  _normalMesh { createNormalMesh(device, graph) },
-	  _normalColors { device, solidColor({1.0f, 1.0f, 1.0f}, _normalMesh.positionCount()) }
+	: _surfaceMesh { renderer, graph.positions(), graph.generateTriangleIndices() },
+	  _surfaceColors { renderer, graph.colors() },
+	  _gridMesh { renderer, graph.positions(), graph.generateLineIndices() },
+	  _gridColors { renderer, solidColor({0.1f, 0.1f, 0.1f}, _gridMesh.positionCount()) },
+	  _normalMesh { createNormalMesh(renderer, graph) },
+	  _normalColors { renderer, solidColor({1.0f, 1.0f, 1.0f}, _normalMesh.positionCount()) }
 	{
 		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors);
 

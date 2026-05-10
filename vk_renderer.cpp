@@ -197,22 +197,6 @@ void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int wid
 	_camMats.copyIn(mats);
 }
 
-BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) {
-	return makeStaticGPUBuffer(
-		*_graphDevice,
-		indices,
-		vk::BufferUsageFlagBits::eIndexBuffer
-	);
-}
-
-void StaticMesh::record(RenderContext& ctx) const {
-	auto& commandBuffer = ctx.frameResources().commandBuffer();
-
-	_positions.record(ctx);
-	commandBuffer.bindIndexBuffer(_indexBuffer.buffer(), 0, vk::IndexType::eUint16);
-	commandBuffer.drawIndexed(static_cast<uint32_t>(_indexCount), 1, 0, 0, 0);
-}
-
 vk::raii::RenderPass Renderer::createRenderPass() {
 	vk::AttachmentDescription colorAttachment {
 		.format = _windowResources->swapchainFormat(),
@@ -504,10 +488,25 @@ void Renderer::updateRenderContext() {
 	);
 }
 
+BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) {
+	return makeStaticGPUBuffer(
+		renderer().graphDevice(),
+		indices,
+		vk::BufferUsageFlagBits::eIndexBuffer
+	);
+}
+
+void StaticMesh::record() const {
+	auto& cmd = _positions.renderer().currentCommandBuffer();
+	_positions.record();
+	cmd.bindIndexBuffer(_indexBuffer.buffer(), 0, vk::IndexType::eUint16);
+	cmd.drawIndexed(static_cast<uint32_t>(_indexCount), 1, 0, 0, 0);
+}
+
 void TransformComponent::render() {
-	auto& cmdBuffer = _renderer->currentFrameResources().commandBuffer();
+	auto& cmd = _renderer->currentCommandBuffer();
 	glm::mat4 modelMat = transform.matrix();
-	cmdBuffer.pushConstants<glm::mat4>(
+	cmd.pushConstants<glm::mat4>(
 		*_renderer->pipelineLayout(),
 		vk::ShaderStageFlagBits::eVertex,
 		0,
@@ -523,8 +522,8 @@ void populateStaticEntity(
 	StaticVertexAttributes<Color>& colors
 ) {
 	entity.addComponent<TransformComponent>(renderer, transform);
-	entity.addComponent<StaticMeshComponent>(renderer, mesh);
-	entity.addComponent<StaticVertexAttributeComponent<Color>>(renderer, colors);
+	entity.addComponent<StaticMeshComponent>(mesh);
+	entity.addComponent<StaticVertexAttributeComponent<Color>>(colors);
 
 	entity.setLastRender<StaticMeshComponent>();
 }

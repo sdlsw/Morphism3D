@@ -268,8 +268,10 @@ public:
 	  _perFrameResources { createPerFrameResources() }
 	{}
 
+	auto& graphDevice() { return *_graphDevice; }
 	auto& currentFrameResources() { return _perFrameResources[_currentFrame]; }
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
+	auto& currentCommandBuffer() { return currentFrameResources().commandBuffer(); }
 	auto& context() { return _renderContext; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 	auto& renderPass() { return _renderPass; }
@@ -287,12 +289,12 @@ public:
 template<typename T>
 class StaticVertexAttributes {
 private:
-	GraphDevice* _graphDevice;
+	Renderer* _renderer;
 	BoundBuffer _buffer;
 
 	BoundBuffer createBuffer(const std::vector<T>& attrs) {
 		return makeStaticGPUBuffer(
-			*_graphDevice,
+			_renderer->graphDevice(),
 			attrs,
 			vk::BufferUsageFlagBits::eVertexBuffer
 		);
@@ -302,22 +304,22 @@ public:
 	StaticVertexAttributes() = delete;
 	StaticVertexAttributes(StaticVertexAttributes&&) = default;
 	StaticVertexAttributes(
-		GraphDevice& graphDevice,
+		Renderer& renderer,
 		const std::vector<T>& attrs
-	) : _graphDevice { &graphDevice }, _buffer { createBuffer(attrs) } {}
+	) : _renderer { &renderer }, _buffer { createBuffer(attrs) } {}
 
-	void record(RenderContext& ctx) const {
-		auto& commandBuffer = ctx.frameResources().commandBuffer();
+	auto& renderer() const { return *_renderer; }
 
+	void record() const {
+		auto& cmd = _renderer->currentCommandBuffer();
 		vk::Buffer vertexBuffers[] = {*_buffer.buffer()};
 		vk::DeviceSize offsets[] = { 0 };
-		commandBuffer.bindVertexBuffers(T::binding, vertexBuffers, offsets);
+		cmd.bindVertexBuffers(T::binding, vertexBuffers, offsets);
 	}
 };
 
 class StaticMesh {
 private:
-	GraphDevice* _graphDevice;
 	StaticVertexAttributes<Position> _positions;
 	BoundBuffer _indexBuffer;
 
@@ -329,14 +331,13 @@ public:
 	StaticMesh() = delete;
 	StaticMesh(StaticMesh&&) = default;
 	StaticMesh(
-		GraphDevice& graphDevice,
+		Renderer& renderer,
 		const std::vector<Position>& positions,
 		const std::vector<uint16_t>& indices
 	)
-	: _graphDevice { &graphDevice },
-	  _positions { graphDevice, positions },
+	: _positions { renderer, positions },
 	  _indexBuffer { makeStaticGPUBuffer(
-		graphDevice,
+		renderer.graphDevice(),
 		indices,
 		vk::BufferUsageFlagBits::eIndexBuffer
 	  ) },
@@ -344,10 +345,11 @@ public:
 	  _indexCount { indices.size() }
 	{}
 
-	void record(RenderContext& ctx) const;
-
+	auto& renderer() const { return _positions.renderer(); }
 	auto indexCount() const { return _indexCount; }
 	auto positionCount() const { return _positionCount; }
+
+	void record() const;
 };
 
 class TransformComponent : public Component {
@@ -356,6 +358,7 @@ private:
 
 public:
 	Transform transform;
+
 	TransformComponent(Renderer& renderer) : _renderer { &renderer } {}
 	TransformComponent(
 		Renderer& renderer,
@@ -371,36 +374,23 @@ public:
 template<typename T>
 class StaticVertexAttributeComponent : public Component {
 private:
-	Renderer* _renderer;
 	StaticVertexAttributes<T>* _attributes;
 
 public:
 	StaticVertexAttributeComponent(
-		Renderer& renderer,
 		StaticVertexAttributes<T>& attributes
-	)
-	: _renderer { &renderer },
-	  _attributes { &attributes }
-	{}
+	) : _attributes { &attributes } {}
 
-	void render() override { _attributes->record(_renderer->context()); }
+	void render() override { _attributes->record(); }
 };
 
 class StaticMeshComponent : public Component {
 private:
-	Renderer* _renderer;
 	StaticMesh* _mesh;
 
 public:
-	StaticMeshComponent(
-		Renderer& renderer,
-		StaticMesh& mesh
-	)
-	: _renderer { &renderer },
-	  _mesh { &mesh }
-	{}
-
-	void render() override { _mesh->record(_renderer->context()); }
+	StaticMeshComponent(StaticMesh& mesh) : _mesh { &mesh } {}
+	void render() override { _mesh->record(); }
 };
 
 // Convenience function for setting up a render entity that never changes
