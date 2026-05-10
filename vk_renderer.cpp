@@ -350,7 +350,7 @@ void Renderer::recreateWindowResources() {
 	_framebuffers = _windowResources->createFramebuffers(_renderPass);
 }
 
-RenderContext& Renderer::beginFrame(const Camera& camera) {
+void Renderer::beginFrame(const Camera& camera) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
 
@@ -363,7 +363,7 @@ RenderContext& Renderer::beginFrame(const Camera& camera) {
 	if (result == vk::Result::eErrorOutOfDateKHR) {
 		std::cerr << "[RENDERER] beginFrame: Got eErrorOutOfDateKHR, resizing..." << std::endl;
 		recreateWindowResources();
-		return _renderContext;
+		return;
 	}
 
 	const auto& extent = _windowResources->swapchainExtent();
@@ -418,16 +418,12 @@ RenderContext& Renderer::beginFrame(const Camera& camera) {
 	cmdBuffer.setScissor(0, scissor);
 	_currentSwapchainImage = imageIndex;
 
-	updateRenderContext();
-
 	_inFrame = true;
-
-	return _renderContext;
 }
 
 void Renderer::setMode(RenderMode mode) {
-	auto& cmdBuffer = _renderContext.frameResources().commandBuffer();
-	cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipelines.at(mode));
+	auto& cmd = currentCommandBuffer();
+	cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipelines.at(mode));
 }
 
 void Renderer::endFrame() {
@@ -477,15 +473,6 @@ void Renderer::endFrame() {
 	}
 
 	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-void Renderer::updateRenderContext() {
-	_renderContext = RenderContext(
-		*_graphDevice,
-		currentFrameResources(),
-		_pipelineLayout,
-		_currentFrame
-	);
 }
 
 BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) {

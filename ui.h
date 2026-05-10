@@ -22,7 +22,7 @@ public:
 
 void imGuiInfo(const std::string& message);
 void imGuiNewFrame();
-void imGuiRecord(RenderContext& ctx);
+void imGuiRecord(Renderer& renderer);
 void imGuiHandleControlExclusivity(Window& window, CameraController& camController);
 
 class CameraWindow {

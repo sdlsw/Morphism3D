@@ -125,10 +125,10 @@ void imGuiHandleControlExclusivity(Window& window, CameraController& camControll
 	}
 }
 
-void imGuiRecord(g3d::RenderContext& ctx) {
+void imGuiRecord(Renderer& renderer) {
 	ImGui::Render();
 	ImDrawData* drawData = ImGui::GetDrawData();
-	ImGui_ImplVulkan_RenderDrawData(drawData, *ctx.frameResources().commandBuffer());
+	ImGui_ImplVulkan_RenderDrawData(drawData, *renderer.currentCommandBuffer());
 }
 
 void CameraWindow::resetButton(

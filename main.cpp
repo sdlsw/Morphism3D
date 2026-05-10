@@ -224,7 +224,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		camController.update();
 
 		// Draw the frame.
-		auto& renderContext = renderer.beginFrame(camController.camera());
+		renderer.beginFrame(camController.camera());
 		if (!renderer.inFrame()) {
 			// Indicates we failed to begin the frame for some
 			// outside reason - probably window resize
@@ -260,7 +260,7 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 			graphEntities.surface().render();
 		}
 
-		g3d::imGuiRecord(renderContext);
+		g3d::imGuiRecord(renderer);
 		renderer.endFrame();
 
 		// TODO I don't think this is *quite* accurate since endFrame()

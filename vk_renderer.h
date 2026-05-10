@@ -181,36 +181,6 @@ public:
 	void updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height);
 };
 
-// Lightweight context object pointing to objects and information required for
-// rendering. Reconstructed each frame, and only valid between
-// Renderer::beginFrame() and Renderer::endFrame()
-class RenderContext {
-private:
-	GraphDevice* _graphDevice;
-	PerFrameResources* _frameResources;
-	vk::raii::PipelineLayout* _pipelineLayout;
-	unsigned int _currentFrame;
-
-public:
-	RenderContext() = default;
-	RenderContext(
-		GraphDevice& graphDevice,
-		PerFrameResources& frameResources,
-		vk::raii::PipelineLayout& pipelineLayout,
-		unsigned int currentFrame
-	)
-	: _graphDevice { &graphDevice },
-	  _frameResources { &frameResources },
-	  _pipelineLayout { &pipelineLayout },
-	  _currentFrame { currentFrame }
-	{}
-
-	auto& graphDevice() { return *_graphDevice; }
-	auto& frameResources() { return *_frameResources; }
-	auto& pipelineLayout() { return *_pipelineLayout; }
-	auto currentFrame() { return _currentFrame; }
-};
-
 enum class RenderMode {
 	line,
 	triangle
@@ -229,7 +199,6 @@ private:
 	DescriptorSetFactory _descriptorSetFactory;
 	vk::raii::PipelineLayout _pipelineLayout;
 	std::unordered_map<RenderMode, vk::raii::Pipeline> _pipelines;
-	RenderContext _renderContext;
 
 	// Annoying: Framebuffer objects depend upon all the attachments
 	// to be used during rendering, and must be recreated on window
@@ -272,7 +241,6 @@ public:
 	auto& currentFrameResources() { return _perFrameResources[_currentFrame]; }
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
 	auto& currentCommandBuffer() { return currentFrameResources().commandBuffer(); }
-	auto& context() { return _renderContext; }
 	auto& descriptorSetFactory() { return _descriptorSetFactory; }
 	auto& renderPass() { return _renderPass; }
 	auto& pipelineLayout() { return _pipelineLayout; }
@@ -280,7 +248,7 @@ public:
 		return static_cast<uint32_t>(_windowResources->swapchain().getImages().size());
 	}
 
-	RenderContext& beginFrame(const Camera& camera);
+	void beginFrame(const Camera& camera);
 	bool inFrame() const { return _inFrame; }
 	void setMode(RenderMode mode);
 	void endFrame();
