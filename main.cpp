@@ -238,7 +238,11 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 		// TODO This is really dumb but it doesn't look too terrible...
 		// Look into using textures for the grid, maybe.
-		if (renderSettings.renderGrid) {
+		bool shouldRenderSurfaceGrid = (
+			renderSettings.renderGrid &&
+			renderSettings.graphRenderMode == g3d::GraphRenderMode::surface
+		);
+		if (shouldRenderSurfaceGrid) {
 			graphEntities.gridTop().render();
 			graphEntities.gridBottom().render();
 		}
@@ -247,8 +251,14 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 			graphEntities.normals().render();
 		}
 
+		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::wireframe) {
+			graphEntities.wireframe().render();
+		}
+
 		renderer.setMode(g3d::RenderMode::triangle);
-		graphEntities.surface().render();
+		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::surface) {
+			graphEntities.surface().render();
+		}
 
 		g3d::imGuiRecord(renderContext);
 		renderer.endFrame();

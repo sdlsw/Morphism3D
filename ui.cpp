@@ -47,9 +47,10 @@ static void shutdown() {
 	ImGui::DestroyContext();
 }
 
+static const std::string UNKNOWN_MODE_NAME = "???";
+
 static const std::string CAM_MODE_FIXED_NAME = "Fixed";
 static const std::string CAM_MODE_FREE_NAME = "Free";
-static const std::string CAM_MODE_UNKNOWN_NAME = "???";
 
 static const std::string& camModeName(const g3d::CameraMode& mode) {
 	switch (mode) {
@@ -58,12 +59,33 @@ static const std::string& camModeName(const g3d::CameraMode& mode) {
 		case g3d::CameraMode::forward:
 			return CAM_MODE_FREE_NAME;
 		default:
-			return CAM_MODE_UNKNOWN_NAME;
+			return UNKNOWN_MODE_NAME;
+	}
+}
+
+static const std::string RENDER_MODE_SURFACE_NAME = "Surface";
+static const std::string RENDER_MODE_WIREFRAME_NAME = "Wireframe";
+static const std::string RENDER_MODE_NONE_NAME = "None";
+
+static const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
+	switch (mode) {
+		case g3d::GraphRenderMode::surface:
+			return RENDER_MODE_SURFACE_NAME;
+		case g3d::GraphRenderMode::wireframe:
+			return RENDER_MODE_WIREFRAME_NAME;
+		case g3d::GraphRenderMode::none:
+			return RENDER_MODE_NONE_NAME;
+		default:
+			return UNKNOWN_MODE_NAME;
 	}
 }
 
 static const std::string PERSPECTIVE_FIXED_IN_FREE_TOOLTIP = "This setting is fixed to 1 in Free mode.";
 static const std::string POSITION_DISABLED_FIXED_TOOLTIP = "Position is set automatically in Fixed mode.";
+
+static const std::string SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP = (
+	"This setting cannot be changed outside Surface rendering mode."
+);
 
 namespace g3d {
 ImGuiWrapper::ImGuiWrapper(GraphDevice& device, Renderer& renderer) {
@@ -282,14 +304,34 @@ void CameraWindow::show() {
 	ImGui::End();
 }
 
+void RenderWindow::showGridToggle() {
+	bool disabled = _renderSettings->graphRenderMode != GraphRenderMode::surface;
+	bool forceSetting = _renderSettings->graphRenderMode == GraphRenderMode::wireframe;
+	bool* setting = disabled ? &forceSetting : &_renderSettings->renderGrid;
+
+	ImGui::BeginDisabled(disabled);
+	ImGui::Checkbox("Show Grid", setting);
+	if (disabled) ImGui::SetItemTooltip(SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP.c_str());
+	ImGui::EndDisabled();
+}
+
 void RenderWindow::show() {
 	if (!open) return;
 
 	ImGui::Begin("Render", &open);
 	ImGui::PushItemWidth(200.0f);
 
+	ImGui::SliderInt(
+		"Render Mode",
+		reinterpret_cast<int*>(&_renderSettings->graphRenderMode),
+		0,
+		GraphRenderModeCount-1,
+		renderModeName(_renderSettings->graphRenderMode).c_str(),
+		ImGuiSliderFlags_NoInput
+	);
+
 	ImGui::Checkbox("Show Axes", &_renderSettings->renderAxes);
-	ImGui::Checkbox("Show Grid", &_renderSettings->renderGrid);
+	showGridToggle();
 	ImGui::Checkbox("Show Normals", &_renderSettings->renderNormals);
 
 	ImGui::PopItemWidth();

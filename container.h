@@ -33,9 +33,18 @@ public:
 	}
 };
 
+enum class GraphRenderMode : int {
+	surface = 0,
+	wireframe,
+	none
+};
+
+constexpr unsigned int GraphRenderModeCount = 3;
+
 struct RenderSettings {
 	bool renderAxes = true;
 	bool renderGrid = true;
 	bool renderNormals = false;
+	GraphRenderMode graphRenderMode = GraphRenderMode::surface;
 };
 }

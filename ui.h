@@ -60,6 +60,7 @@ class RenderWindow {
 private:
 	RenderSettings* _renderSettings;
 
+	void showGridToggle();
 public:
 	bool open = true;
 	void show();

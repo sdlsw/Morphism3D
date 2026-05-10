@@ -243,6 +243,8 @@ private:
 	StaticVertexAttributes<Color> _normalColors;
 	Entity _normals;
 
+	Entity _wireframe;
+
 	StaticMesh createNormalMesh(Renderer& renderer, Graph<T>& graph) {
 		std::vector<Position> positions { graph.positions() };
 		std::vector<uint16_t> indices {};
@@ -273,11 +275,14 @@ public:
 		populateStaticEntity(renderer, _gridBottom, {{0.0f, 0.0f, -gridLoft}}, _gridMesh, _gridColors);
 
 		populateStaticEntity(renderer, _normals, {}, _normalMesh, _normalColors);
+
+		populateStaticEntity(renderer, _wireframe, {}, _gridMesh, _surfaceColors);
 	}
 
 	auto& surface() { return _surface; }
 	auto& gridTop() { return _gridTop; }
 	auto& gridBottom() { return _gridBottom; }
 	auto& normals() { return _normals; }
+	auto& wireframe() { return _wireframe; }
 };
 }
