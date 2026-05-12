@@ -1,10 +1,7 @@
 #include "ui.h"
 
-#include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
-
-#include <glm/gtc/type_ptr.hpp>
 
 static void checkVkResult(VkResult error) {
 	if (error == VK_SUCCESS) {
@@ -131,33 +128,47 @@ void imGuiRecord(Renderer& renderer) {
 	ImGui_ImplVulkan_RenderDrawData(drawData, *renderer.currentCommandBuffer());
 }
 
-void CameraWindow::resetButton(
+template<>
+void resettableSlider<float, float>(
+	const std::string& label,
 	float* setting,
-	float defaultValue
+	const float& _default,
+	float min,
+	float max
 ) {
-	ImGui::SameLine(ImGui::GetWindowWidth()-50);
-	if (ImGui::Button(std::format("Reset##{}", ImGui::GetItemID()).c_str())) {
-		*setting = defaultValue;
-	}
+	ImGui::SliderFloat(label.c_str(), setting, min, max);
+	resetButton(label, setting, _default);
+}
+
+template<>
+void resettableSlider<glm::vec3, float>(
+	const std::string& label,
+	glm::vec3* setting,
+	const glm::vec3& _default,
+	float min,
+	float max
+) {
+	ImGui::SliderFloat3(label.c_str(), glm::value_ptr(*setting), min, max);
+	resetButton(label, setting, _default);
+}
+
+template<>
+void resettableDrag<glm::vec3, float>(
+	const std::string& label,
+	glm::vec3* setting,
+	const glm::vec3& _default,
+	float inc
+) {
+	ImGui::DragFloat3(label.c_str(), glm::value_ptr(*setting), inc);
+	resetButton(label, setting, _default);
 }
 
 void CameraWindow::settingSlider(
 	const std::string& label,
 	float* setting,
-	float defaultValue,
-	float minValue,
-	float maxValue
-) {
-	ImGui::SliderFloat(label.c_str(), setting, minValue, maxValue);
-	resetButton(setting, defaultValue);
-}
-
-void CameraWindow::settingSlider(
-	const std::string& label,
-	float* setting,
 	float defaultValue
 ) {
-	settingSlider(label, setting, defaultValue, defaultValue / 5.0f, defaultValue * 3.0f);
+	resettableSlider(label, setting, defaultValue, defaultValue / 5.0f, defaultValue * 3.0f);
 }
 
 void CameraWindow::projectionSlider() {
@@ -171,7 +182,7 @@ void CameraWindow::projectionSlider() {
 	// the spacing of the Reset button. Will figure it out later.
 	ImGui::SliderFloat("Perspective", setting, 0.0f, 1.0f);
 	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
-	resetButton(setting, Camera::defaultProjectionMix);
+	resetButton("Perspective", setting, Camera::defaultProjectionMix);
 	if (disabled) ImGui::SetItemTooltip(PERSPECTIVE_FIXED_IN_FREE_TOOLTIP.c_str());
 	ImGui::EndDisabled();
 }
@@ -315,11 +326,8 @@ void RenderWindow::showGridToggle() {
 	ImGui::EndDisabled();
 }
 
-void RenderWindow::show() {
-	if (!open) return;
-
-	ImGui::Begin("Render", &open);
-	ImGui::PushItemWidth(200.0f);
+void RenderWindow::basicSettingsSection() {
+	ImGui::SeparatorText("Basic Settings");
 
 	ImGui::SliderInt(
 		"Render Mode",
@@ -333,7 +341,62 @@ void RenderWindow::show() {
 	ImGui::Checkbox("Show Axes", &_renderSettings->renderAxes);
 	showGridToggle();
 	ImGui::Checkbox("Show Normals", &_renderSettings->renderNormals);
+	ImGui::Checkbox("Show Light Position", &_renderSettings->renderLightObject);
+}
 
+void RenderWindow::lightSection() {
+	ImGui::SeparatorText("Light");
+	resettableSlider("Mix",
+		&_light->current.mix,
+		_light->initial().mix,
+		0.0f, 1.0f
+	);
+	resettableSlider("Color",
+		&_light->current.color,
+		_light->initial().color,
+		0.0f, 1.0f
+	);
+	resettableDrag("Position",
+		&_light->current.position,
+		_light->initial().position,
+		0.025f
+	);
+	resetAllButton("Light", *_light);
+}
+
+void RenderWindow::materialSection() {
+	ImGui::SeparatorText("Material");
+	resettableSlider("Ambient",
+		&_material->current.ambient,
+		_material->initial().ambient,
+		0.0f, 1.0f
+	);
+	resettableSlider("Diffuse",
+		&_material->current.diffuse,
+		_material->initial().diffuse,
+		0.0f, 1.0f
+	);
+	resettableSlider("Specular",
+		&_material->current.specular,
+		_material->initial().specular,
+		0.0f, 1.0f
+	);
+	resettableSlider("Shine",
+		&_material->current.shine,
+		_material->initial().shine,
+		1.0f, 64.0f
+	);
+	resetAllButton("Material", *_material);
+}
+
+void RenderWindow::show() {
+	if (!open) return;
+
+	ImGui::Begin("Render", &open);
+	ImGui::PushItemWidth(200.0f);
+	basicSettingsSection();
+	lightSection();
+	materialSection();
 	ImGui::PopItemWidth();
 	ImGui::End();
 }

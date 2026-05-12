@@ -190,11 +190,26 @@ vk::raii::CommandBuffer PerFrameResources::createCommandBuffer() {
 	return buf;
 }
 
-void PerFrameResources::updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height) {
-	CamMatrices mats {};
+vk::raii::DescriptorSet PerFrameResources::createDescriptorSet(
+	DescriptorSetFactory& descriptorSetFactory
+) {
+	std::array<vk::DescriptorBufferInfo, 2> bufferInfo {
+		_camData.descriptorInfo(),
+		_lightData.descriptorInfo()
+	};
+	return descriptorSetFactory.makeDescriptorSet(bufferInfo);
+}
+
+void PerFrameResources::updateCamData(const Camera& camera, unsigned int width, unsigned int height) {
+	CamData mats {};
 	mats.view = camera.viewMatrix();
 	mats.proj = camera.projectionMatrix(width, height);
-	_camMats.copyIn(mats);
+	mats.pos = camera.position;
+	_camData.copyIn(mats);
+}
+
+void PerFrameResources::updateLightData(const Light& light) {
+	_lightData.copyIn(light);
 }
 
 vk::raii::RenderPass Renderer::createRenderPass() {
@@ -272,10 +287,21 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 DescriptorSetFactory Renderer::createDescriptorSetFactory() {
 	std::vector<vk::DescriptorSetLayoutBinding> layoutBindings {
 		{
+			// Camera
 			.binding = 0,
 			.descriptorType = vk::DescriptorType::eUniformBuffer,
 			.descriptorCount = 1,
-			.stageFlags = vk::ShaderStageFlagBits::eVertex
+			.stageFlags = (
+				vk::ShaderStageFlagBits::eVertex |
+				vk::ShaderStageFlagBits::eFragment
+			)
+		},
+		{
+			// Light info, we only ever have one light in the scene
+			.binding = 1,
+			.descriptorType = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = 1,
+			.stageFlags = vk::ShaderStageFlagBits::eFragment
 		}
 	};
 
@@ -287,17 +313,26 @@ vk::raii::PipelineLayout Renderer::createPipelineLayout() {
 		*_descriptorSetFactory.descriptorSetLayout()
 	};
 
-	vk::PushConstantRange pcRange {
-		.stageFlags = vk::ShaderStageFlagBits::eVertex,
-		.offset = 0,
-		.size = sizeof(glm::mat4)
+	std::vector<vk::PushConstantRange> pcRanges {
+		{
+			// Model transform
+			.stageFlags = vk::ShaderStageFlagBits::eVertex,
+			.offset = 0,
+			.size = sizeof(glm::mat4)
+		},
+		{
+			// Material
+			.stageFlags = vk::ShaderStageFlagBits::eFragment,
+			.offset = sizeof(glm::mat4),
+			.size = sizeof(Material)
+		}
 	};
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo {
 		.setLayoutCount = 1,
 		.pSetLayouts = descriptorSetLayouts.data(),
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &pcRange
+		.pushConstantRangeCount = static_cast<uint32_t>(pcRanges.size()),
+		.pPushConstantRanges = pcRanges.data()
 	};
 	return vk::raii::PipelineLayout(_graphDevice->logicalDevice(), pipelineLayoutInfo);
 }
@@ -306,8 +341,8 @@ vk::raii::Pipeline Renderer::createLinePipeline() {
 	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
 		.withInputType<Position>()
 		.withInputType<Color>()
-		.withVertexShader("vert.spv")
-		.withFragmentShader("frag.spv")
+		.withVertexShader("unlit_vert.spv")
+		.withFragmentShader("unlit_frag.spv")
 		.withTopology(vk::PrimitiveTopology::eLineList)
 		.build();
 }
@@ -316,8 +351,19 @@ vk::raii::Pipeline Renderer::createTrianglePipeline() {
 	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
 		.withInputType<Position>()
 		.withInputType<Color>()
-		.withVertexShader("vert.spv")
-		.withFragmentShader("frag.spv")
+		.withVertexShader("unlit_vert.spv")
+		.withFragmentShader("unlit_frag.spv")
+		.withTopology(vk::PrimitiveTopology::eTriangleList)
+		.build();
+}
+
+vk::raii::Pipeline Renderer::createLitTrianglePipeline() {
+	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
+		.withInputType<Position>()
+		.withInputType<Color>()
+		.withInputType<Normal>()
+		.withVertexShader("lit_vert.spv")
+		.withFragmentShader("lit_frag.spv")
 		.withTopology(vk::PrimitiveTopology::eTriangleList)
 		.build();
 }
@@ -327,6 +373,7 @@ std::unordered_map<RenderMode, vk::raii::Pipeline> Renderer::createPipelines() {
 
 	out.emplace(RenderMode::line, createLinePipeline());
 	out.emplace(RenderMode::triangle, createTrianglePipeline());
+	out.emplace(RenderMode::litTriangle, createLitTrianglePipeline());
 
 	return out;
 }
@@ -350,7 +397,7 @@ void Renderer::recreateWindowResources() {
 	_framebuffers = _windowResources->createFramebuffers(_renderPass);
 }
 
-void Renderer::beginFrame(const Camera& camera) {
+void Renderer::beginFrame(const Camera& camera, const Light& light) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
 
@@ -367,7 +414,8 @@ void Renderer::beginFrame(const Camera& camera) {
 	}
 
 	const auto& extent = _windowResources->swapchainExtent();
-	frameResources.updateCamMatrices(camera, extent.width, extent.height);
+	frameResources.updateCamData(camera, extent.width, extent.height);
+	frameResources.updateLightData(light);
 
 	device.resetFences(*frameResources.inFlightFence());
 
@@ -392,7 +440,7 @@ void Renderer::beginFrame(const Camera& camera) {
 
 	cmdBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
 
-	// per frame descriptor set referring to camera view and proj mats
+	// per frame descriptor set referring to camera and light info
 	cmdBuffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_pipelineLayout,
@@ -501,6 +549,16 @@ void TransformComponent::render() {
 	);
 }
 
+void MaterialComponent::render() {
+	auto& cmd = _renderer->currentCommandBuffer();
+	cmd.pushConstants<Material>(
+		*_renderer->pipelineLayout(),
+		vk::ShaderStageFlagBits::eFragment,
+		sizeof(glm::mat4),
+		*_material
+	);
+}
+
 void populateStaticEntity(
 	Renderer& renderer,
 	Entity& entity,
@@ -513,5 +571,17 @@ void populateStaticEntity(
 	entity.addComponent<StaticVertexAttributeComponent<Color>>(colors);
 
 	entity.setLastRender<StaticMeshComponent>();
+}
+
+void populateStaticEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	StaticMesh& mesh,
+	StaticVertexAttributes<Color>& colors,
+	StaticVertexAttributes<Normal>& normals
+) {
+	populateStaticEntity(renderer, entity, transform, mesh, colors);
+	entity.addComponent<StaticVertexAttributeComponent<Normal>>(normals);
 }
 }

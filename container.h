@@ -33,6 +33,23 @@ public:
 	}
 };
 
+template<typename T>
+struct WithInitial {
+private:
+	T _initial;
+
+public:
+	T current;
+
+	WithInitial(const T& init) : _initial { init }, current { init } {}
+	operator T&() { return current; }
+	operator T const &() const { return current; }
+	operator T() const { return current; }
+	void reset() { current = _initial; }
+
+	const T& initial() const { return _initial; }
+};
+
 enum class GraphRenderMode : int {
 	surface = 0,
 	wireframe,
@@ -45,6 +62,7 @@ struct RenderSettings {
 	bool renderAxes = true;
 	bool renderGrid = true;
 	bool renderNormals = false;
+	bool renderLightObject = false;
 	GraphRenderMode graphRenderMode = GraphRenderMode::surface;
 };
 }

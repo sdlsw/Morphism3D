@@ -1,5 +1,6 @@
 #pragma once
 
+#include "container.h"
 #include "vk_renderer.h"
 
 #include <concepts>
@@ -51,7 +52,7 @@ private:
 	// space when constructing entities
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
-	std::vector<glm::vec3> _normals;
+	std::vector<Normal> _normals;
 
 	glm::vec3 toModelSpace(const glm::vec3& funcSpace) {
 		return funcSpace / _range;
@@ -73,7 +74,7 @@ private:
 		return _positions[idx(x, y)];
 	}
 
-	glm::vec3 calcVertexNormal(unsigned int x, unsigned int y) {
+	Normal calcVertexNormal(unsigned int x, unsigned int y) {
 		std::vector<glm::vec3> faceNormals;
 		const Position& thisPosition = getPosition(x, y);
 
@@ -232,6 +233,8 @@ private:
 	// so vertex data can be reused between surface and grid entities.
 	StaticMesh _surfaceMesh;
 	StaticVertexAttributes<Color> _surfaceColors;
+	StaticVertexAttributes<Normal> _surfaceNormals;
+	WithInitial<Material> _surfaceMaterial { glm::vec4(0.01f, 0.75f, 0.5f, 8.0f) } ;
 	Entity _surface;
 
 	StaticMesh _gridMesh;
@@ -250,7 +253,7 @@ private:
 		std::vector<uint16_t> indices {};
 
 		for (size_t i = 0; i < graph.positions().size(); i++) {
-			positions.push_back(graph.positions()[i].vec + graph.normals()[i]*normLength);
+			positions.push_back(graph.positions()[i].vec + graph.normals()[i].vec*normLength);
 			indices.push_back(static_cast<uint16_t>(i));
 			indices.push_back(static_cast<uint16_t>(i + graph.positions().size()));
 		}
@@ -264,12 +267,14 @@ public:
 	)
 	: _surfaceMesh { renderer, graph.positions(), graph.generateTriangleIndices() },
 	  _surfaceColors { renderer, graph.colors() },
+	  _surfaceNormals { renderer, graph.normals() },
 	  _gridMesh { renderer, graph.positions(), graph.generateLineIndices() },
 	  _gridColors { renderer, solidColor({0.1f, 0.1f, 0.1f}, _gridMesh.positionCount()) },
 	  _normalMesh { createNormalMesh(renderer, graph) },
 	  _normalColors { renderer, solidColor({1.0f, 1.0f, 1.0f}, _normalMesh.positionCount()) }
 	{
-		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors);
+		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors, _surfaceNormals);
+		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
 
 		populateStaticEntity(renderer, _gridTop, {{0.0f, 0.0f, gridLoft}}, _gridMesh, _gridColors);
 		populateStaticEntity(renderer, _gridBottom, {{0.0f, 0.0f, -gridLoft}}, _gridMesh, _gridColors);
@@ -278,6 +283,10 @@ public:
 
 		populateStaticEntity(renderer, _wireframe, {}, _gridMesh, _surfaceColors);
 	}
+
+	// Allow outside access to the surface material so the UI can
+	// manipulate it.
+	auto& surfaceMaterial() { return _surfaceMaterial; }
 
 	auto& surface() { return _surface; }
 	auto& gridTop() { return _gridTop; }

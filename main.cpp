@@ -165,6 +165,67 @@ public:
 	}
 };
 
+g3d::StaticMesh cubeMesh(g3d::Renderer& renderer, float size) {
+	float halfSize = size / 2.0f;
+	std::vector<g3d::Position> positions {
+		{ -halfSize, -halfSize, halfSize },
+		{ halfSize, -halfSize, halfSize },
+		{ -halfSize, -halfSize, -halfSize },
+		{ halfSize, -halfSize, -halfSize },
+		{ -halfSize, halfSize, halfSize },
+		{ halfSize, halfSize, halfSize },
+		{ -halfSize, halfSize, -halfSize },
+		{ halfSize, halfSize, -halfSize },
+	};
+	std::vector<uint16_t> indices {
+		0, 2, 1,
+		1, 2, 3,
+		1, 3, 5,
+		5, 3, 7,
+		4, 5, 6,
+		5, 7, 6,
+		4, 6, 0,
+		0, 6, 2,
+		4, 0, 1,
+		4, 1, 5,
+		6, 7, 3,
+		6, 3, 2
+	};
+
+	return { renderer, positions, indices };
+}
+
+g3d::StaticVertexAttributes<g3d::Color> solidColor(
+	const g3d::StaticMesh& mesh,
+	const g3d::Color& color
+) {
+	std::vector<g3d::Color> colors { mesh.positionCount(), color };
+	return { mesh.renderer(), colors };
+}
+
+class LightObject {
+private:
+	g3d::StaticMesh _mesh;
+	g3d::StaticVertexAttributes<g3d::Color> _colors;
+	g3d::Entity _entity;
+
+public:
+	LightObject(g3d::Renderer& renderer)
+	: _mesh { cubeMesh(renderer, 0.1f) },
+	  _colors { solidColor(_mesh, {1.0f, 1.0f, 1.0f}) }
+	{
+		g3d::populateStaticEntity(renderer, _entity, {}, _mesh, _colors);
+	}
+
+	void update(const g3d::Light& light) {
+		_entity.requireComponent<g3d::TransformComponent>().transform.translation = light.position;
+	}
+
+	void render() {
+		_entity.render();
+	}
+};
+
 class ConstantRotation {
 private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> _start;
@@ -208,7 +269,19 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 	Axes axes { renderer };
 
-	g3d::Ui ui { camController, renderSettings };
+	g3d::WithInitial<g3d::Light> light {{
+		{0.0f, 0.0f, 1.5f}, // position
+		{1.0f, 1.0f, 1.0f}, // color
+		1.0f
+	}};
+	LightObject lightObject { renderer };
+
+	g3d::Ui ui {
+		camController,
+		renderSettings,
+		light,
+		graphEntities.surfaceMaterial()
+	};
 
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
@@ -222,9 +295,10 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 
 		// Entity and camera updates.
 		camController.update();
+		lightObject.update(light);
 
 		// Draw the frame.
-		renderer.beginFrame(camController.camera());
+		renderer.beginFrame(camController.camera(), light);
 		if (!renderer.inFrame()) {
 			// Indicates we failed to begin the frame for some
 			// outside reason - probably window resize
@@ -256,6 +330,11 @@ void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 		}
 
 		renderer.setMode(g3d::RenderMode::triangle);
+		if (renderSettings.renderLightObject) {
+			lightObject.render();
+		}
+
+		renderer.setMode(g3d::RenderMode::litTriangle);
 		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::surface) {
 			graphEntities.surface().render();
 		}

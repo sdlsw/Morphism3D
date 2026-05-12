@@ -4,6 +4,9 @@
 #include "container.h"
 #include "vk_renderer.h"
 
+#include <imgui.h>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <string>
 
 namespace g3d {
@@ -25,10 +28,30 @@ void imGuiNewFrame();
 void imGuiRecord(Renderer& renderer);
 void imGuiHandleControlExclusivity(Window& window, CameraController& camController);
 
+template<typename T>
+void resetAllButton(const std::string& name, WithInitial<T>& withInitial) {
+	if(ImGui::Button(std::format("Reset All##{}", name).c_str())) {
+		withInitial.reset();
+	}
+}
+
+template<typename T>
+void resetButton(const std::string& label, T* setting, T _default) {
+	ImGui::SameLine(ImGui::GetWindowWidth()-50);
+	if (ImGui::Button(std::format("Reset##{}", label).c_str())) {
+		*setting = _default;
+	}
+}
+
+template<typename T, typename U>
+void resettableSlider(const std::string& label, T* setting, const T& _default, U min, U max);
+
+template<typename T, typename U>
+void resettableDrag(const std::string& label, T* setting, const T& _default, U inc);
+
 class CameraWindow {
 private:
 	CameraController* _camController;
-	void resetButton(float* setting, float defaultValue);
 	void settingSlider(
 		const std::string& label,
 		float* setting,
@@ -59,14 +82,27 @@ public:
 class RenderWindow {
 private:
 	RenderSettings* _renderSettings;
+	WithInitial<Light>* _light;
+	WithInitial<Material>* _material;
 
 	void showGridToggle();
+	void basicSettingsSection();
+	void lightSection();
+	void materialSection();
 public:
 	bool open = true;
 	void show();
 
 	RenderWindow() = delete;
-	RenderWindow(RenderSettings& renderSettings) : _renderSettings { &renderSettings } {}
+	RenderWindow(
+		RenderSettings& renderSettings,
+		WithInitial<Light>& light,
+		WithInitial<Material>& material
+	)
+	: _renderSettings { &renderSettings },
+	  _light { &light },
+	  _material { &material }
+	{}
 };
 
 class Ui {
@@ -83,10 +119,12 @@ public:
 
 	Ui(
 		CameraController& camController,
-		RenderSettings& renderSettings
+		RenderSettings& renderSettings,
+		WithInitial<Light>& light,
+		WithInitial<Material>& material
 	)
 	: _cameraWindow { camController },
-	  _renderWindow { renderSettings }
+	  _renderWindow { renderSettings, light, material }
 	{}
 };
 }

@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
 #include <array>
@@ -68,5 +69,37 @@ struct Transform {
 	Transform(const glm::vec3& t, const glm::vec3& s, const glm::mat4& r) : translation {t}, scale {s}, rotation {r} {}
 
 	glm::mat4 matrix() const;
+};
+
+struct Light {
+	alignas(16) glm::vec3 position;
+	alignas(16) glm::vec3 color;
+	alignas(4) float mix;
+};
+
+struct Material {
+	alignas(16) glm::vec3 ambient;
+	alignas(16) glm::vec3 diffuse;
+	alignas(16) glm::vec3 specular;
+	float shine;
+
+	Material() = default;
+	Material(
+		const glm::vec3& _ambient,
+		const glm::vec3& _diffuse,
+		const glm::vec3& _specular,
+		float _shine
+	)
+	: ambient { _ambient },
+	  diffuse { _diffuse },
+	  specular { _specular },
+	  shine { _shine }
+	{}
+	Material(const glm::vec4& strengths)
+	: ambient { strengths.x },
+	  diffuse { strengths.y },
+	  specular { strengths.z },
+	  shine { strengths.w }
+	{}
 };
 }

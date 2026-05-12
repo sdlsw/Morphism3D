@@ -47,9 +47,10 @@ BoundBuffer makeStaticGPUBuffer(
 	return destBuffer;
 }
 
-struct CamMatrices {
+struct CamData {
 	glm::mat4 view;
 	glm::mat4 proj;
+	alignas(16) glm::vec3 pos;
 };
 
 // Class encapsulating an Image and its view. The view covers the entire image,
@@ -147,7 +148,8 @@ public:
 class PerFrameResources {
 private:
 	GraphDevice* _graphDevice;
-	MappedBuffer<CamMatrices> _camMats;
+	MappedBuffer<CamData> _camData;
+	MappedBuffer<Light> _lightData;
 	vk::raii::DescriptorSet _descriptorSet;
 	vk::raii::CommandBuffer _commandBuffer;
 
@@ -157,6 +159,9 @@ private:
 	vk::raii::Fence _inFlightFence;
 
 	vk::raii::CommandBuffer createCommandBuffer();
+	vk::raii::DescriptorSet createDescriptorSet(
+		DescriptorSetFactory& descriptorSetFactory
+	);
 public:
 	PerFrameResources() = delete;
 	PerFrameResources(PerFrameResources&&) = default;
@@ -165,8 +170,9 @@ public:
 		DescriptorSetFactory& descriptorSetFactory
 	)
 	: _graphDevice { &graphDevice },
-	  _camMats { *_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer },
-	  _descriptorSet { descriptorSetFactory.makeDescriptorSet(_camMats.descriptorInfo()) },
+	  _camData { *_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer },
+	  _lightData { *_graphDevice, vk::BufferUsageFlagBits::eUniformBuffer },
+	  _descriptorSet { createDescriptorSet(descriptorSetFactory) },
 	  _commandBuffer { createCommandBuffer() },
 	  _imageAvailableSemaphore { _graphDevice->logicalDevice().createSemaphore({}) },
 	  _renderFinishedSemaphore { _graphDevice->logicalDevice().createSemaphore({}) },
@@ -178,12 +184,14 @@ public:
 	auto& imageAvailableSemaphore() { return _imageAvailableSemaphore; }
 	auto& renderFinishedSemaphore() { return _renderFinishedSemaphore; }
 	auto& inFlightFence() { return _inFlightFence; }
-	void updateCamMatrices(const Camera& camera, unsigned int width, unsigned int height);
+	void updateCamData(const Camera& camera, unsigned int width, unsigned int height);
+	void updateLightData(const Light& light);
 };
 
 enum class RenderMode {
 	line,
-	triangle
+	triangle,
+	litTriangle
 };
 
 class Renderer {
@@ -217,6 +225,7 @@ private:
 	vk::raii::PipelineLayout createPipelineLayout();
 	vk::raii::Pipeline createLinePipeline();
 	vk::raii::Pipeline createTrianglePipeline();
+	vk::raii::Pipeline createLitTrianglePipeline();
 	std::unordered_map<RenderMode, vk::raii::Pipeline> createPipelines();
 	DescriptorSetFactory createDescriptorSetFactory();
 	std::vector<PerFrameResources> createPerFrameResources();
@@ -248,7 +257,7 @@ public:
 		return static_cast<uint32_t>(_windowResources->swapchain().getImages().size());
 	}
 
-	void beginFrame(const Camera& camera);
+	void beginFrame(const Camera& camera, const Light& light);
 	bool inFrame() const { return _inFrame; }
 	void setMode(RenderMode mode);
 	void endFrame();
@@ -361,6 +370,18 @@ public:
 	void render() override { _mesh->record(); }
 };
 
+class MaterialComponent : public Component {
+private:
+	Renderer* _renderer;
+	Material* _material;
+
+public:
+	MaterialComponent(Renderer& renderer, Material& material)
+	: _renderer { &renderer }, _material { &material } {}
+
+	void render() override;
+};
+
 // Convenience function for setting up a render entity that never changes
 // except for transform.
 void populateStaticEntity(
@@ -369,5 +390,14 @@ void populateStaticEntity(
 	const Transform& transform,
 	StaticMesh& mesh,
 	StaticVertexAttributes<Color>& colors
+);
+
+void populateStaticEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	StaticMesh& mesh,
+	StaticVertexAttributes<Color>& colors,
+	StaticVertexAttributes<Normal>& normals
 );
 }
