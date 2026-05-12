@@ -1,4 +1,4 @@
-#include "vk_camera.h"
+#include "vk/camera.h"
 
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/matrix_transform.hpp>

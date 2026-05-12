@@ -3,8 +3,8 @@
 
 // Helper classes and functions that depend minimally on non-standard types.
 
-#include "vk_concept.h"
-#include "vk_datatypes.h"
+#include "vk/concept.h"
+#include "vk/datatypes.h"
 
 #include <vulkan/vulkan_raii.hpp>
 

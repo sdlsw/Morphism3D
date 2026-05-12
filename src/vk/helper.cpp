@@ -1,6 +1,6 @@
-#include "vk_helper.h"
+#include "vk/helper.h"
 
-#include "vk_constants.h"
+#include "vk/constants.h"
 
 #include <fstream>
 #include <iostream>

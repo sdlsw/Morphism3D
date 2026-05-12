@@ -1,5 +1,5 @@
 #pragma once
-#include "vk_camera.h"
+#include "vk/camera.h"
 #include "window.h"
 
 #include <unordered_map>

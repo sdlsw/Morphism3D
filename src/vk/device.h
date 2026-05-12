@@ -3,8 +3,8 @@
 
 // Top level Vulkan object wrappers, physical device/memory management.
 
-#include "vk_concept.h"
-#include "vk_helper.h"
+#include "vk/concept.h"
+#include "vk/helper.h"
 #include "window.h"
 
 #include <vulkan/vulkan_raii.hpp>

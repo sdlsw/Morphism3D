@@ -2,11 +2,11 @@
 #include "global_defines.h"
 
 #include "entity.h"
-#include "vk_camera.h"
-#include "vk_constants.h"
-#include "vk_datatypes.h"
-#include "vk_device.h"
-#include "vk_helper.h"
+#include "vk/camera.h"
+#include "vk/constants.h"
+#include "vk/datatypes.h"
+#include "vk/device.h"
+#include "vk/helper.h"
 
 #include <glm/common.hpp>
 #include <glm/vec3.hpp>
