@@ -212,7 +212,9 @@ struct TestFunc {
 	}
 };
 
-void mainloop(g3d::GraphDevice& device, g3d::Renderer& renderer) {
+void mainloop(g3d::Renderer& renderer) {
+	auto& device = renderer.graphDevice();
+
 	g3d::CameraController camController {
 		{2.5f, -2.5f, 2.5f}, // cam position
 		{0.0f, 0.0f, 0.0f},  // initial center
@@ -344,7 +346,7 @@ int main() {
 		g3d::Renderer renderer { graphDevice };
 		g3d::ImGuiWrapper imGui { graphDevice, renderer };
 
-		mainloop(graphDevice, renderer);
+		mainloop(renderer);
 	} catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;
