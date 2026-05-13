@@ -1,10 +1,6 @@
 #include "graph.h"
 
 namespace g3d {
-std::vector<Color> solidColor(const Color& color, size_t amount) {
-	return {amount, color};
-}
-
 glm::vec3 calcTriangleNormal(
 	const Position& thisPosition,
 	const Position& other1,

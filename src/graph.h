@@ -1,6 +1,7 @@
 #pragma once
 
 #include "container.h"
+#include "primitive.h"
 #include "vk/renderer.h"
 
 #include <concepts>
@@ -11,8 +12,6 @@ template<typename F>
 concept Graphable = requires(F f, float x, float y) {
 	{ f.eval(x, y) } -> std::convertible_to<float>;
 };
-
-std::vector<Color> solidColor(const Color& color, size_t amount);
 
 // other2 must be clockwise from other1.
 glm::vec3 calcTriangleNormal(
@@ -269,9 +268,9 @@ public:
 	  _surfaceColors { renderer, graph.colors() },
 	  _surfaceNormals { renderer, graph.normals() },
 	  _gridMesh { renderer, graph.positions(), graph.generateLineIndices() },
-	  _gridColors { renderer, solidColor({0.1f, 0.1f, 0.1f}, _gridMesh.positionCount()) },
+	  _gridColors { solidColor(_gridMesh, {0.1f, 0.1f, 0.1f}) },
 	  _normalMesh { createNormalMesh(renderer, graph) },
-	  _normalColors { renderer, solidColor({1.0f, 1.0f, 1.0f}, _normalMesh.positionCount()) }
+	  _normalColors { solidColor(_normalMesh, {1.0f, 1.0f, 1.0f}) }
 	{
 		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors, _surfaceNormals);
 		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
