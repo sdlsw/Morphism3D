@@ -128,6 +128,30 @@ vk::raii::ImageView WindowResources::createSwapImageView(const vk::Image& image)
 	return vk::raii::ImageView(_graphDevice->logicalDevice(), info);
 }
 
+ImageResource WindowResources::createColorResource() const {
+	vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+
+	vk::ImageCreateInfo info {
+		.imageType = vk::ImageType::e2D,
+		.format = _swapchainImageFormat.format,
+		.extent = {
+			.width = _swapchainExtent.width,
+			.height = _swapchainExtent.height,
+			.depth = 1
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = MSAA_SAMPLES,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = (
+			vk::ImageUsageFlagBits::eColorAttachment |
+			vk::ImageUsageFlagBits::eTransientAttachment
+		),
+	};
+
+	return ImageResource(*_graphDevice, info, vk::ImageAspectFlagBits::eColor);
+}
+
 ImageResource WindowResources::createDepthResource() const {
 	vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
 	vk::Format format = _graphDevice->findSupportedFormat(
@@ -146,6 +170,7 @@ ImageResource WindowResources::createDepthResource() const {
 		},
 		.mipLevels = 1,
 		.arrayLayers = 1,
+		.samples = MSAA_SAMPLES,
 		.tiling = tiling,
 		.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		.sharingMode = vk::SharingMode::eExclusive,
@@ -159,9 +184,10 @@ std::vector<vk::raii::Framebuffer> WindowResources::createFramebuffers(const vk:
 	std::vector<vk::raii::Framebuffer> framebuffers;
 
 	for (size_t i = 0; i < _swapchainImages.size(); ++i) {
-		std::array<vk::ImageView, 2> attachments = {
-			*_swapchainImageViews[i],
-			*_depthResource.view()
+		std::array<vk::ImageView, 3> attachments = {
+			*_colorResource.view(),
+			*_depthResource.view(),
+			*_swapchainImageViews[i]
 		};
 		vk::FramebufferCreateInfo info {
 			.renderPass = *renderPass,
@@ -215,13 +241,13 @@ void PerFrameResources::updateLightData(const Light& light) {
 vk::raii::RenderPass Renderer::createRenderPass() {
 	vk::AttachmentDescription colorAttachment {
 		.format = _windowResources->swapchainFormat(),
-		.samples = vk::SampleCountFlagBits::e1,
+		.samples = MSAA_SAMPLES,
 		.loadOp = vk::AttachmentLoadOp::eClear,
 		.storeOp = vk::AttachmentStoreOp::eStore,
 		.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
 		.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 		.initialLayout = vk::ImageLayout::eUndefined,
-		.finalLayout = vk::ImageLayout::ePresentSrcKHR
+		.finalLayout = vk::ImageLayout::eColorAttachmentOptimal
 	};
 	vk::AttachmentReference colorAttachmentRef {
 		.attachment = 0,
@@ -230,7 +256,7 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 
 	vk::AttachmentDescription depthAttachment {
 		.format = _windowResources->depthResource().info().format,
-		.samples = vk::SampleCountFlagBits::e1,
+		.samples = MSAA_SAMPLES,
 		.loadOp = vk::AttachmentLoadOp::eClear,
 		.storeOp = vk::AttachmentStoreOp::eDontCare,
 		.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
@@ -243,10 +269,26 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal
 	};
 
+	vk::AttachmentDescription resolveAttachment {
+		.format = _windowResources->swapchainFormat(),
+		.samples = vk::SampleCountFlagBits::e1,
+		.loadOp = vk::AttachmentLoadOp::eDontCare,
+		.storeOp = vk::AttachmentStoreOp::eStore,
+		.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+		.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+		.initialLayout = vk::ImageLayout::eUndefined,
+		.finalLayout = vk::ImageLayout::ePresentSrcKHR
+	};
+	vk::AttachmentReference resolveAttachmentReference {
+		.attachment = 2,
+		.layout = vk::ImageLayout::eColorAttachmentOptimal
+	};
+
 	vk::SubpassDescription subpass {
 		.pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = &colorAttachmentRef,
+		.pResolveAttachments = &resolveAttachmentReference,
 		.pDepthStencilAttachment = &depthAttachmentReference
 	};
 
@@ -271,7 +313,11 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		)
 	};
 
-	std::array<vk::AttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+	std::array<vk::AttachmentDescription, 3> attachments = {
+		colorAttachment,
+		depthAttachment,
+		resolveAttachment
+	};
 	vk::RenderPassCreateInfo renderPassInfo {
 		.attachmentCount = static_cast<uint32_t>(attachments.size()),
 		.pAttachments = attachments.data(),

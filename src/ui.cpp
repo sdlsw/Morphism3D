@@ -1,5 +1,7 @@
 #include "ui.h"
 
+#include "vk/constants.h"
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
@@ -31,6 +33,7 @@ static void init(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 	initInfo.ImageCount = renderer.swapchainImageCount();
 	initInfo.PipelineInfoMain.RenderPass = *renderer.renderPass();
 	initInfo.PipelineInfoMain.Subpass = 0;
+	initInfo.PipelineInfoMain.MSAASamples = static_cast<VkSampleCountFlagBits>(g3d::MSAA_SAMPLES);
 	initInfo.CheckVkResultFn = checkVkResult;
 	ImGui_ImplVulkan_Init(&initInfo);
 }

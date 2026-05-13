@@ -200,7 +200,7 @@ vk::raii::Pipeline PipelineBuilder::build() {
 
 	// MULTISAMPLING
 	vk::PipelineMultisampleStateCreateInfo multisampleInfo {
-		.rasterizationSamples = vk::SampleCountFlagBits::e1,
+		.rasterizationSamples = MSAA_SAMPLES,
 		.sampleShadingEnable = vk::False,
 		.minSampleShading = 1.0f,
 		.pSampleMask = nullptr,

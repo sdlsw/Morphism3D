@@ -100,6 +100,7 @@ private:
 	std::vector<vk::Image> _swapchainImages; // owned by swapchain, no need to free these
 	std::vector<vk::raii::ImageView> _swapchainImageViews;
 
+	ImageResource _colorResource;
 	ImageResource _depthResource;
 
 	// Swap init functions
@@ -116,7 +117,8 @@ private:
 		return views;
 	}
 
-	// Depth buffer is same size as window and must be recreated on resize.
+	// Depth and color buffers are same size as window and must be recreated on resize.
+	ImageResource createColorResource() const;
 	ImageResource createDepthResource() const;
 
 public:
@@ -131,12 +133,14 @@ public:
 	  _swapchain { createSwapchain() },
 	  _swapchainImages { _swapchain.getImages() },
 	  _swapchainImageViews { createSwapImageViews() },
+	  _colorResource { createColorResource() },
 	  _depthResource { createDepthResource() }
 	{}
 
 	vk::Format swapchainFormat() { return _swapchainImageFormat.format; }
 	const auto& swapchainExtent() const { return _swapchainExtent; }
 	auto& swapchain() { return _swapchain; }
+	const ImageResource& colorResource() { return _colorResource; }
 	const ImageResource& depthResource() { return _depthResource; }
 
 	// Create framebuffer objects encompassing all of the resources for the
