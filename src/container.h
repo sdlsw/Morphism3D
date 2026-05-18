@@ -61,6 +61,7 @@ constexpr unsigned int GraphRenderModeCount = 3;
 struct RenderSettings {
 	bool renderAxes = true;
 	bool renderGrid = true;
+	bool renderFrame = true;
 	bool renderNormals = false;
 	bool renderLightObject = false;
 	GraphRenderMode graphRenderMode = GraphRenderMode::surface;

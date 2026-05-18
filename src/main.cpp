@@ -168,6 +168,14 @@ g3d::SimpleUnlitObject buildLightObject(g3d::Renderer& renderer) {
 	};
 }
 
+g3d::SimpleLineObject buildFrame(g3d::Renderer& renderer) {
+	return {
+		g3d::SimpleLineObject::mkBuilder(renderer)
+			.setColor({0.1f, 0.1f, 0.1f})
+			.primitive<g3d::Cube>({2.0f})
+	};
+}
+
 void mainloop(g3d::Renderer& renderer) {
 	auto& device = renderer.graphDevice();
 
@@ -190,6 +198,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::GraphEntities<TestFunc> graphEntities { renderer, graph };
 
 	auto axes = buildAxes(renderer);
+	auto frame = buildFrame(renderer);
 
 	g3d::WithInitial<g3d::Light> light {{
 		{0.0f, 0.0f, 1.5f}, // position
@@ -230,6 +239,9 @@ void mainloop(g3d::Renderer& renderer) {
 			continue;
 		}
 		renderer.setMode(g3d::RenderMode::line);
+		if (renderSettings.renderFrame) {
+			frame.render();
+		}
 
 		// TODO This is really dumb but it doesn't look too terrible...
 		// Look into using textures for the grid, maybe.

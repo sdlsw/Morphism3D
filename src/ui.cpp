@@ -343,6 +343,7 @@ void RenderWindow::basicSettingsSection() {
 
 	ImGui::Checkbox("Show Axes", &_renderSettings->renderAxes);
 	showGridToggle();
+	ImGui::Checkbox("Show Frame", &_renderSettings->renderFrame);
 	ImGui::Checkbox("Show Normals", &_renderSettings->renderNormals);
 	ImGui::Checkbox("Show Light Position", &_renderSettings->renderLightObject);
 }

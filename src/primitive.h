@@ -238,6 +238,37 @@ public:
 	Material material() { return _material; }
 };
 
+class SimpleLineObject {
+private:
+	StaticMesh _mesh;
+	StaticVertexAttributes<Color> _colors;
+	Entity _entity;
+
+public:
+	static constexpr MeshBuilderMode flags = MeshBuilderMode::genLines;
+	static MeshBuilder mkBuilder(
+		Renderer& renderer,
+		MeshBuilderMode mode = MeshBuilderMode::none
+	) {
+		return { renderer, flags | mode };
+	}
+
+	SimpleLineObject(MeshBuilder& builder)
+	: _mesh { builder.lineMesh() },
+	  _colors { builder.colors() }
+	{
+		populateStaticEntity(builder.renderer(), _entity, {}, _mesh, _colors);
+	}
+
+	void render() {
+		_entity.render();
+	}
+
+	Entity& entity() {
+		return _entity;
+	}
+};
+
 class SimpleUnlitObject {
 private:
 	StaticMesh _mesh;
