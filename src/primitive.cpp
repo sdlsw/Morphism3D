@@ -299,11 +299,7 @@ static inline void radialTriangleIndices(
 
 // IMPLEMENTATION OF PUBLIC INTERFACE
 namespace g3d {
-void cubePositions(
-	std::vector<Position>& positions,
-	float size,
-	const Position& center
-) {
+void Cube::positions(std::vector<Position>& positions, const Position& center) const {
 	// half size
 	float hs = size / 2.0f;
 
@@ -324,25 +320,19 @@ void cubePositions(
 	}
 }
 
-void cubeLineIndices(std::vector<uint16_t>& indices, uint16_t offset) {
+void Cube::lineIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	IndexBuilder<CubeIndexSource> buf { indices, {}, offset };
 	buf.lineGrid(true, false);
 }
 
-void cubeTriangleIndices(std::vector<uint16_t>& indices, uint16_t offset) {
+void Cube::triangleIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	IndexBuilder<CubeIndexSource> buf { indices, {}, offset };
 	buf.fanRunX<IxOrd::CCW>(0, 1, buf.endX(), 0, false);
 	buf.quadFieldX<IxOrd::CCW>();
 	buf.fanRunX<IxOrd::CW>(4, 1, buf.endX(), 0, false);
 }
 
-void spherePositions(
-	std::vector<Position>& positions,
-	float radius,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
+void Sphere::positions(std::vector<Position>& positions, const Position& center) const {
 	// Top point
 	glm::vec3 tpOffset { 0.0f, 0.0f, radius };
 	positions.push_back(center.vec + tpOffset);
@@ -362,32 +352,15 @@ void spherePositions(
 	positions.push_back(center.vec + bpOffset);
 }
 
-void sphereLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Sphere::lineIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialLineIndices<SphereInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
-void sphereTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Sphere::triangleIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialTriangleIndices<SphereInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
-void cylinderPositions(
-	std::vector<Position>& positions,
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
+void Cylinder::positions(std::vector<Position>& positions, const Position& center) const {
 	float halfHeight = height / 2.0f;
 
 	glm::vec3 topOffset { 0.0f, 0.0f, halfHeight };
@@ -428,32 +401,15 @@ void cylinderPositions(
 	positions.push_back(center.vec + bottomOffset);
 }
 
-void cylinderLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Cylinder::lineIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialLineIndices<CylinderInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
-void cylinderTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Cylinder::triangleIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialTriangleIndices<CylinderInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
-void conePositions(
-	std::vector<Position>& positions,
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
+void Cone::positions(std::vector<Position>& positions, const Position& center) const {
 	// Tip
 	glm::vec3 tipOffset { 0.0f, 0.0f, height };
 	positions.push_back(center.vec + tipOffset);
@@ -482,21 +438,11 @@ void conePositions(
 	positions.push_back(center);
 }
 
-void coneLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Cone::lineIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialLineIndices<ConeInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
-void coneTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset
-) {
+void Cone::triangleIndices(std::vector<uint16_t>& indices, uint16_t offset) const {
 	radialTriangleIndices<ConeInfo>(indices, horizontalResolution, verticalResolution, offset);
 }
 
@@ -673,154 +619,6 @@ MeshBuilder& MeshBuilder::rot90Z(RotateDirection dir) {
 
 bool MeshBuilder::modeHas(MeshBuilderMode check) const {
 	return any(_mode & check);
-}
-
-MeshBuilder& MeshBuilder::cube(
-	float size,
-	const Position& center
-) {
-	if (modeHas(MeshBuilderMode::genLines)) {
-		cubeLineIndices(
-			_lineIndices,
-			currentOffset()
-		);
-	}
-
-	if (modeHas(MeshBuilderMode::genTris)) {
-		cubeTriangleIndices(
-			_triIndices,
-			currentOffset()
-		);
-	}
-
-	size_t start = _positions.size();
-	cubePositions(_positions, size, center);
-	size_t end = _positions.size();
-	size_t diff = end - start;
-
-	if (modeHas(MeshBuilderMode::genColors)) {
-		for (int i = 0; i < diff; i++) {
-			_colors.push_back(_color);
-		}
-	}
-
-	return *this;
-}
-
-MeshBuilder& MeshBuilder::sphere(
-	float radius,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
-	if (modeHas(MeshBuilderMode::genLines)) {
-		sphereLineIndices(
-			_lineIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	if (modeHas(MeshBuilderMode::genTris)) {
-		sphereTriangleIndices(
-			_triIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	size_t start = _positions.size();
-	spherePositions(_positions, radius, horizontalResolution, verticalResolution, center);
-	size_t end = _positions.size();
-	size_t diff = end - start;
-
-	if (modeHas(MeshBuilderMode::genColors)) {
-		for (int i = 0; i < diff; i++) {
-			_colors.push_back(_color);
-		}
-	}
-
-	return *this;
-}
-
-MeshBuilder& MeshBuilder::cylinder(
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
-	if (modeHas(MeshBuilderMode::genLines)) {
-		cylinderLineIndices(
-			_lineIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	if (modeHas(MeshBuilderMode::genTris)) {
-		cylinderTriangleIndices(
-			_triIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	size_t start = _positions.size();
-	cylinderPositions(_positions, radius, height, horizontalResolution, verticalResolution, center);
-	size_t end = _positions.size();
-	size_t diff = end - start;
-
-	if (modeHas(MeshBuilderMode::genColors)) {
-		for (int i = 0; i < diff; i++) {
-			_colors.push_back(_color);
-		}
-	}
-
-	return *this;
-}
-
-MeshBuilder& MeshBuilder::cone(
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center
-) {
-	if (modeHas(MeshBuilderMode::genLines)) {
-		coneLineIndices(
-			_lineIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	if (modeHas(MeshBuilderMode::genTris)) {
-		coneTriangleIndices(
-			_triIndices,
-			horizontalResolution,
-			verticalResolution,
-			currentOffset()
-		);
-	}
-
-	size_t start = _positions.size();
-	conePositions(_positions, radius, height, horizontalResolution, verticalResolution, center);
-	size_t end = _positions.size();
-	size_t diff = end - start;
-
-	if (modeHas(MeshBuilderMode::genColors)) {
-		for (int i = 0; i < diff; i++) {
-			_colors.push_back(_color);
-		}
-	}
-
-	return *this;
 }
 
 StaticMesh MeshBuilder::lineMesh() {

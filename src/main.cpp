@@ -119,16 +119,12 @@ void buildArrow(g3d::MeshBuilder& b) {
 	constexpr float cylLength = arrowLength - arrowTipLength;
 
 	b.beginGroup();
-	b.cone(
-		arrowTipRadius,
-		arrowTipLength,
-		hRes, coneVRes,
+	b.primitive<g3d::Cone>(
+		{ arrowTipRadius, arrowTipLength, hRes, coneVRes },
 		{ 0.0f, 0.0f, cylLength }
 	);
-	b.cylinder(
-		arrowRadius,
-		cylLength,
-		hRes, cylVRes,
+	b.primitive<g3d::Cylinder>(
+		{ arrowRadius, cylLength, hRes, cylVRes },
 		{ 0.0f, 0.0f, cylLength / 2.0f }
 	);
 	b.endGroup();
@@ -159,7 +155,7 @@ g3d::SimpleLitObject buildAxes(g3d::Renderer& renderer) {
 	buildArrow(builder);
 
 	builder.setColor(centerColor);
-	builder.sphere(0.02f, 20, 20);
+	builder.primitive<g3d::Sphere>({0.02f, 20, 20});
 
 	return { builder };
 }
@@ -168,7 +164,7 @@ g3d::SimpleUnlitObject buildLightObject(g3d::Renderer& renderer) {
 	return {
 		g3d::SimpleUnlitObject::mkBuilder(renderer)
 			.setColor({1.0f, 1.0f, 1.0f})
-			.cube(0.1f)
+			.primitive<g3d::Cube>({0.1f})
 	};
 }
 

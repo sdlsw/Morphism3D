@@ -3,87 +3,76 @@
 #include "vk/renderer.h"
 
 namespace g3d {
-// STANDALONE GENERATION FUNCTIONS
-
-// CUBES
-void cubePositions(
+template<typename T>
+concept Primitive = requires(
+	T prim,
 	std::vector<Position>& positions,
-	float size,
-	const Position& center = {0.0f, 0.0f, 0.0f}
-);
-void cubeLineIndices(
+	const Position& center,
 	std::vector<uint16_t>& indices,
-	uint16_t offset = 0
-);
-void cubeTriangleIndices(
-	std::vector<uint16_t>& indices,
-	uint16_t offset = 0
-);
+	uint16_t offset
+) {
+	// Contract: If center is not specified, it should be 0,0,0.
+	{ prim.positions(positions, center) };
+	{ prim.positions(positions) };
 
-// SPHERES
-void spherePositions(
-	std::vector<Position>& positions,
-	float radius,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center = {0.0f, 0.0f, 0.0f}
-);
-void sphereLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
-void sphereTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
+	// Contract: If offset not specified, it should be 0.
+	{ prim.lineIndices(indices, offset) };
+	{ prim.lineIndices(indices) };
+	{ prim.triangleIndices(indices, offset) };
+	{ prim.triangleIndices(indices) };
+};
 
-// CYLINDERS
-void cylinderPositions(
-	std::vector<Position>& positions,
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center = {0.0f, 0.0f, 0.0f}
-);
-void cylinderLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
-void cylinderTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
+struct Cube {
+	float size;
 
-// CONES
-void conePositions(
-	std::vector<Position>& positions,
-	float radius,
-	float height,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	const Position& center = {0.0f, 0.0f, 0.0f}
-);
-void coneLineIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
-void coneTriangleIndices(
-	std::vector<uint16_t>& indices,
-	unsigned int horizontalResolution,
-	unsigned int verticalResolution,
-	uint16_t offset = 0
-);
+	void positions(
+		std::vector<Position>& positions,
+		const Position& center = {0.0f, 0.0f, 0.0f}
+	) const;
+	void lineIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+	void triangleIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+};
+
+struct Sphere {
+	float radius;
+	unsigned int horizontalResolution;
+	unsigned int verticalResolution;
+
+	void positions(
+		std::vector<Position>& positions,
+		const Position& center = {0.0f, 0.0f, 0.0f}
+	) const;
+	void lineIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+	void triangleIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+};
+
+struct Cylinder {
+	float radius;
+	float height;
+	unsigned int horizontalResolution;
+	unsigned int verticalResolution;
+
+	void positions(
+		std::vector<Position>& positions,
+		const Position& center = {0.0f, 0.0f, 0.0f}
+	) const;
+	void lineIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+	void triangleIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+};
+
+struct Cone {
+	float radius;
+	float height;
+	unsigned int horizontalResolution;
+	unsigned int verticalResolution;
+
+	void positions(
+		std::vector<Position>& positions,
+		const Position& center = {0.0f, 0.0f, 0.0f}
+	) const;
+	void lineIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+	void triangleIndices(std::vector<uint16_t>& indices, uint16_t offset = 0) const;
+};
 
 // Positions should be specified in CCW order.
 glm::vec3 calcTriangleNormal(
@@ -200,33 +189,32 @@ public:
 	MeshBuilder& rot90Y(RotateDirection dir);
 	MeshBuilder& rot90Z(RotateDirection dir);
 
-	MeshBuilder& cube(
-		float size,
-		const Position& center = { 0.0f, 0.0f, 0.0f }
-	);
+	template<Primitive T>
+	MeshBuilder& primitive(
+		const T& primitive,
+		const Position& center = {0.0f, 0.0f, 0.0f}
+	) {
+		if (modeHas(MeshBuilderMode::genLines)) {
+			primitive.lineIndices(_lineIndices, currentOffset());
+		}
 
-	MeshBuilder& sphere(
-		float radius,
-		unsigned int horizontalResolution,
-		unsigned int verticalResolution,
-		const Position& center = { 0.0f, 0.0f, 0.0f }
-	);
+		if (modeHas(MeshBuilderMode::genTris)) {
+			primitive.triangleIndices(_triIndices, currentOffset());
+		}
 
-	MeshBuilder& cylinder(
-		float radius,
-		float height,
-		unsigned int horizontalResolution,
-		unsigned int verticalResolution,
-		const Position& center = { 0.0f, 0.0f, 0.0f }
-	);
+		size_t start = _positions.size();
+		primitive.positions(_positions, center);
+		size_t end = _positions.size();
+		size_t diff = end - start;
 
-	MeshBuilder& cone(
-		float radius,
-		float height,
-		unsigned int horizontalResolution,
-		unsigned int verticalResolution,
-		const Position& center = { 0.0f, 0.0f, 0.0f }
-	);
+		if (modeHas(MeshBuilderMode::genColors)) {
+			for (int i = 0; i < diff; i++) {
+				_colors.push_back(_color);
+			}
+		}
+
+		return *this;
+	}
 
 	// Sets the color to be used for subsequent shape generation calls.
 	// If MeshBuilderMode::genColors is disabled, then a single solid color
@@ -382,25 +370,25 @@ public:
 	_cones {
 		MeshComparison::mkBuilder(renderer)
 			.setColor(color)
-			.cone(size, size, resolution, resolution),
+			.primitive<Cone>({size, size, resolution, resolution}),
 		moveX, moveZ
 	},
 	_cylinders {
 		MeshComparison::mkBuilder(renderer)
 			.setColor(color)
-			.cylinder(size, size, resolution, resolution),
+			.primitive<Cylinder>({size, size, resolution, resolution}),
 		0.0f, moveZ
 	},
 	_spheres {
 		MeshComparison::mkBuilder(renderer)
 			.setColor(color)
-			.sphere(size, resolution, resolution),
+			.primitive<Sphere>({size, resolution, resolution}),
 		-moveX, moveZ
 	},
 	_cubes {
 		MeshComparison::mkBuilder(renderer)
 			.setColor(color)
-			.cube(size),
+			.primitive<Cube>({size}),
 		-2.0*moveX, moveZ
 	}
 	{}
