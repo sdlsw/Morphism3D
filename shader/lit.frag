@@ -17,9 +17,9 @@ layout(push_constant) uniform PushConstants {
     float shine;
 };
 
-layout(location = 0) in vec3 fragPos;
-layout(location = 1) in vec3 fragColor;
-layout(location = 2) in vec3 fragNormal;
+layout(location = 0) centroid in vec3 fragPos;
+layout(location = 1) centroid in vec3 fragColor;
+layout(location = 2) centroid in vec3 fragNormal;
 
 layout(location = 0) out vec4 outColor;
 
@@ -33,7 +33,14 @@ void main() {
 
     vec3 viewDir = normalize(camData.pos - fragPos);
     vec3 reflectDir = reflect(lightDirection, fragNormal);
-    float baseSpecular = pow(max(dot(viewDir, reflectDir), 0.0), shine);
+    // Uncomment to enable more "realistic" specular. Works by multiplying
+    // baseSpecular by 0 when the light's angle of incidence means it wouldn't
+    // reflect off the surface.
+    //
+    // Leaving it off for now but I'm unsure which to go with.
+    //float showSpecular = float(dot(fragNormal, -lightDirection) > 0.0);
+    float showSpecular = 1.0f;
+    float baseSpecular = pow(max(dot(viewDir, reflectDir), 0.0), shine) * showSpecular;
     vec3 specular = baseSpecular * specularStrength * lightData.color;
 
     vec3 lightFactor = ambient + diffuse + specular;

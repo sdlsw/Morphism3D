@@ -109,6 +109,7 @@ private:
 	std::string _vertexShader {};
 	std::string _fragmentShader {};
 	vk::PrimitiveTopology _topology = vk::PrimitiveTopology::eLineList;
+	vk::CullModeFlagBits _culling = vk::CullModeFlagBits::eNone;
 public:
 	PipelineBuilder() = delete;
 	PipelineBuilder(PipelineBuilder&&) = default;
@@ -126,6 +127,7 @@ public:
 	PipelineBuilder& withVertexShader(const std::string& s) { _vertexShader = s; return *this; }
 	PipelineBuilder& withFragmentShader(const std::string& s) { _fragmentShader = s; return *this; }
 	PipelineBuilder& withTopology(vk::PrimitiveTopology top) { _topology = top; return *this; }
+	PipelineBuilder& withCulling(vk::CullModeFlagBits culling) { _culling = culling; return *this; }
 
 	template<typename T>
 	PipelineBuilder& withInputType() {

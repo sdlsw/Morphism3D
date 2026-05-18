@@ -105,10 +105,25 @@ public:
 	{}
 };
 
+class DebugWindow {
+private:
+	DebugSettings* _debugSettings;
+
+public:
+	bool open = false;
+	void show();
+
+	DebugWindow() = delete;
+	DebugWindow(DebugSettings& debugSettings)
+	: _debugSettings { &debugSettings }
+	{}
+};
+
 class Ui {
 private:
 	CameraWindow _cameraWindow;
 	RenderWindow _renderWindow;
+	DebugWindow _debugWindow;
 
 	void mainMenuBar();
 	void windowMenu();
@@ -120,10 +135,12 @@ public:
 	Ui(
 		CameraController& camController,
 		RenderSettings& renderSettings,
+		DebugSettings& debugSettings,
 		WithInitial<Light>& light,
 		WithInitial<Material>& material
 	)
 	: _cameraWindow { camController },
+	  _debugWindow { debugSettings },
 	  _renderWindow { renderSettings, light, material }
 	{}
 };

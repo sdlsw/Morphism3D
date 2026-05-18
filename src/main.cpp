@@ -84,111 +84,6 @@ public:
 	}
 };
 
-class Axes {
-private:
-	static constexpr float arrowLength = 1.2f;
-	static constexpr float arrowWidth = 0.1f;
-	static constexpr float arrowTipLength = 0.1f;
-	static constexpr unsigned int X = 0;
-	static constexpr unsigned int Y = 1;
-	static constexpr unsigned int Z = 2;
-	static constexpr unsigned int N_AXES = 3;
-
-	g3d::StaticMesh _arrow;
-	std::vector<g3d::StaticVertexAttributes<g3d::Color>> _colors;
-	std::array<g3d::Entity, N_AXES> _axisEntities;
-
-	g3d::StaticMesh createArrowMesh(g3d::Renderer& renderer) {
-		// This arrow is pointing in the X direction.
-		std::vector<g3d::Position> positions {
-			{0.0f, 0.0f, 0.0f},
-			{arrowLength, 0.0f, 0.0f},
-			{arrowLength-arrowTipLength, arrowWidth, 0.0f},
-			{arrowLength-arrowTipLength, -arrowWidth, 0.0f},
-			{arrowLength-arrowTipLength, 0.0f, arrowWidth},
-			{arrowLength-arrowTipLength, 0.0f, -arrowWidth}
-		};
-		std::vector<uint16_t> indices { 0, 1, 1, 2, 1, 3, 1, 4, 1, 5 };
-
-		return {
-			renderer,
-			positions,
-			indices
-		};
-	}
-
-	std::vector<g3d::StaticVertexAttributes<g3d::Color>> createColors(g3d::Renderer& renderer) {
-		std::vector<g3d::StaticVertexAttributes<g3d::Color>> out;
-
-		for (unsigned int i = 0; i < N_AXES; i++) {
-			g3d::Color c { 0.0f, 0.0f, 0.0f};
-			c.vec[i] = 1.0f;
-			c.vec[(i + 1) % N_AXES] = 0.1f;
-			c.vec[(i + 2) % N_AXES] = 0.1f;
-			std::vector<g3d::Color> solidColor { _arrow.positionCount(), c };
-			out.emplace_back(renderer, solidColor);
-		}
-
-		return out;
-	}
-
-	g3d::Transform axisTransform(unsigned int n) {
-		glm::mat4 rotation {1.0f};
-
-		if (n == Y) {
-			glm::vec3 rotAxis {0.0f, 0.0f, 1.0f};
-			rotation = glm::rotate({1.0f}, glm::radians(90.0f), rotAxis);
-		} else if (n == Z) {
-			glm::vec3 rotAxis {0.0f, 1.0f, 0.0f};
-			rotation = glm::rotate({1.0f}, glm::radians(-90.0f), rotAxis);
-		}
-
-		return {{}, g3d::Transform::default_scale, rotation};
-	}
-
-	void populateAxisEntity(g3d::Renderer& renderer, g3d::Entity& entity, unsigned int n) {
-		g3d::populateStaticEntity(renderer, entity, axisTransform(n), _arrow, _colors[n]);
-	}
-public:
-	Axes(g3d::Renderer& renderer)
-	: _arrow { createArrowMesh(renderer) },
-	  _colors { createColors(renderer) }
-	{
-		for (unsigned int i = 0; i < N_AXES; i++) {
-			populateAxisEntity(renderer, _axisEntities[i], i);
-		}
-	}
-
-	void render() {
-		for (auto& axis : _axisEntities) {
-			axis.render();
-		}
-	}
-};
-
-class LightObject {
-private:
-	g3d::StaticMesh _mesh;
-	g3d::StaticVertexAttributes<g3d::Color> _colors;
-	g3d::Entity _entity;
-
-public:
-	LightObject(g3d::Renderer& renderer)
-	: _mesh { cubeMesh(renderer, 0.1f) },
-	  _colors { solidColor(_mesh, {1.0f, 1.0f, 1.0f}) }
-	{
-		g3d::populateStaticEntity(renderer, _entity, {}, _mesh, _colors);
-	}
-
-	void update(const g3d::Light& light) {
-		_entity.requireComponent<g3d::TransformComponent>().transform.translation = light.position;
-	}
-
-	void render() {
-		_entity.render();
-	}
-};
-
 class ConstantRotation {
 private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> _start;
@@ -212,6 +107,71 @@ struct TestFunc {
 	}
 };
 
+void buildArrow(g3d::MeshBuilder& b) {
+	constexpr unsigned int hRes = 10;
+	constexpr unsigned int cylVRes = 30;
+	constexpr unsigned int coneVRes = hRes;
+	constexpr float arrowLength = 1.2f;
+	constexpr float arrowTipLength = 0.1f;
+	constexpr float arrowRadius = 0.01f;
+	constexpr float arrowTipRadius = arrowRadius * 2.0f;
+
+	constexpr float cylLength = arrowLength - arrowTipLength;
+
+	b.beginGroup();
+	b.cone(
+		arrowTipRadius,
+		arrowTipLength,
+		hRes, coneVRes,
+		{ 0.0f, 0.0f, cylLength }
+	);
+	b.cylinder(
+		arrowRadius,
+		cylLength,
+		hRes, cylVRes,
+		{ 0.0f, 0.0f, cylLength / 2.0f }
+	);
+	b.endGroup();
+}
+
+g3d::SimpleLitObject buildAxes(g3d::Renderer& renderer) {
+	constexpr g3d::Color xcolor { 0.6f, 0.1f, 0.1f };
+	constexpr g3d::Color ycolor { 0.1f, 0.6f, 0.1f };
+	constexpr g3d::Color zcolor { 0.1f, 0.1f, 0.6f };
+	constexpr g3d::Color centerColor { 0.1f, 0.1f, 0.1f };
+
+	auto builder = g3d::SimpleLitObject::mkBuilder(
+		renderer,
+		g3d::MeshBuilderMode::genColors
+	);
+
+	builder.setMaterial({ 0.4f, 0.2f, 0.7f, 8.0f });
+
+	builder.setColor(xcolor);
+	buildArrow(builder);
+	builder.rot90Y(g3d::RotateDirection::CCW);
+
+	builder.setColor(ycolor);
+	buildArrow(builder);
+	builder.rot90X(g3d::RotateDirection::CW);
+
+	builder.setColor(zcolor);
+	buildArrow(builder);
+
+	builder.setColor(centerColor);
+	builder.sphere(0.02f, 20, 20);
+
+	return { builder };
+}
+
+g3d::SimpleUnlitObject buildLightObject(g3d::Renderer& renderer) {
+	return {
+		g3d::SimpleUnlitObject::mkBuilder(renderer)
+			.setColor({1.0f, 1.0f, 1.0f})
+			.cube(0.1f)
+	};
+}
+
 void mainloop(g3d::Renderer& renderer) {
 	auto& device = renderer.graphDevice();
 
@@ -225,6 +185,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::MovingAverage<float> avgFps { 50 };
 
 	g3d::RenderSettings renderSettings;
+	g3d::DebugSettings debugSettings;
 
 	unsigned int cells = 20;
 	float range = 3.0f;
@@ -232,21 +193,24 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::Graph<TestFunc> graph { {}, cells, range };
 	g3d::GraphEntities<TestFunc> graphEntities { renderer, graph };
 
-	Axes axes { renderer };
+	auto axes = buildAxes(renderer);
 
 	g3d::WithInitial<g3d::Light> light {{
 		{0.0f, 0.0f, 1.5f}, // position
 		{1.0f, 1.0f, 1.0f}, // color
 		1.0f
 	}};
-	LightObject lightObject { renderer };
+	auto lightObject = buildLightObject(renderer);
 
 	g3d::Ui ui {
 		camController,
 		renderSettings,
+		debugSettings,
 		light,
 		graphEntities.surfaceMaterial()
 	};
+
+	g3d::PrimitiveTest testObject { renderer };
 
 	while (!device.window().shouldClose()) {
 		auto frameStartTime = now();
@@ -260,7 +224,7 @@ void mainloop(g3d::Renderer& renderer) {
 
 		// Entity and camera updates.
 		camController.update();
-		lightObject.update(light);
+		g3d::getTransform(lightObject.entity()).translation = light.current.position;
 
 		// Draw the frame.
 		renderer.beginFrame(camController.camera(), light);
@@ -270,10 +234,6 @@ void mainloop(g3d::Renderer& renderer) {
 			continue;
 		}
 		renderer.setMode(g3d::RenderMode::line);
-
-		if (renderSettings.renderAxes) {
-			axes.render();
-		}
 
 		// TODO This is really dumb but it doesn't look too terrible...
 		// Look into using textures for the grid, maybe.
@@ -294,6 +254,11 @@ void mainloop(g3d::Renderer& renderer) {
 			graphEntities.wireframe().render();
 		}
 
+		if (debugSettings.renderTestObject) {
+			testObject.renderLines();
+		}
+
+		// TODO: Manually managing all these modes kind of sucks
 		renderer.setMode(g3d::RenderMode::triangle);
 		if (renderSettings.renderLightObject) {
 			lightObject.render();
@@ -302,6 +267,15 @@ void mainloop(g3d::Renderer& renderer) {
 		renderer.setMode(g3d::RenderMode::litTriangle);
 		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::surface) {
 			graphEntities.surface().render();
+		}
+
+		renderer.setMode(g3d::RenderMode::litTriangleCulled);
+		if (renderSettings.renderAxes) {
+			axes.render();
+		}
+
+		if (debugSettings.renderTestObject) {
+			testObject.renderLit();
 		}
 
 		g3d::imGuiRecord(renderer);

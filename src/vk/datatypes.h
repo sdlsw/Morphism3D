@@ -16,22 +16,22 @@ namespace g3d {
 struct Position {
 	static constexpr unsigned int binding = 0;
 	glm::vec3 vec;
-	Position(const glm::vec3& v) : vec {v} {}
-	Position(float x, float y, float z) : vec {x, y, z} {}
+	constexpr Position(const glm::vec3& v) : vec {v} {}
+	constexpr Position(float x, float y, float z) : vec {x, y, z} {}
 };
 
 struct Color {
 	static constexpr unsigned int binding = 1;
 	glm::vec3 vec;
-	Color(const glm::vec3& v) : vec {v} {};
-	Color(float r, float g, float b) : vec {r, g, b} {}
+	constexpr Color(const glm::vec3& v) : vec {v} {};
+	constexpr Color(float r, float g, float b) : vec {r, g, b} {}
 };
 
 struct Normal {
 	static constexpr unsigned int binding = 2;
 	glm::vec3 vec;
-	Normal(const glm::vec3& v) : vec {v} {};
-	Normal(float x, float y, float z) : vec {x, y, z} {}
+	constexpr Normal(const glm::vec3& v) : vec {v} {};
+	constexpr Normal(float x, float y, float z) : vec {x, y, z} {}
 };
 
 template<typename T>
@@ -100,6 +100,9 @@ struct Material {
 	  diffuse { strengths.y },
 	  specular { strengths.z },
 	  shine { strengths.w }
+	{}
+	Material(float a, float d, float s, float shine)
+	: ambient { a }, diffuse { d }, specular { s }, shine { shine }
 	{}
 };
 }

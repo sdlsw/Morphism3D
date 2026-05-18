@@ -195,7 +195,8 @@ public:
 enum class RenderMode {
 	line,
 	triangle,
-	litTriangle
+	litTriangle,
+	litTriangleCulled
 };
 
 class Renderer {
@@ -230,6 +231,7 @@ private:
 	vk::raii::Pipeline createLinePipeline();
 	vk::raii::Pipeline createTrianglePipeline();
 	vk::raii::Pipeline createLitTrianglePipeline();
+	vk::raii::Pipeline createLitTriangleCulledPipeline();
 	std::unordered_map<RenderMode, vk::raii::Pipeline> createPipelines();
 	DescriptorSetFactory createDescriptorSetFactory();
 	std::vector<PerFrameResources> createPerFrameResources();
@@ -404,4 +406,6 @@ void populateStaticEntity(
 	StaticVertexAttributes<Color>& colors,
 	StaticVertexAttributes<Normal>& normals
 );
+
+Transform& getTransform(Entity& entity);
 }

@@ -189,7 +189,7 @@ vk::raii::Pipeline PipelineBuilder::build() {
 		.depthClampEnable = vk::False,
 		.rasterizerDiscardEnable = vk::False,
 		.polygonMode = vk::PolygonMode::eFill,
-		.cullMode = vk::CullModeFlagBits::eNone,
+		.cullMode = _culling,
 		.frontFace = vk::FrontFace::eCounterClockwise,
 		.depthBiasEnable = vk::False,
 		.depthBiasConstantFactor = 0.0f,

@@ -184,11 +184,18 @@ std::vector<vk::raii::Framebuffer> WindowResources::createFramebuffers(const vk:
 	std::vector<vk::raii::Framebuffer> framebuffers;
 
 	for (size_t i = 0; i < _swapchainImages.size(); ++i) {
+#ifdef MSAA_ENABLE
 		std::array<vk::ImageView, 3> attachments = {
 			*_colorResource.view(),
 			*_depthResource.view(),
 			*_swapchainImageViews[i]
 		};
+#else
+		std::array<vk::ImageView, 2> attachments = {
+			*_swapchainImageViews[i],
+			*_depthResource.view()
+		};
+#endif
 		vk::FramebufferCreateInfo info {
 			.renderPass = *renderPass,
 			.attachmentCount = static_cast<uint32_t>(attachments.size()),
@@ -247,7 +254,11 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		.stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
 		.stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 		.initialLayout = vk::ImageLayout::eUndefined,
+#ifdef MSAA_ENABLE
 		.finalLayout = vk::ImageLayout::eColorAttachmentOptimal
+#else
+		.finalLayout = vk::ImageLayout::ePresentSrcKHR
+#endif
 	};
 	vk::AttachmentReference colorAttachmentRef {
 		.attachment = 0,
@@ -269,6 +280,7 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal
 	};
 
+#ifdef MSAA_ENABLE
 	vk::AttachmentDescription resolveAttachment {
 		.format = _windowResources->swapchainFormat(),
 		.samples = vk::SampleCountFlagBits::e1,
@@ -283,12 +295,15 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		.attachment = 2,
 		.layout = vk::ImageLayout::eColorAttachmentOptimal
 	};
+#endif
 
 	vk::SubpassDescription subpass {
 		.pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = &colorAttachmentRef,
+#ifdef MSAA_ENABLE
 		.pResolveAttachments = &resolveAttachmentReference,
+#endif
 		.pDepthStencilAttachment = &depthAttachmentReference
 	};
 
@@ -313,11 +328,19 @@ vk::raii::RenderPass Renderer::createRenderPass() {
 		)
 	};
 
+#ifdef MSAA_ENABLE
 	std::array<vk::AttachmentDescription, 3> attachments = {
 		colorAttachment,
 		depthAttachment,
 		resolveAttachment
 	};
+#else
+	std::array<vk::AttachmentDescription, 2> attachments = {
+		colorAttachment,
+		depthAttachment
+	};
+#endif
+
 	vk::RenderPassCreateInfo renderPassInfo {
 		.attachmentCount = static_cast<uint32_t>(attachments.size()),
 		.pAttachments = attachments.data(),
@@ -414,12 +437,25 @@ vk::raii::Pipeline Renderer::createLitTrianglePipeline() {
 		.build();
 }
 
+vk::raii::Pipeline Renderer::createLitTriangleCulledPipeline() {
+	return PipelineBuilder(_graphDevice->logicalDevice(), _pipelineLayout, _renderPass)
+		.withInputType<Position>()
+		.withInputType<Color>()
+		.withInputType<Normal>()
+		.withVertexShader("lit_vert.spv")
+		.withFragmentShader("lit_frag.spv")
+		.withTopology(vk::PrimitiveTopology::eTriangleList)
+		.withCulling(vk::CullModeFlagBits::eBack)
+		.build();
+}
+
 std::unordered_map<RenderMode, vk::raii::Pipeline> Renderer::createPipelines() {
 	std::unordered_map<RenderMode, vk::raii::Pipeline> out;
 
 	out.emplace(RenderMode::line, createLinePipeline());
 	out.emplace(RenderMode::triangle, createTrianglePipeline());
 	out.emplace(RenderMode::litTriangle, createLitTrianglePipeline());
+	out.emplace(RenderMode::litTriangleCulled, createLitTriangleCulledPipeline());
 
 	return out;
 }
@@ -629,5 +665,9 @@ void populateStaticEntity(
 ) {
 	populateStaticEntity(renderer, entity, transform, mesh, colors);
 	entity.addComponent<StaticVertexAttributeComponent<Normal>>(normals);
+}
+
+Transform& getTransform(Entity& entity) {
+	return entity.requireComponent<TransformComponent>().transform;
 }
 }

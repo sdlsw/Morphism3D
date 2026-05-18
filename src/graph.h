@@ -13,13 +13,6 @@ concept Graphable = requires(F f, float x, float y) {
 	{ f.eval(x, y) } -> std::convertible_to<float>;
 };
 
-// other2 must be clockwise from other1.
-glm::vec3 calcTriangleNormal(
-	const Position& thisPosition,
-	const Position& other1,
-	const Position& other2
-);
-
 template<typename T, typename U>
 T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
 	T u = glm::mix(ul, ur, a);
@@ -73,6 +66,9 @@ private:
 		return _positions[idx(x, y)];
 	}
 
+	// Since the structure of the graph is already known, a custom function
+	// that doesn't need an index buffer is used here. TODO maybe it would
+	// be simpler to just use autoGenerateNormals?
 	Normal calcVertexNormal(unsigned int x, unsigned int y) {
 		std::vector<glm::vec3> faceNormals;
 		const Position& thisPosition = getPosition(x, y);
@@ -233,7 +229,7 @@ private:
 	StaticMesh _surfaceMesh;
 	StaticVertexAttributes<Color> _surfaceColors;
 	StaticVertexAttributes<Normal> _surfaceNormals;
-	WithInitial<Material> _surfaceMaterial { glm::vec4(0.01f, 0.75f, 0.5f, 8.0f) } ;
+	WithInitial<Material> _surfaceMaterial { defaultMaterial() };
 	Entity _surface;
 
 	StaticMesh _gridMesh;

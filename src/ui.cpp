@@ -404,6 +404,16 @@ void RenderWindow::show() {
 	ImGui::End();
 }
 
+void DebugWindow::show() {
+	if (!open) return;
+
+	ImGui::Begin("Debug", &open);
+	ImGui::PushItemWidth(200.0f);
+	ImGui::Checkbox("Show Test Object", &_debugSettings->renderTestObject);
+	ImGui::PopItemWidth();
+	ImGui::End();
+}
+
 void Ui::show() {
 	mainMenuBar();
 
@@ -413,6 +423,7 @@ void Ui::show() {
 
 	_cameraWindow.show();
 	_renderWindow.show();
+	_debugWindow.show();
 }
 
 void Ui::mainMenuBar() {
@@ -426,6 +437,7 @@ void Ui::windowMenu() {
 	if (ImGui::BeginMenu("Window")) {
 		ImGui::MenuItem("Camera", nullptr, &_cameraWindow.open);
 		ImGui::MenuItem("Render", nullptr, &_renderWindow.open);
+		ImGui::MenuItem("Debug", nullptr, &_debugWindow.open);
 		ImGui::MenuItem("ImGui Demo", nullptr, &showDemoWindow);
 		ImGui::EndMenu();
 	}

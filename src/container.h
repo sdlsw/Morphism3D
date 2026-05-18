@@ -65,4 +65,8 @@ struct RenderSettings {
 	bool renderLightObject = false;
 	GraphRenderMode graphRenderMode = GraphRenderMode::surface;
 };
+
+struct DebugSettings {
+	bool renderTestObject = false;
+};
 }
