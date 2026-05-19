@@ -253,6 +253,7 @@ public:
 	{}
 
 	auto& graphDevice() { return *_graphDevice; }
+	const auto& currentFrame() { return _currentFrame; }
 	auto& currentFrameResources() { return _perFrameResources[_currentFrame]; }
 	auto& currentFramebuffer() { return _framebuffers[_currentFrame]; }
 	auto& currentCommandBuffer() { return currentFrameResources().commandBuffer(); }
@@ -303,6 +304,75 @@ public:
 		cmd.bindVertexBuffers(T::binding, vertexBuffers, offsets);
 	}
 };
+
+template<typename T, vk::BufferUsageFlagBits U>
+class DynamicDoubleBuffer {
+private:
+	Renderer* _renderer;
+	std::vector<size_t> _counts;
+	std::vector<std::unique_ptr<UnsafeMappedBuffer>> _buffers;
+
+	void copyDataTo(unsigned int n, const std::vector<T>& attrs) {
+		auto& curBuffer = _buffers[n];
+		auto& curCount = _counts[n];
+
+		vk::DeviceSize bufferSize = sizeof(T) * attrs.size();
+		if (attrs.size() > curCount) {
+			curBuffer.reset(new UnsafeMappedBuffer(
+				_renderer->graphDevice(),
+				bufferSize,
+				U
+			));
+			curCount = attrs.size();
+		}
+
+		curBuffer.get()->unsafeCopyIn(attrs.data(), bufferSize);
+	}
+public:
+	DynamicDoubleBuffer() = delete;
+	DynamicDoubleBuffer(DynamicDoubleBuffer&&) = default;
+	DynamicDoubleBuffer(Renderer& renderer)
+	: _renderer { &renderer }
+	{
+		for (unsigned int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			_counts.push_back(0);
+			_buffers.push_back({});
+		}
+	}
+	DynamicDoubleBuffer(Renderer& renderer, const std::vector<T>& attrs)
+	: DynamicDoubleBuffer(renderer)
+	{
+		for (unsigned int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			copyDataTo(i, attrs);
+		}
+	}
+
+	auto& renderer() const { return *_renderer; }
+
+	auto count() const { return _counts[_renderer->currentFrame()]; }
+
+	// Automatically copies data to the buffer corresponding to the current
+	// frame.
+	void copyData(const std::vector<T>& attrs) {
+		copyDataTo(_renderer->currentFrame(), attrs);
+	}
+
+	void record() {
+		auto& curBuffer = _buffers[_renderer->currentFrame()];
+		if (!curBuffer) {
+			throw std::runtime_error("Cannot record an unallocated dynamic attribute");
+		}
+
+		auto& cmd = _renderer->currentCommandBuffer();
+		// FIXME will not work for index buffers
+		vk::Buffer vertexBuffers[] = {*(curBuffer.get()->buffer())};
+		vk::DeviceSize offsets[] = { 0 };
+		cmd.bindVertexBuffers(T::binding, vertexBuffers, offsets);
+	}
+};
+
+template<typename T>
+using DynamicVertexAttributes = DynamicDoubleBuffer<T, vk::BufferUsageFlagBits::eVertexBuffer>;
 
 class StaticIndexBuffer {
 private:
@@ -381,6 +451,30 @@ public:
 	) : _attributes { &attributes } {}
 
 	void render() override { _attributes->record(); }
+};
+
+template<typename T>
+class DynamicVertexAttributeComponent : public Component {
+private:
+	DynamicVertexAttributes<T>* _attributes;
+
+public:
+	DynamicVertexAttributeComponent(
+		DynamicVertexAttributes<T>& attributes
+	) : _attributes { &attributes } {}
+
+	void render() override { _attributes->record(); }
+};
+
+class StaticIndexBufferComponent : public Component {
+private:
+	StaticIndexBuffer* _indices;
+
+public:
+	StaticIndexBufferComponent(StaticIndexBuffer& indices)
+	: _indices { &indices } {}
+
+	void render() override { _indices->record(); }
 };
 
 class StaticMeshComponent : public Component {

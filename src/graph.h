@@ -24,6 +24,8 @@ T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
 template<Graphable F>
 class Graph {
 private:
+	static constexpr float normLength = 0.1f;
+
 	// The number of discrete steps to walk along each input variable.
 	// Higher values yield higher accuracy at the cost of additional
 	// vertices.
@@ -156,6 +158,17 @@ private:
 		}
 	}
 
+	void generateNormalPositions() {
+		auto ptCount = pointCount();
+		for (unsigned int i = 0; i < ptCount; i++) {
+			// Note: The positions for visualizing the normals are
+			// tacked onto the end of the surface positions, to
+			// save some bandwidth when copying the positions to
+			// the GPU.
+			_positions.push_back(_positions[i].vec + normLength*_normals[i].vec);
+		}
+	}
+
 public:
 	Graph() = delete;
 	Graph(const F& f, unsigned int cells, float range)
@@ -163,8 +176,7 @@ public:
 	  _cells { cells },
 	  _range { range }
 	{
-		generateVertices();
-		generateVertexNormals();
+		regenerateVertices();
 	}
 
 	auto cells() const { return _cells; }
@@ -172,6 +184,17 @@ public:
 	const auto& positions() const { return _positions; }
 	const auto& colors() const { return _colors; }
 	const auto& normals() const { return _normals; }
+	auto pointCount() const { return (_cells + 1) * (_cells + 1); }
+
+	void regenerateVertices() {
+		_positions.clear();
+		_colors.clear();
+		_normals.clear();
+
+		generateVertices();
+		generateVertexNormals();
+		generateNormalPositions();
+	}
 
 	std::vector<uint16_t> generateLineIndices() {
 		std::vector<uint16_t> out;
@@ -216,67 +239,104 @@ public:
 
 		return out;
 	}
+
+	std::vector<uint16_t> generateNormalIndices() {
+		std::vector<uint16_t> out;
+		auto ptCount = pointCount();
+
+		for (unsigned int i = 0; i < ptCount; i++) {
+			out.push_back(i);
+			out.push_back(i + ptCount);
+		}
+
+		return out;
+	}
 };
 
 template<typename T>
 class GraphEntities {
 private:
 	static constexpr float gridLoft = 0.002f;
-	static constexpr float normLength = 0.1f;
 
-	// TODO: Split vertex and index buffers into different components
-	// so vertex data can be reused between surface and grid entities.
-	StaticMesh _surfaceMesh;
+	DynamicVertexAttributes<Position> _surfacePositions;
+
+	StaticIndexBuffer _surfaceIndices;
 	StaticVertexAttributes<Color> _surfaceColors;
-	StaticVertexAttributes<Normal> _surfaceNormals;
+	DynamicVertexAttributes<Normal> _surfaceNormals;
 	WithInitial<Material> _surfaceMaterial { defaultMaterial() };
 	Entity _surface;
 
-	StaticMesh _gridMesh;
+	StaticIndexBuffer _gridIndices;
 	StaticVertexAttributes<Color> _gridColors;
 	Entity _gridTop;
 	Entity _gridBottom;
 
-	StaticMesh _normalMesh;
+	StaticIndexBuffer _normalIndices;
 	StaticVertexAttributes<Color> _normalColors;
 	Entity _normals;
 
 	Entity _wireframe;
 
-	StaticMesh createNormalMesh(Renderer& renderer, Graph<T>& graph) {
-		std::vector<Position> positions { graph.positions() };
-		std::vector<uint16_t> indices {};
+	void populateSurfaceEntity(Renderer& renderer) {
+		_surface.addComponent<TransformComponent>(renderer, Transform());
 
-		for (size_t i = 0; i < graph.positions().size(); i++) {
-			positions.push_back(graph.positions()[i].vec + graph.normals()[i].vec*normLength);
-			indices.push_back(static_cast<uint16_t>(i));
-			indices.push_back(static_cast<uint16_t>(i + graph.positions().size()));
-		}
+		_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
+		_surface.addComponent<StaticVertexAttributeComponent<Color>>(_surfaceColors);
+		_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
+		_surface.addComponent<StaticIndexBufferComponent>(_surfaceIndices);
+		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
 
-		return { renderer, positions, indices };
+		_surface.setLastRender<StaticIndexBufferComponent>();
+	}
+
+	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
+		ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
+
+		ent.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
+		ent.addComponent<StaticVertexAttributeComponent<Color>>(_gridColors);
+		ent.addComponent<StaticIndexBufferComponent>(_gridIndices);
+
+		ent.setLastRender<StaticIndexBufferComponent>();
+	}
+
+	void populateWireframeEntity(Renderer& renderer) {
+		_wireframe.addComponent<TransformComponent>(renderer, Transform());
+
+		_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
+		_wireframe.addComponent<StaticVertexAttributeComponent<Color>>(_surfaceColors);
+		_wireframe.addComponent<StaticIndexBufferComponent>(_gridIndices);
+
+		_wireframe.setLastRender<StaticIndexBufferComponent>();
+	}
+
+	void populateNormalEntity(Renderer& renderer) {
+		_normals.addComponent<TransformComponent>(renderer, Transform());
+
+		_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
+		_normals.addComponent<StaticVertexAttributeComponent<Color>>(_normalColors);
+		_normals.addComponent<StaticIndexBufferComponent>(_normalIndices);
+
+		_normals.setLastRender<StaticIndexBufferComponent>();
 	}
 public:
 	GraphEntities(
 		Renderer& renderer,
 		Graph<T>& graph
 	)
-	: _surfaceMesh { renderer, graph.positions(), graph.generateTriangleIndices() },
+	: _surfacePositions { renderer, graph.positions() },
 	  _surfaceColors { renderer, graph.colors() },
 	  _surfaceNormals { renderer, graph.normals() },
-	  _gridMesh { renderer, graph.positions(), graph.generateLineIndices() },
-	  _gridColors { solidColor(_gridMesh, {0.1f, 0.1f, 0.1f}) },
-	  _normalMesh { createNormalMesh(renderer, graph) },
-	  _normalColors { solidColor(_normalMesh, {1.0f, 1.0f, 1.0f}) }
+	  _surfaceIndices { renderer, graph.generateTriangleIndices() },
+	  _gridIndices { renderer, graph.generateLineIndices() },
+	  _gridColors { solidColor(renderer, graph.pointCount(), {0.1f, 0.1f, 0.1f}) },
+	  _normalIndices { renderer, graph.generateNormalIndices() },
+	  _normalColors { solidColor(renderer, 2*graph.pointCount(), {1.0f, 1.0f, 1.0f}) }
 	{
-		populateStaticEntity(renderer, _surface, {}, _surfaceMesh, _surfaceColors, _surfaceNormals);
-		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
-
-		populateStaticEntity(renderer, _gridTop, {{0.0f, 0.0f, gridLoft}}, _gridMesh, _gridColors);
-		populateStaticEntity(renderer, _gridBottom, {{0.0f, 0.0f, -gridLoft}}, _gridMesh, _gridColors);
-
-		populateStaticEntity(renderer, _normals, {}, _normalMesh, _normalColors);
-
-		populateStaticEntity(renderer, _wireframe, {}, _gridMesh, _surfaceColors);
+		populateSurfaceEntity(renderer);
+		populateGridEntity(renderer, _gridTop, 1.0f);
+		populateGridEntity(renderer, _gridBottom, -1.0f);
+		populateWireframeEntity(renderer);
+		populateNormalEntity(renderer);
 	}
 
 	// Allow outside access to the surface material so the UI can
@@ -288,5 +348,10 @@ public:
 	auto& gridBottom() { return _gridBottom; }
 	auto& normals() { return _normals; }
 	auto& wireframe() { return _wireframe; }
+
+	void update(Graph<T>& graph) {
+		_surfacePositions.copyData(graph.positions());
+		_surfaceNormals.copyData(graph.normals());
+	}
 };
 }

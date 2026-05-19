@@ -108,6 +108,32 @@ struct TestFunc {
 	}
 };
 
+class WobbleFunc {
+private:
+	float ofs = 0.0f;
+	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+
+public:
+	WobbleFunc() : startTime { now() } {}
+
+	// Couple test funcs to swap between
+	float rippler(float x, float y) const {
+		return 0.2*glm::sin(3*glm::sqrt(x*x + y*y) - 2*ofs);
+	}
+
+	float diagonalWave(float x, float y) const {
+		return glm::sin(x+ofs)*glm::sin(y+ofs);
+	}
+
+	float eval(float x, float y) const {
+		return diagonalWave(x, y);
+	}
+
+	void update() {
+		ofs = secondsSince(startTime);
+	}
+};
+
 void buildArrow(g3d::MeshBuilder& b) {
 	constexpr unsigned int hRes = 10;
 	constexpr unsigned int cylVRes = 30;
@@ -192,11 +218,12 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::RenderSettings renderSettings;
 	g3d::DebugSettings debugSettings;
 
-	unsigned int cells = 20;
+	unsigned int cells = 40;
 	float range = 3.0f;
 
-	g3d::Graph<TestFunc> graph { {}, cells, range };
-	g3d::GraphEntities<TestFunc> graphEntities { renderer, graph };
+	WobbleFunc f;
+	g3d::Graph<WobbleFunc> graph { f, cells, range };
+	g3d::GraphEntities<WobbleFunc> graphEntities { renderer, graph };
 
 	auto axes = buildAxes(renderer);
 	auto frame = buildFrame(renderer);
@@ -231,6 +258,8 @@ void mainloop(g3d::Renderer& renderer) {
 		// Entity and camera updates.
 		camController.update();
 		g3d::getTransform(lightObject.entity()).translation = light.current.position;
+		f.update();
+		graph.regenerateVertices();
 
 		// Draw the frame.
 		renderer.beginFrame(camController.camera(), light);
@@ -239,6 +268,11 @@ void mainloop(g3d::Renderer& renderer) {
 			// outside reason - probably window resize
 			continue;
 		}
+
+		// Update graph GPU resources after beginFrame() to ensure proper
+		// synchronization
+		graphEntities.update(graph);
+
 		renderer.setMode(g3d::RenderMode::line);
 		if (renderSettings.renderFrame) {
 			frame.render();
