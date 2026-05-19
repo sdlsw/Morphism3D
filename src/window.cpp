@@ -1,5 +1,7 @@
 #include "window.h"
 
+#include <stb_image.h>
+
 #include <iostream>
 
 namespace g3d {
@@ -21,7 +23,12 @@ void Window::initWindowingSystem() {
 	_glfwInitialized = true;
 }
 
-Window::Window(std::string title, uint32_t initialWidth, uint32_t initialHeight) {
+Window::Window(
+	std::string title,
+	uint32_t initialWidth,
+	uint32_t initialHeight,
+	const std::string& iconPath
+) {
 	if (!_glfwInitialized) {
 		initWindowingSystem();
 	}
@@ -36,6 +43,12 @@ Window::Window(std::string title, uint32_t initialWidth, uint32_t initialHeight)
 	if (_glfwWindow == nullptr) {
 		throw std::runtime_error("could not create GLFW window!");
 	}
+
+	// Load window icon
+	GLFWimage images[1];
+	images[0].pixels = stbi_load(iconPath.c_str(), &images[0].width, &images[0].height, 0, 4);
+	glfwSetWindowIcon(_glfwWindow, 1, images);
+	stbi_image_free(images[0].pixels);
 
 	glfwSetWindowUserPointer(_glfwWindow, this);
 	glfwSetFramebufferSizeCallback(_glfwWindow, frameBufferResizeCallback);

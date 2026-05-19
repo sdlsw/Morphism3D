@@ -15,6 +15,7 @@ list(APPEND CMAKE_PREFIX_PATH "lib\\glfw\\lib-vc2022")
 find_library(glfw NAMES glfw3 REQUIRED)
 
 add_executable(main "src/main.cpp" icon.rc)
+target_sources(main PUBLIC "src\\stb_impl.cpp")
 target_sources(main PUBLIC "src\\camera_control.cpp")
 target_sources(main PUBLIC "src\\container.cpp")
 target_sources(main PUBLIC "src\\entity.cpp")
@@ -47,4 +48,12 @@ target_include_directories(main PUBLIC "lib\\glfw\\include")
 target_include_directories(main PUBLIC "lib\\glm")
 target_include_directories(main PUBLIC "lib\\imgui")
 target_include_directories(main PUBLIC "lib\\imgui\\backends")
+target_include_directories(main PUBLIC "lib\\stb")
 target_link_libraries(main PUBLIC compiler-flags ${glfw} Vulkan::Vulkan)
+
+# copy files
+add_custom_command(
+    TARGET main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/logosmall.png
+        ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/icon.png)

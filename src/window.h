@@ -233,7 +233,12 @@ public:
 	
 	Window() = delete;
 	Window(const Window&) = delete;
-	Window(std::string title, uint32_t initialWidth, uint32_t initialHeight);
+	Window(
+		std::string title,
+		uint32_t initialWidth,
+		uint32_t initialHeight,
+		const std::string& iconPath
+	);
 	~Window();
 
 	bool shouldClose();
