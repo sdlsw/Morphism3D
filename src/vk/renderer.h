@@ -274,6 +274,7 @@ class StaticVertexAttributes {
 private:
 	Renderer* _renderer;
 	BoundBuffer _buffer;
+	size_t _count;
 
 	BoundBuffer createBuffer(const std::vector<T>& attrs) {
 		return makeStaticGPUBuffer(
@@ -286,12 +287,14 @@ private:
 public:
 	StaticVertexAttributes() = delete;
 	StaticVertexAttributes(StaticVertexAttributes&&) = default;
-	StaticVertexAttributes(
-		Renderer& renderer,
-		const std::vector<T>& attrs
-	) : _renderer { &renderer }, _buffer { createBuffer(attrs) } {}
+	StaticVertexAttributes(Renderer& renderer, const std::vector<T>& attrs)
+	: _renderer { &renderer },
+	  _buffer { createBuffer(attrs) },
+	  _count { attrs.size() }
+	{}
 
 	auto& renderer() const { return *_renderer; }
+	auto count() const { return _count; }
 
 	void record() const {
 		auto& cmd = _renderer->currentCommandBuffer();
@@ -301,15 +304,34 @@ public:
 	}
 };
 
+class StaticIndexBuffer {
+private:
+	Renderer* _renderer;
+	BoundBuffer _buffer;
+	size_t _count;
+
+	BoundBuffer createBuffer(const std::vector<uint16_t>& indices);
+
+public:
+	StaticIndexBuffer() = delete;
+	StaticIndexBuffer(StaticIndexBuffer&&) = default;
+	StaticIndexBuffer(Renderer& renderer, const std::vector<uint16_t>& indices)
+	: _renderer { &renderer },
+	  _buffer { createBuffer(indices) },
+	  _count { indices.size() }
+	{}
+
+	auto& renderer() const { return *_renderer; }
+	auto count() const { return _count; }
+	void record() const;
+};
+
+// Combined object owning both a position and index buffer. Suitable for most
+// uses and a little more convenient than having them be separate.
 class StaticMesh {
 private:
 	StaticVertexAttributes<Position> _positions;
-	BoundBuffer _indexBuffer;
-
-	size_t _indexCount;
-	size_t _positionCount;
-
-	BoundBuffer createIndexBuffer(const std::vector<uint16_t>& indices);
+	StaticIndexBuffer _indices;
 public:
 	StaticMesh() = delete;
 	StaticMesh(StaticMesh&&) = default;
@@ -319,18 +341,12 @@ public:
 		const std::vector<uint16_t>& indices
 	)
 	: _positions { renderer, positions },
-	  _indexBuffer { makeStaticGPUBuffer(
-		renderer.graphDevice(),
-		indices,
-		vk::BufferUsageFlagBits::eIndexBuffer
-	  ) },
-	  _positionCount { positions.size() },
-	  _indexCount { indices.size() }
+	  _indices { renderer, indices }
 	{}
 
 	auto& renderer() const { return _positions.renderer(); }
-	auto indexCount() const { return _indexCount; }
-	auto positionCount() const { return _positionCount; }
+	auto indexCount() const { return _indices.count(); }
+	auto positionCount() const { return _positions.count(); }
 
 	void record() const;
 };

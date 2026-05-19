@@ -605,7 +605,7 @@ void Renderer::endFrame() {
 	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) {
+BoundBuffer StaticIndexBuffer::createBuffer(const std::vector<uint16_t>& indices) {
 	return makeStaticGPUBuffer(
 		renderer().graphDevice(),
 		indices,
@@ -613,11 +613,15 @@ BoundBuffer StaticMesh::createIndexBuffer(const std::vector<uint16_t>& indices) 
 	);
 }
 
+void StaticIndexBuffer::record() const {
+	auto& cmd = _renderer->currentCommandBuffer();
+	cmd.bindIndexBuffer(_buffer.buffer(), 0, vk::IndexType::eUint16);
+	cmd.drawIndexed(static_cast<uint32_t>(_count), 1, 0, 0, 0);
+}
+
 void StaticMesh::record() const {
-	auto& cmd = _positions.renderer().currentCommandBuffer();
 	_positions.record();
-	cmd.bindIndexBuffer(_indexBuffer.buffer(), 0, vk::IndexType::eUint16);
-	cmd.drawIndexed(static_cast<uint32_t>(_indexCount), 1, 0, 0, 0);
+	_indices.record();
 }
 
 void TransformComponent::render() {
