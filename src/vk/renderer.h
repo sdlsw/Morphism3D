@@ -323,9 +323,9 @@ private:
 				bufferSize,
 				U
 			));
-			curCount = attrs.size();
 		}
 
+		curCount = attrs.size();
 		curBuffer.get()->unsafeCopyIn(attrs.data(), bufferSize);
 	}
 public:
@@ -364,15 +364,22 @@ public:
 		}
 
 		auto& cmd = _renderer->currentCommandBuffer();
-		// FIXME will not work for index buffers
-		vk::Buffer vertexBuffers[] = {*(curBuffer.get()->buffer())};
-		vk::DeviceSize offsets[] = { 0 };
-		cmd.bindVertexBuffers(T::binding, vertexBuffers, offsets);
+		vk::Buffer rawBuffer = *(curBuffer.get()->buffer());
+		if constexpr (U == vk::BufferUsageFlagBits::eVertexBuffer) {
+			vk::Buffer vertexBuffers[] = { rawBuffer };
+			vk::DeviceSize offsets[] = { 0 };
+			cmd.bindVertexBuffers(T::binding, vertexBuffers, offsets);
+		} else {
+			cmd.bindIndexBuffer(rawBuffer, 0, vk::IndexType::eUint16);
+			cmd.drawIndexed(static_cast<uint32_t>(count()), 1, 0, 0, 0);
+		}
 	}
 };
 
 template<typename T>
 using DynamicVertexAttributes = DynamicDoubleBuffer<T, vk::BufferUsageFlagBits::eVertexBuffer>;
+
+using DynamicIndexBuffer = DynamicDoubleBuffer<uint16_t, vk::BufferUsageFlagBits::eIndexBuffer>;
 
 class StaticIndexBuffer {
 private:
@@ -472,6 +479,17 @@ private:
 
 public:
 	StaticIndexBufferComponent(StaticIndexBuffer& indices)
+	: _indices { &indices } {}
+
+	void render() override { _indices->record(); }
+};
+
+class DynamicIndexBufferComponent : public Component {
+private:
+	DynamicIndexBuffer* _indices;
+
+public:
+	DynamicIndexBufferComponent(DynamicIndexBuffer& indices)
 	: _indices { &indices } {}
 
 	void render() override { _indices->record(); }

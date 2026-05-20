@@ -118,7 +118,7 @@ public:
 
 	// Couple test funcs to swap between
 	float rippler(float x, float y) const {
-		return 0.2*glm::sin(3*glm::sqrt(x*x + y*y) - 2*ofs);
+		return 0.2f*glm::sin(3*glm::sqrt(x*x + y*y) - 2*ofs);
 	}
 
 	float diagonalWave(float x, float y) const {
@@ -235,13 +235,11 @@ void mainloop(g3d::Renderer& renderer) {
 	}};
 	auto lightObject = buildLightObject(renderer);
 
-	g3d::Ui ui {
-		camController,
-		renderSettings,
-		debugSettings,
-		light,
-		graphEntities.surfaceMaterial()
-	};
+	g3d::Ui ui;
+	ui.addWindow<g3d::CameraWindow>(camController);
+	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graphEntities.surfaceMaterial());
+	ui.addWindow<g3d::GraphWindow<WobbleFunc>>(graph);
+	ui.addWindow<g3d::DebugWindow>(debugSettings);
 
 	g3d::PrimitiveTest testObject { renderer };
 

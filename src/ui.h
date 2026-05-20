@@ -2,6 +2,7 @@
 
 #include "camera_control.h"
 #include "container.h"
+#include "graph.h"
 #include "vk/renderer.h"
 
 #include <imgui.h>
@@ -49,8 +50,20 @@ void resettableSlider(const std::string& label, T* setting, const T& _default, U
 template<typename T, typename U>
 void resettableDrag(const std::string& label, T* setting, const T& _default, U inc);
 
-class CameraWindow {
+class UiWindow {
 private:
+	const std::string unknownTitle { "unknown" };
+public:
+	bool open = true;
+	void show();
+	virtual const std::string& title() const { return unknownTitle; }
+	virtual void drawUi() {}
+};
+
+class CameraWindow : public UiWindow {
+private:
+	const std::string _title { "Camera" };
+
 	CameraController* _camController;
 	void settingSlider(
 		const std::string& label,
@@ -72,15 +85,17 @@ private:
 	void controlTutorial();
 
 public:
-	bool open = true;
-	void show();
+	const std::string& title() const override { return _title; }
+	void drawUi() override;
 
 	CameraWindow() = delete;
 	CameraWindow(CameraController& camController) : _camController { &camController } {}
 };
 
-class RenderWindow {
+class RenderWindow : public UiWindow {
 private:
+	const std::string _title { "Render" };
+
 	RenderSettings* _renderSettings;
 	WithInitial<Light>* _light;
 	WithInitial<Material>* _material;
@@ -90,8 +105,8 @@ private:
 	void lightSection();
 	void materialSection();
 public:
-	bool open = true;
-	void show();
+	const std::string& title() const override { return _title; }
+	void drawUi() override;
 
 	RenderWindow() = delete;
 	RenderWindow(
@@ -105,25 +120,51 @@ public:
 	{}
 };
 
-class DebugWindow {
+template<typename T>
+class GraphWindow : public UiWindow {
 private:
+	const std::string _title { "Graph" };
+
+	Graph<T>* _graph;
+	int _cells;
+
+public:
+	const std::string& title() const override { return _title; }
+	void drawUi() override {
+		ImGui::SliderInt("Resolution", &_cells, 10, 100);
+		if (ImGui::Button("Update")) {
+			_graph->cells(static_cast<unsigned int>(_cells));
+		}
+	}
+
+	GraphWindow() = delete;
+	GraphWindow(Graph<T>& graph)
+	: _graph { &graph },
+	  _cells { static_cast<int>(graph.cells()) }
+	{}
+};
+
+class DebugWindow : public UiWindow {
+private:
+	const std::string _title { "Debug" };
+
 	DebugSettings* _debugSettings;
 
 public:
-	bool open = false;
-	void show();
+	const std::string& title() const override { return _title; }
+	void drawUi() override;
 
 	DebugWindow() = delete;
 	DebugWindow(DebugSettings& debugSettings)
 	: _debugSettings { &debugSettings }
-	{}
+	{
+		open = false;
+	}
 };
 
 class Ui {
 private:
-	CameraWindow _cameraWindow;
-	RenderWindow _renderWindow;
-	DebugWindow _debugWindow;
+	std::vector<std::unique_ptr<UiWindow>> _windows;
 
 	void mainMenuBar();
 	void windowMenu();
@@ -132,16 +173,14 @@ public:
 	bool showDemoWindow = false;
 	void show();
 
-	Ui(
-		CameraController& camController,
-		RenderSettings& renderSettings,
-		DebugSettings& debugSettings,
-		WithInitial<Light>& light,
-		WithInitial<Material>& material
-	)
-	: _cameraWindow { camController },
-	  _debugWindow { debugSettings },
-	  _renderWindow { renderSettings, light, material }
-	{}
+	Ui() = default;
+	Ui(Ui&&) = delete;
+	Ui(const Ui&) = delete;
+
+	template<std::derived_from<UiWindow> W, typename... Args>
+	void addWindow(Args&&... args) {
+		auto window = std::make_unique<W>(std::forward<Args>(args)...);
+		_windows.emplace_back(std::move(window));
+	}
 };
 }

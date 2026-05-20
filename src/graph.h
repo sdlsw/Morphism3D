@@ -31,6 +31,9 @@ private:
 	// vertices.
 	unsigned int _cells;
 
+	// When the cells value changes, the buffers need to be updated for
+	// multiple frames since everything is double buffered.
+	unsigned int _cellsChangedFrames = 0;
 
 	// The x, y coordinates of the model vertices always range from
 	// -1.0f to 1.0f. The range determines how those coordinates map to
@@ -180,6 +183,13 @@ public:
 	}
 
 	auto cells() const { return _cells; }
+	void cells(unsigned int cells) {
+		_cells = cells;
+		_cellsChangedFrames = MAX_FRAMES_IN_FLIGHT;
+	}
+	bool cellsChanged() const { return _cellsChangedFrames > 0; }
+	void decChangeFrames() { _cellsChangedFrames--; }
+
 	auto range() const { return _range; }
 	const auto& positions() const { return _positions; }
 	const auto& colors() const { return _colors; }
@@ -260,19 +270,19 @@ private:
 
 	DynamicVertexAttributes<Position> _surfacePositions;
 
-	StaticIndexBuffer _surfaceIndices;
-	StaticVertexAttributes<Color> _surfaceColors;
+	DynamicIndexBuffer _surfaceIndices;
+	DynamicVertexAttributes<Color> _surfaceColors;
 	DynamicVertexAttributes<Normal> _surfaceNormals;
 	WithInitial<Material> _surfaceMaterial { defaultMaterial() };
 	Entity _surface;
 
-	StaticIndexBuffer _gridIndices;
-	StaticVertexAttributes<Color> _gridColors;
+	DynamicIndexBuffer _gridIndices;
+	DynamicVertexAttributes<Color> _gridColors;
 	Entity _gridTop;
 	Entity _gridBottom;
 
-	StaticIndexBuffer _normalIndices;
-	StaticVertexAttributes<Color> _normalColors;
+	DynamicIndexBuffer _normalIndices;
+	DynamicVertexAttributes<Color> _normalColors;
 	Entity _normals;
 
 	Entity _wireframe;
@@ -281,42 +291,50 @@ private:
 		_surface.addComponent<TransformComponent>(renderer, Transform());
 
 		_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_surface.addComponent<StaticVertexAttributeComponent<Color>>(_surfaceColors);
+		_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
 		_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
-		_surface.addComponent<StaticIndexBufferComponent>(_surfaceIndices);
+		_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
 		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
 
-		_surface.setLastRender<StaticIndexBufferComponent>();
+		_surface.setLastRender<DynamicIndexBufferComponent>();
 	}
 
 	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
 		ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
 
 		ent.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		ent.addComponent<StaticVertexAttributeComponent<Color>>(_gridColors);
-		ent.addComponent<StaticIndexBufferComponent>(_gridIndices);
+		ent.addComponent<DynamicVertexAttributeComponent<Color>>(_gridColors);
+		ent.addComponent<DynamicIndexBufferComponent>(_gridIndices);
 
-		ent.setLastRender<StaticIndexBufferComponent>();
+		ent.setLastRender<DynamicIndexBufferComponent>();
 	}
 
 	void populateWireframeEntity(Renderer& renderer) {
 		_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
 		_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_wireframe.addComponent<StaticVertexAttributeComponent<Color>>(_surfaceColors);
-		_wireframe.addComponent<StaticIndexBufferComponent>(_gridIndices);
+		_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
+		_wireframe.addComponent<DynamicIndexBufferComponent>(_gridIndices);
 
-		_wireframe.setLastRender<StaticIndexBufferComponent>();
+		_wireframe.setLastRender<DynamicIndexBufferComponent>();
 	}
 
 	void populateNormalEntity(Renderer& renderer) {
 		_normals.addComponent<TransformComponent>(renderer, Transform());
 
 		_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_normals.addComponent<StaticVertexAttributeComponent<Color>>(_normalColors);
-		_normals.addComponent<StaticIndexBufferComponent>(_normalIndices);
+		_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_normalColors);
+		_normals.addComponent<DynamicIndexBufferComponent>(_normalIndices);
 
-		_normals.setLastRender<StaticIndexBufferComponent>();
+		_normals.setLastRender<DynamicIndexBufferComponent>();
+	}
+
+	std::vector<Color> makeGridColors(Graph<T>& graph) {
+		return { graph.pointCount(), {0.1f, 0.1f, 0.1f} };
+	}
+
+	std::vector<Color> makeNormalColors(Graph<T>& graph) {
+		return { 2*graph.pointCount(), {1.0f, 1.0f, 1.0f} };
 	}
 public:
 	GraphEntities(
@@ -328,9 +346,9 @@ public:
 	  _surfaceNormals { renderer, graph.normals() },
 	  _surfaceIndices { renderer, graph.generateTriangleIndices() },
 	  _gridIndices { renderer, graph.generateLineIndices() },
-	  _gridColors { solidColor(renderer, graph.pointCount(), {0.1f, 0.1f, 0.1f}) },
+	  _gridColors { renderer, makeGridColors(graph) },
 	  _normalIndices { renderer, graph.generateNormalIndices() },
-	  _normalColors { solidColor(renderer, 2*graph.pointCount(), {1.0f, 1.0f, 1.0f}) }
+	  _normalColors { renderer, makeNormalColors(graph) }
 	{
 		populateSurfaceEntity(renderer);
 		populateGridEntity(renderer, _gridTop, 1.0f);
@@ -352,6 +370,17 @@ public:
 	void update(Graph<T>& graph) {
 		_surfacePositions.copyData(graph.positions());
 		_surfaceNormals.copyData(graph.normals());
+
+		if (graph.cellsChanged()) {
+			_surfaceColors.copyData(graph.colors());
+			_surfaceIndices.copyData(graph.generateTriangleIndices());
+			_gridIndices.copyData(graph.generateLineIndices());
+			_gridColors.copyData(makeGridColors(graph));
+			_normalIndices.copyData(graph.generateNormalIndices());
+			_normalColors.copyData(makeNormalColors(graph));
+
+			graph.decChangeFrames();
+		}
 	}
 };
 }

@@ -293,12 +293,7 @@ void CameraWindow::controlTutorial() {
 	}
 }
 
-void CameraWindow::show() {
-	if (!open) return;
-
-	ImGui::Begin("Camera", &open);
-	ImGui::PushItemWidth(200.0f);
-
+void CameraWindow::drawUi() {
 	ImGui::SeparatorText("Settings");
 	settingSliders();
 	projectionSlider();
@@ -313,9 +308,6 @@ void CameraWindow::show() {
 
 	ImGui::SeparatorText("Info");
 	controlTutorial();
-
-	ImGui::PopItemWidth();
-	ImGui::End();
 }
 
 void RenderWindow::showGridToggle() {
@@ -393,24 +385,22 @@ void RenderWindow::materialSection() {
 	resetAllButton("Material", *_material);
 }
 
-void RenderWindow::show() {
-	if (!open) return;
-
-	ImGui::Begin("Render", &open);
-	ImGui::PushItemWidth(200.0f);
+void RenderWindow::drawUi() {
 	basicSettingsSection();
 	lightSection();
 	materialSection();
-	ImGui::PopItemWidth();
-	ImGui::End();
 }
 
-void DebugWindow::show() {
+void DebugWindow::drawUi() {
+	ImGui::Checkbox("Show Test Object", &_debugSettings->renderTestObject);
+}
+
+void UiWindow::show() {
 	if (!open) return;
 
-	ImGui::Begin("Debug", &open);
+	ImGui::Begin(title().c_str(), &open);
 	ImGui::PushItemWidth(200.0f);
-	ImGui::Checkbox("Show Test Object", &_debugSettings->renderTestObject);
+	drawUi();
 	ImGui::PopItemWidth();
 	ImGui::End();
 }
@@ -422,9 +412,9 @@ void Ui::show() {
 		ImGui::ShowDemoWindow(&showDemoWindow);
 	}
 
-	_cameraWindow.show();
-	_renderWindow.show();
-	_debugWindow.show();
+	for (auto& window : _windows) {
+		window.get()->show();
+	}
 }
 
 void Ui::mainMenuBar() {
@@ -436,9 +426,10 @@ void Ui::mainMenuBar() {
 
 void Ui::windowMenu() {
 	if (ImGui::BeginMenu("Window")) {
-		ImGui::MenuItem("Camera", nullptr, &_cameraWindow.open);
-		ImGui::MenuItem("Render", nullptr, &_renderWindow.open);
-		ImGui::MenuItem("Debug", nullptr, &_debugWindow.open);
+		for (auto& window : _windows) {
+			auto* ptr = window.get();
+			ImGui::MenuItem(ptr->title().c_str(), nullptr, &ptr->open);
+		}
 		ImGui::MenuItem("ImGui Demo", nullptr, &showDemoWindow);
 		ImGui::EndMenu();
 	}
