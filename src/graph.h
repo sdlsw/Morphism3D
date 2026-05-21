@@ -359,6 +359,9 @@ private:
 		return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 	}
 public:
+	bool doUpload = true;
+	bool doRegen = true;
+
 	Graph(
 		Renderer& renderer,
 		const F& func,
@@ -403,26 +406,31 @@ public:
 	}
 
 	void update() {
-		if (cellsChanged) {
-			_builder.regenerateEverything();
-			cellsChanged = false;
-		} else {
-			_builder.regeneratePositions();
+		if (doRegen) {
+			if (cellsChanged) {
+				_builder.regenerateEverything();
+			} else {
+				_builder.regeneratePositions();
+			}
 		}
 
-		_surfacePositions.copyData(_builder.positions());
-		_surfaceNormals.copyData(_builder.normals());
+		if (doUpload || cellChangeUploadFrames > 0) {
+			_surfacePositions.copyData(_builder.positions());
+			_surfaceNormals.copyData(_builder.normals());
 
-		if (cellChangeUploadFrames > 0) {
-			_surfaceColors.copyData(_builder.colors());
-			_surfaceIndices.copyData(_builder.triangleIndices());
-			_gridIndices.copyData(_builder.lineIndices());
-			_gridColors.copyData(makeGridColors());
-			_normalIndices.copyData(_builder.normalIndices());
-			_normalColors.copyData(makeNormalColors());
+			if (cellChangeUploadFrames > 0) {
+				_surfaceColors.copyData(_builder.colors());
+				_surfaceIndices.copyData(_builder.triangleIndices());
+				_gridIndices.copyData(_builder.lineIndices());
+				_gridColors.copyData(makeGridColors());
+				_normalIndices.copyData(_builder.normalIndices());
+				_normalColors.copyData(makeNormalColors());
 
-			cellChangeUploadFrames--;
+				cellChangeUploadFrames--;
+			}
 		}
+
+		if (cellsChanged) cellsChanged = false;
 	}
 };
 }

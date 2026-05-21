@@ -135,6 +135,9 @@ public:
 		if (ImGui::Button("Update")) {
 			_graph->cells(static_cast<unsigned int>(_cells));
 		}
+		ImGui::SeparatorText("Debug");
+		ImGui::Checkbox("GPU Upload", &_graph->doUpload);
+		ImGui::Checkbox("Regenerate", &_graph->doRegen);
 	}
 
 	GraphWindow() = delete;
