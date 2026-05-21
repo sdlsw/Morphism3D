@@ -1,5 +1,7 @@
 #include "primitive.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 template<typename T>
@@ -456,15 +458,14 @@ glm::vec3 calcTriangleNormal(
 	));
 }
 
-std::vector<Normal> autoGenerateNormals(
+void autoGenerateNormals(
+	std::vector<Normal>& normals,
 	const std::vector<Position>& positions,
 	const std::vector<uint16_t>& indices
 ) {
-	if (indices.size() % 3 != 0) {
-		throw std::runtime_error("autoGenerateNormals: index amount not divisible by 3!");
-	}
+	normals.resize(positions.size());
+	std::fill(normals.begin(), normals.end(), Normal(0.0f, 0.0f, 0.0f));
 
-	std::vector<Normal> normals { positions.size(), {0.0f, 0.0f, 0.0f} };
 	auto counts = std::vector<uint16_t>(positions.size(), 0);
 
 	unsigned int triangleBase = 0;
@@ -495,6 +496,18 @@ std::vector<Normal> autoGenerateNormals(
 	for (unsigned int vertIx = 0; vertIx < positions.size(); vertIx++) {
 		normals[vertIx].vec /= counts[vertIx];
 	}
+}
+
+std::vector<Normal> autoGenerateNormals(
+	const std::vector<Position>& positions,
+	const std::vector<uint16_t>& indices
+) {
+	if (indices.size() % 3 != 0) {
+		throw std::runtime_error("autoGenerateNormals: index amount not divisible by 3!");
+	}
+
+	std::vector<Normal> normals;
+	autoGenerateNormals(normals, positions, indices);
 
 	return normals;
 }

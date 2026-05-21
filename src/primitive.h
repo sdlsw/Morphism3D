@@ -82,6 +82,11 @@ glm::vec3 calcTriangleNormal(
 );
 
 // Automatically generate the normal vectors for a triangle mesh.
+void autoGenerateNormals(
+	std::vector<Normal>& normals,
+	const std::vector<Position>& positions,
+	const std::vector<uint16_t>& indices
+);
 std::vector<Normal> autoGenerateNormals(
 	const std::vector<Position>& positions,
 	const std::vector<uint16_t>& indices

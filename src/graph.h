@@ -67,63 +67,6 @@ private:
 		return _positions[idx(x, y)];
 	}
 
-	// Since the structure of the graph is already known, a custom function
-	// that doesn't need an index buffer is used here. TODO maybe it would
-	// be simpler to just use autoGenerateNormals?
-	Normal calcVertexNormal(unsigned int x, unsigned int y) {
-		std::vector<glm::vec3> faceNormals;
-		const Position& thisPosition = getPosition(x, y);
-
-		if (x < _cells && y < _cells) {
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x+1, y),
-				getPosition(x, y+1)
-			));
-		}
-
-		if (x > 0 && y < _cells) {
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x-1, y+1),
-				getPosition(x-1, y)
-			));
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x, y+1),
-				getPosition(x-1, y+1)
-			));
-		}
-
-		if (x > 0 && y > 0) {
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x-1, y),
-				getPosition(x, y-1)
-			));
-		}
-
-		if (x < _cells && y > 0) {
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x+1, y-1),
-				getPosition(x+1, y)
-			));
-			faceNormals.push_back(calcTriangleNormal(
-				thisPosition,
-				getPosition(x, y-1),
-				getPosition(x+1, y-1)
-			));
-		}
-
-		glm::vec3 sum {};
-		for (const auto& v : faceNormals) {
-			sum += v;
-		}
-
-		return sum / static_cast<float>(faceNormals.size());
-	}
-
 	void generatePositions() {
 		float inc = 1.0f / static_cast<float>(_cells);
 		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
@@ -164,11 +107,7 @@ private:
 	}
 
 	void generateNormals() {
-		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
-			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
-				_normals.push_back(calcVertexNormal(xpt, ypt));
-			}
-		}
+		autoGenerateNormals(_normals, _positions, _triangleIndices);
 	}
 
 	void generateNormalPositions() {
@@ -273,8 +212,10 @@ public:
 	}
 
 	void regenerateEverything() {
-		regenerateVertices();
+		// Indices need to be regenerated first, since the
+		// generateNormals() is dependent on them.
 		regenerateIndices();
+		regenerateVertices();
 	}
 };
 

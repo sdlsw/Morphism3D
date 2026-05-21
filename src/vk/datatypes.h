@@ -18,6 +18,7 @@ struct Position {
 	glm::vec3 vec;
 	constexpr Position(const glm::vec3& v) : vec {v} {}
 	constexpr Position(float x, float y, float z) : vec {x, y, z} {}
+	constexpr Position() : Position(0.0f, 0.0f, 0.0f) {}
 };
 
 struct Color {
@@ -25,6 +26,7 @@ struct Color {
 	glm::vec3 vec;
 	constexpr Color(const glm::vec3& v) : vec {v} {};
 	constexpr Color(float r, float g, float b) : vec {r, g, b} {}
+	constexpr Color() : Color(0.0f, 0.0f, 0.0f) {}
 };
 
 struct Normal {
@@ -32,6 +34,7 @@ struct Normal {
 	glm::vec3 vec;
 	constexpr Normal(const glm::vec3& v) : vec {v} {};
 	constexpr Normal(float x, float y, float z) : vec {x, y, z} {}
+	constexpr Normal() : Normal(0.0f, 0.0f, 0.0f) {}
 };
 
 template<typename T>
