@@ -222,8 +222,7 @@ void mainloop(g3d::Renderer& renderer) {
 	float range = 3.0f;
 
 	WobbleFunc f;
-	g3d::Graph<WobbleFunc> graph { f, cells, range };
-	g3d::GraphEntities<WobbleFunc> graphEntities { renderer, graph };
+	g3d::Graph<WobbleFunc> graph { renderer, f, cells, range };
 
 	auto axes = buildAxes(renderer);
 	auto frame = buildFrame(renderer);
@@ -237,7 +236,7 @@ void mainloop(g3d::Renderer& renderer) {
 
 	g3d::Ui ui;
 	ui.addWindow<g3d::CameraWindow>(camController);
-	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graphEntities.surfaceMaterial());
+	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graph.surfaceMaterial());
 	ui.addWindow<g3d::GraphWindow<WobbleFunc>>(graph);
 	ui.addWindow<g3d::DebugWindow>(debugSettings);
 
@@ -257,7 +256,6 @@ void mainloop(g3d::Renderer& renderer) {
 		camController.update();
 		g3d::getTransform(lightObject.entity()).translation = light.current.position;
 		f.update();
-		graph.regenerateVertices();
 
 		// Draw the frame.
 		renderer.beginFrame(camController.camera(), light);
@@ -269,7 +267,7 @@ void mainloop(g3d::Renderer& renderer) {
 
 		// Update graph GPU resources after beginFrame() to ensure proper
 		// synchronization
-		graphEntities.update(graph);
+		graph.update();
 
 		renderer.setMode(g3d::RenderMode::line);
 		if (renderSettings.renderFrame) {
@@ -283,16 +281,16 @@ void mainloop(g3d::Renderer& renderer) {
 			renderSettings.graphRenderMode == g3d::GraphRenderMode::surface
 		);
 		if (shouldRenderSurfaceGrid) {
-			graphEntities.gridTop().render();
-			graphEntities.gridBottom().render();
+			graph.gridTop().render();
+			graph.gridBottom().render();
 		}
 
 		if (renderSettings.renderNormals) {
-			graphEntities.normals().render();
+			graph.normals().render();
 		}
 
 		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::wireframe) {
-			graphEntities.wireframe().render();
+			graph.wireframe().render();
 		}
 
 		if (debugSettings.renderTestObject) {
@@ -307,7 +305,7 @@ void mainloop(g3d::Renderer& renderer) {
 
 		renderer.setMode(g3d::RenderMode::litTriangle);
 		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::surface) {
-			graphEntities.surface().render();
+			graph.surface().render();
 		}
 
 		renderer.setMode(g3d::RenderMode::litTriangleCulled);

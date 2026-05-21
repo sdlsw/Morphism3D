@@ -13,16 +13,8 @@ concept Graphable = requires(F f, float x, float y) {
 	{ f.eval(x, y) } -> std::convertible_to<float>;
 };
 
-template<typename T, typename U>
-T lerp2d(const T& ul, const T& ur, const T& dl, const T& dr, U a, U b) {
-	T u = glm::mix(ul, ur, a);
-	T d = glm::mix(dl, dr, a);
-
-	return glm::mix(u, d, b);
-}
-
 template<Graphable F>
-class Graph {
+class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
 
@@ -50,6 +42,10 @@ private:
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
 	std::vector<Normal> _normals;
+
+	std::vector<uint16_t> _triangleIndices;
+	std::vector<uint16_t> _lineIndices;
+	std::vector<uint16_t> _normalIndices;
 
 	glm::vec3 toModelSpace(const glm::vec3& funcSpace) {
 		return funcSpace / _range;
@@ -128,7 +124,19 @@ private:
 		return sum / static_cast<float>(faceNormals.size());
 	}
 
-	void generateVertices() {
+	void generatePositions() {
+		float inc = 1.0f / static_cast<float>(_cells);
+		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
+			float y = glm::mix(-_range, _range, inc*ypt);
+
+			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
+				float x = glm::mix(-_range, _range, inc*xpt);
+				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
+			}
+		}
+	}
+
+	void generateColors() {
 		// Colors for extreme points of graph.
 		// nxny - (-range, -range)
 		// pxny - (range, -range)
@@ -139,21 +147,23 @@ private:
 		glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
 		glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
 
+		float inc = 1.0f / static_cast<float>(_cells);
 		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
-			float lerp_a_y = static_cast<float>(ypt) / static_cast<float>(_cells);
+			float lerp_a_y = inc*ypt;
 			float y = glm::mix(-_range, _range, lerp_a_y);
 
-			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
-				float lerp_a_x = static_cast<float>(xpt) / static_cast<float>(_cells);
-				float x = glm::mix(-_range, _range, lerp_a_x);
+			glm::vec3 colornx = glm::mix(nxny, nxpy, lerp_a_y);
+			glm::vec3 colorpx = glm::mix(pxny, pxpy, lerp_a_y);
 
-				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
-				_colors.push_back(lerp2d(nxny, pxny, nxpy, pxpy, lerp_a_x, lerp_a_y));
+			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
+				float lerp_a_x = inc*xpt;
+				glm::vec3 color = glm::mix(colornx, colorpx, lerp_a_x);
+				_colors.push_back(color);
 			}
 		}
 	}
 
-	void generateVertexNormals() {
+	void generateNormals() {
 		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
 			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
 				_normals.push_back(calcVertexNormal(xpt, ypt));
@@ -172,101 +182,113 @@ private:
 		}
 	}
 
-public:
-	Graph() = delete;
-	Graph(const F& f, unsigned int cells, float range)
-	: _func { &f },
-	  _cells { cells },
-	  _range { range }
-	{
-		regenerateVertices();
-	}
-
-	auto cells() const { return _cells; }
-	void cells(unsigned int cells) {
-		_cells = cells;
-		_cellsChangedFrames = MAX_FRAMES_IN_FLIGHT;
-	}
-	bool cellsChanged() const { return _cellsChangedFrames > 0; }
-	void decChangeFrames() { _cellsChangedFrames--; }
-
-	auto range() const { return _range; }
-	const auto& positions() const { return _positions; }
-	const auto& colors() const { return _colors; }
-	const auto& normals() const { return _normals; }
-	auto pointCount() const { return (_cells + 1) * (_cells + 1); }
-
-	void regenerateVertices() {
-		_positions.clear();
-		_colors.clear();
-		_normals.clear();
-
-		generateVertices();
-		generateVertexNormals();
-		generateNormalPositions();
-	}
-
-	std::vector<uint16_t> generateLineIndices() {
-		std::vector<uint16_t> out;
-
+	void generateLineIndices() {
 		// generate horizontal lines
 		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
 			for (unsigned int xpt = 0; xpt < _cells; xpt++) {
-				out.push_back(idx(xpt, ypt));
-				out.push_back(idx(xpt+1, ypt));
+				_lineIndices.push_back(idx(xpt, ypt));
+				_lineIndices.push_back(idx(xpt+1, ypt));
 			}
 		}
 
 		// generate vertical lines
 		for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
 			for (unsigned int ypt = 0; ypt < _cells; ypt++) {
-				out.push_back(idx(xpt, ypt));
-				out.push_back(idx(xpt, ypt+1));
+				_lineIndices.push_back(idx(xpt, ypt));
+				_lineIndices.push_back(idx(xpt, ypt+1));
 			}
 		}
-
-		return out;
 	}
 
-	std::vector<uint16_t> generateTriangleIndices() {
-		std::vector<uint16_t> out;
-
+	void generateTriangleIndices() {
 		// X and Y correspond to the top left vertex of the quad being
 		// generated.
 		for (unsigned int ypt = 0; ypt < _cells; ypt++) {
 			for (unsigned int xpt = 0; xpt < _cells; xpt++) {
 				// first tri
-				out.push_back(idx(xpt, ypt));
-				out.push_back(idx(xpt+1, ypt));
-				out.push_back(idx(xpt, ypt+1));
+				_triangleIndices.push_back(idx(xpt, ypt));
+				_triangleIndices.push_back(idx(xpt+1, ypt));
+				_triangleIndices.push_back(idx(xpt, ypt+1));
 
 				// second tri
-				out.push_back(idx(xpt+1, ypt));
-				out.push_back(idx(xpt+1, ypt+1));
-				out.push_back(idx(xpt, ypt+1));
+				_triangleIndices.push_back(idx(xpt+1, ypt));
+				_triangleIndices.push_back(idx(xpt+1, ypt+1));
+				_triangleIndices.push_back(idx(xpt, ypt+1));
 			}
 		}
-
-		return out;
 	}
 
-	std::vector<uint16_t> generateNormalIndices() {
-		std::vector<uint16_t> out;
+	void generateNormalIndices() {
 		auto ptCount = pointCount();
 
 		for (unsigned int i = 0; i < ptCount; i++) {
-			out.push_back(i);
-			out.push_back(i + ptCount);
+			_normalIndices.push_back(i);
+			_normalIndices.push_back(i + ptCount);
 		}
+	}
+public:
+	GraphMeshBuilder() = delete;
+	GraphMeshBuilder(const F& f, unsigned int cells, float range)
+	: _func { &f },
+	  _cells { cells },
+	  _range { range }
+	{
+		regenerateEverything();
+	}
 
-		return out;
+	auto cells() const { return _cells; }
+	void cells(unsigned int cells) { _cells = cells; }
+
+	auto range() const { return _range; }
+	const auto& positions() const { return _positions; }
+	const auto& colors() const { return _colors; }
+	const auto& normals() const { return _normals; }
+	const auto& lineIndices() const { return _lineIndices; }
+	const auto& triangleIndices() const { return _triangleIndices; }
+	const auto& normalIndices() const { return _normalIndices; }
+	auto pointCount() const { return (_cells + 1) * (_cells + 1); }
+
+	void regeneratePositions() {
+		_positions.clear();
+		_normals.clear();
+		generatePositions();
+		generateNormals();
+		generateNormalPositions();
+	}
+
+	void regenerateVertices() {
+		regeneratePositions();
+		_colors.clear();
+		generateColors();
+	}
+
+	void regenerateIndices() {
+		_lineIndices.clear();
+		_triangleIndices.clear();
+		_normalIndices.clear();
+
+		generateLineIndices();
+		generateTriangleIndices();
+		generateNormalIndices();
+	}
+
+	void regenerateEverything() {
+		regenerateVertices();
+		regenerateIndices();
 	}
 };
 
-template<typename T>
-class GraphEntities {
+template<Graphable F>
+class Graph {
 private:
 	static constexpr float gridLoft = 0.002f;
+
+	GraphMeshBuilder<F> _builder;
+	bool cellsChanged = false;
+
+	// When the cells value changes, the buffers need to be updated for
+	// multiple frames since everything is double buffered.
+	unsigned int cellChangeUploadFrames = 0;
 
 	DynamicVertexAttributes<Position> _surfacePositions;
 
@@ -329,26 +351,29 @@ private:
 		_normals.setLastRender<DynamicIndexBufferComponent>();
 	}
 
-	std::vector<Color> makeGridColors(Graph<T>& graph) {
-		return { graph.pointCount(), {0.1f, 0.1f, 0.1f} };
+	std::vector<Color> makeGridColors() {
+		return { _builder.pointCount(), {0.1f, 0.1f, 0.1f} };
 	}
 
-	std::vector<Color> makeNormalColors(Graph<T>& graph) {
-		return { 2*graph.pointCount(), {1.0f, 1.0f, 1.0f} };
+	std::vector<Color> makeNormalColors() {
+		return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 	}
 public:
-	GraphEntities(
+	Graph(
 		Renderer& renderer,
-		Graph<T>& graph
+		const F& func,
+		unsigned int cells,
+		float range
 	)
-	: _surfacePositions { renderer, graph.positions() },
-	  _surfaceColors { renderer, graph.colors() },
-	  _surfaceNormals { renderer, graph.normals() },
-	  _surfaceIndices { renderer, graph.generateTriangleIndices() },
-	  _gridIndices { renderer, graph.generateLineIndices() },
-	  _gridColors { renderer, makeGridColors(graph) },
-	  _normalIndices { renderer, graph.generateNormalIndices() },
-	  _normalColors { renderer, makeNormalColors(graph) }
+	: _builder { func, cells, range },
+	  _surfacePositions { renderer, _builder.positions() },
+	  _surfaceColors { renderer, _builder.colors() },
+	  _surfaceNormals { renderer, _builder.normals() },
+	  _surfaceIndices { renderer, _builder.triangleIndices() },
+	  _gridIndices { renderer, _builder.lineIndices() },
+	  _gridColors { renderer, makeGridColors() },
+	  _normalIndices { renderer, _builder.normalIndices() },
+	  _normalColors { renderer, makeNormalColors() }
 	{
 		populateSurfaceEntity(renderer);
 		populateGridEntity(renderer, _gridTop, 1.0f);
@@ -367,19 +392,36 @@ public:
 	auto& normals() { return _normals; }
 	auto& wireframe() { return _wireframe; }
 
-	void update(Graph<T>& graph) {
-		_surfacePositions.copyData(graph.positions());
-		_surfaceNormals.copyData(graph.normals());
+	void cells(unsigned int cells) {
+		_builder.cells(cells);
+		cellsChanged = true;
+		cellChangeUploadFrames = MAX_FRAMES_IN_FLIGHT;
+	}
 
-		if (graph.cellsChanged()) {
-			_surfaceColors.copyData(graph.colors());
-			_surfaceIndices.copyData(graph.generateTriangleIndices());
-			_gridIndices.copyData(graph.generateLineIndices());
-			_gridColors.copyData(makeGridColors(graph));
-			_normalIndices.copyData(graph.generateNormalIndices());
-			_normalColors.copyData(makeNormalColors(graph));
+	unsigned int cells() const {
+		return _builder.cells();
+	}
 
-			graph.decChangeFrames();
+	void update() {
+		if (cellsChanged) {
+			_builder.regenerateEverything();
+			cellsChanged = false;
+		} else {
+			_builder.regeneratePositions();
+		}
+
+		_surfacePositions.copyData(_builder.positions());
+		_surfaceNormals.copyData(_builder.normals());
+
+		if (cellChangeUploadFrames > 0) {
+			_surfaceColors.copyData(_builder.colors());
+			_surfaceIndices.copyData(_builder.triangleIndices());
+			_gridIndices.copyData(_builder.lineIndices());
+			_gridColors.copyData(makeGridColors());
+			_normalIndices.copyData(_builder.normalIndices());
+			_normalColors.copyData(makeNormalColors());
+
+			cellChangeUploadFrames--;
 		}
 	}
 };
