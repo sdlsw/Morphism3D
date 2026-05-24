@@ -2,6 +2,7 @@
 
 #include <format>
 #include <memory>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -35,6 +36,36 @@ public:
 };
 
 struct Token;
+
+template<typename... Args>
+class AbstractTokenFactory {
+public:
+	virtual std::unique_ptr<Token> make(Args&&... args) const = 0;
+};
+
+template<typename T, typename... Args>
+class TokenFactory : public AbstractTokenFactory<Args...> {
+public:
+	std::unique_ptr<Token> make(Args&&... args) const override {
+		return std::make_unique<T>(std::forward<Args>(args)...);
+	}
+};
+
+class TokenRegistry {
+private:
+	std::unordered_map<std::string, std::unique_ptr<AbstractTokenFactory<>>> symbols;
+
+public:
+	template<typename T>
+	void registerSymbol() {
+		std::string s { T::s };
+		std::cerr << "TokenRegistry: register symbol \"" << s << '"' << std::endl;
+		auto factory = std::make_unique<TokenFactory<T>>();
+		symbols.emplace(std::move(s), std::move(factory));
+	}
+
+	std::unique_ptr<Token> makeSymbol(const std::string& s);
+};
 
 class ParseNode {
 private:
@@ -73,30 +104,36 @@ class Parser;
 struct Token {
 	// Left binding power
 	unsigned int lbp = 0;
-	char c = '\0';
+
+	// String value. Not all tokens have one.
+	std::string str;
+
+	Token() = default;
+	Token(const std::string& s) : str { s } {}
+	Token(char c) : str { c } {}
 
 	// Null denotation
 	virtual ParseNode nud(Parser& parser) {
 		throw std::runtime_error(
-			std::format("\"{}\": nud() not implemented", c)
+			std::format("\"{}\": nud() not implemented", str)
 		);
 	}
 
 	// Left denotation
 	virtual ParseNode led(Parser& parser, ParseNode&& left) {
 		throw std::runtime_error(
-			std::format("\"{}\": led() not implemented", c)
+			std::format("\"{}\": led() not implemented", str)
 		);
 	}
 
 	virtual float eval(const std::vector<ParseNode>& children) const {
 		throw std::runtime_error(
-			std::format("\"{}\": eval() not implemented", c)
+			std::format("\"{}\": eval() not implemented", str)
 		);
 	}
 
 	// For debug
-	virtual std::string toString() { return "Token"; };
+	virtual std::string toString() { return str; }
 };
 
 struct ParseIntResult {
@@ -110,17 +147,23 @@ private:
 	size_t _position = 0;
 	bool _atEnd = false;
 	VariableRegistry* _vars;
-
+	TokenRegistry* _registry;
 public:
-	Tokenizer(VariableRegistry& vars, const std::string& expression)
-	: _vars { &vars}, _expression { expression } {}
+	Tokenizer(
+		TokenRegistry& registry,
+		VariableRegistry& vars,
+		const std::string& expression
+	)
+	: _registry { &registry },
+	  _vars { &vars},
+	  _expression { expression }
+	{}
 
 	bool atEnd() { return _atEnd; }
 
 	ParseIntResult parseInt();
 	float parseFloat();
 	std::string parseAlphaString();
-	std::unique_ptr<Token> makeFunction(std::string&&);
 	std::unique_ptr<Token> next();
 };
 
@@ -132,32 +175,20 @@ private:
 
 	void nextToken();
 public:
-	Parser(VariableRegistry& vars, const std::string& expression)
-	: _tokenizer { vars, expression } {}
+	Parser(
+		TokenRegistry& registry,
+		VariableRegistry& vars,
+		const std::string& expression
+	)
+	: _tokenizer { registry, vars, expression } {}
 
 	ParseNode expression(unsigned int rbp = 0);
-	void expect(char c);
+	void expect(const std::string& c);
 	ParseNode parse();
 };
 
-// LBP is zero.
 struct EndToken : public Token {
-	EndToken() { c = 'E'; }
-	std::string toString() override { return "END"; }
-};
-
-struct StartParenToken : public Token {
-	StartParenToken() { c = LPAREN; }
-
-	ParseNode nud(Parser& parser) override {
-		ParseNode node = parser.expression();
-		parser.expect(RPAREN);
-		return node;
-	}
-};
-
-struct EndParenToken : public Token {
-	EndParenToken() { c = RPAREN; }
+	EndToken() : Token("{{ END }}") {}
 };
 
 struct LiteralToken : public Token {
@@ -180,40 +211,58 @@ struct VarToken : public Token {
 private:
 	VariableRegistry* _vars;
 public:
-	VarToken(VariableRegistry& vars, char _c) : _vars { &vars } { c = _c; }
+	VarToken(VariableRegistry& vars, char _c) : Token(_c),  _vars { &vars } {}
 
 	ParseNode nud(Parser& parser) override {
 		return { std::make_unique<VarToken>(*this) };
 	}
 
 	float eval(const std::vector<ParseNode>& children) const override {
-		return _vars->get(c);
+		return _vars->get(str[0]);
 	}
 
-	std::string toString() override { return std::format("VAR:{}", c); }
+	std::string toString() override { return std::format("VAR:{}", str[0]); }
+};
+
+struct StartParenToken : public Token {
+	static constexpr char s[] { "(" };
+	StartParenToken() : Token(s) {}
+
+	ParseNode nud(Parser& parser) override {
+		ParseNode node = parser.expression();
+		parser.expect({RPAREN});
+		return node;
+	}
+};
+
+struct EndParenToken : public Token {
+	static constexpr char s[] = { ")" };
+	EndParenToken() : Token(s) {}
 };
 
 struct FuncSin {
+	static constexpr char s[] { "sin" };
 	static inline float op(float x) { return std::sin(x); }
 };
 
 struct FuncCos {
+	static constexpr char s[] { "cos" };
 	static inline float op(float x) { return std::cos(x); }
 };
 
 struct FuncExp {
+	static constexpr char s[] { "exp" };
 	static inline float op(float x) { return std::exp(x); }
 };
 
 template<typename T>
-struct FuncToken : public Token {
-	std::string s;
-
-	FuncToken(std::string&& _s) : s {std::move(_s) } { lbp = 110; }
+struct BuiltinFuncToken : public Token {
+	static constexpr auto s { T::s };
+	BuiltinFuncToken() : Token(s) { lbp = 110; }
 
 	ParseNode nud(Parser& parser) override {
 		return {
-			std::make_unique<FuncToken>(*this),
+			std::make_unique<BuiltinFuncToken<T>>(*this),
 			parser.expression(lbp-1)
 		};
 	}
@@ -222,105 +271,89 @@ struct FuncToken : public Token {
 		return T::op(children.at(0).eval());
 	}
 
-	std::string toString() override { return std::format("FUNC:{}", s); }
+	std::string toString() override { return std::format("FUNC:{}", str); }
 };
 
 struct OpAdd {
-	static constexpr char c = ADD_CHAR;
+	static constexpr char s[] { "+" };
 	static constexpr unsigned int lbp = 20;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = true;
 	static constexpr unsigned int unaryLbp = 100;
-	static constexpr char name[] = "ADD";
 
 	static inline float opUnary(float x) { return x; }
 	static inline float op(float a, float b) { return a + b; }
 };
 
 struct OpSub {
-	static constexpr char c = SUB_CHAR;
+	static constexpr char s[] { "-" };
 	static constexpr unsigned int lbp = 20;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = true;
 	static constexpr unsigned int unaryLbp = 100;
-	static constexpr char name[] = "SUB";
 
 	static inline float opUnary(float x) { return -x; }
 	static inline float op(float a, float b) { return a - b; }
 };
 
 struct OpMul {
-	static constexpr char c = MUL_CHAR;
+	static constexpr char s[] { "*" };
 	static constexpr unsigned int lbp = 30;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "MUL";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return a * b; }
 };
 
 struct OpDiv {
-	static constexpr char c = DIV_CHAR;
+	static constexpr char s[] { "/" };
 	static constexpr unsigned int lbp = 30;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "DIV";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return a / b; }
 };
 
 struct OpExp {
-	static constexpr char c = EXP_CHAR;
+	static constexpr char s[] { "^" };
 	static constexpr unsigned int lbp = 40;
 	static constexpr unsigned int lbpSub = 1; // makes right-associative
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "EXP";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return std::pow(a, b); }
 };
 
 struct OpGt {
-	static constexpr char c = GT_CHAR;
+	static constexpr char s[] { ">" };
 	static constexpr unsigned int lbp = 10;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "GT";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return static_cast<float>(a > b); }
 };
 
 struct OpLt {
-	static constexpr char c = LT_CHAR;
+	static constexpr char s[] { "<" };
 	static constexpr unsigned int lbp = 10;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "LT";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return static_cast<float>(a < b); }
 };
 
 struct OpEq {
-	static constexpr char c = EQ_CHAR;
+	static constexpr char s[] { "=" };
 	static constexpr unsigned int lbp = 10;
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
-	static constexpr char name[] = "EQ";
 
-	static inline float opUnary(float x) { return 0.0f; }
 	static inline float op(float a, float b) { return static_cast<float>(a == b); }
 };
 
 template<typename T>
 struct BinaryOpToken : public Token {
-	BinaryOpToken() {
-		lbp = T::lbp;
-		c = T::c;
-	}
+	static constexpr auto s { T::s };
+	BinaryOpToken() : Token(s) { lbp = T::lbp; }
 
 	ParseNode nud(Parser& parser) override {
 		if constexpr (T::allowUnary) {
@@ -331,7 +364,7 @@ struct BinaryOpToken : public Token {
 		} else {
 			std::string msg = std::format(
 				"Binary operator \"{}\" cannot be used as unary",
-				T::c
+				T::s
 			);
 			throw std::runtime_error(msg);
 		}
@@ -348,84 +381,17 @@ struct BinaryOpToken : public Token {
 	float eval(const std::vector<ParseNode>& children) const override {
 		if constexpr (!T::allowUnary) {
 			return T::op(children.at(0).eval(), children.at(1).eval());
-		}
-
-		if (children.size() == 1) {
-			return T::opUnary(children.at(0).eval());
 		} else {
-			return T::op(children.at(0).eval(), children.at(1).eval());
+			if (children.size() == 1) {
+				return T::opUnary(children.at(0).eval());
+			} else {
+				return T::op(children.at(0).eval(), children.at(1).eval());
+			}
 		}
 	}
-
-	std::string toString() override { return T::name; }
 };
 
-/*
-struct AddToken : public Token {
-	AddToken() { lbp = 10; }
-
-	ParseNode nud(Parser& parser) override {
-		return {
-			std::make_unique<AddToken>(*this),
-			parser.expression(100)
-		};
-	}
-
-	ParseNode led(Parser& parser, ParseNode&& left) override {
-		return {
-			std::make_unique<AddToken>(*this),
-			std::move(left),
-			parser.expression(lbp)
-		};
-	}
-
-	float eval(const std::vector<ParseNode>& children) const override {
-		if (children.size() == 1) {
-			return children.at(0).eval();
-		} else {
-			return children.at(0).eval() + children.at(1).eval();
-		}
-	}
-
-	std::string toString() override { return "ADD"; }
-};
-*/
-
-/*
-struct SubToken : public Token {
-	SubToken() { lbp = 10; }
-
-	float nud(Parser& parser) override {
-		return -parser.expression(100);
-	}
-
-	float led(Parser& parser, float left) override {
-		return left - parser.expression(lbp);
-	}
-
-	std::string toString() override { return "SUB"; }
-};
-
-struct MulToken : public Token {
-	MulToken() { lbp = 20; }
-
-	float led(Parser& parser, float left) override {
-		return left * parser.expression(lbp);
-	}
-
-	std::string toString() override { return "MUL"; }
-};
-
-struct DivToken : public Token {
-	DivToken() { lbp = 20; }
-
-	float led(Parser& parser, float left) override {
-		return left / parser.expression(lbp);
-	}
-
-	std::string toString() override { return "DIV"; }
-};
-*/
+TokenRegistry makeTokenRegistry();
 
 void tokenizerTest(const std::string& expression);
 void parserTest(const std::string& expression);

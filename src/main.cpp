@@ -137,12 +137,16 @@ public:
 
 class ExpressionFunc {
 private:
+	g3d::TokenRegistry _tokenRegistry;
 	g3d::VariableRegistry _vars;
 	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
 	std::unique_ptr<g3d::ParseNode> _parsedExpression;
 
 public:
-	ExpressionFunc() : _startTime { now() } {}
+	ExpressionFunc()
+	: _tokenRegistry { g3d::makeTokenRegistry() },
+	  _startTime { now() }
+	{}
 
 	float eval(float x, float y) {
 		if (!_parsedExpression) {
@@ -159,7 +163,7 @@ public:
 	}
 
 	void updateExpression(const std::string& expression) {
-		g3d::Parser p { _vars, expression };
+		g3d::Parser p { _tokenRegistry, _vars, expression };
 
 		try {
 			_parsedExpression.reset(new g3d::ParseNode(p.parse()));

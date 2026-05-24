@@ -16,6 +16,14 @@ bool isAlpha(char c) {
 }
 
 namespace g3d {
+std::unique_ptr<Token> TokenRegistry::makeSymbol(const std::string& s) {
+	if (!symbols.contains(s)) {
+		return {};
+	}
+
+	return symbols.at(s).get()->make();
+}
+
 float ParseNode::eval() const {
 	return _token.get()->eval(_children);
 }
@@ -85,18 +93,6 @@ std::string Tokenizer::parseAlphaString() {
 	return s;
 }
 
-std::unique_ptr<Token> Tokenizer::makeFunction(std::string&& s) {
-	if (s == "sin") {
-		return std::make_unique<FuncToken<FuncSin>>(std::move(s));
-	} else if (s == "cos") {
-		return std::make_unique<FuncToken<FuncCos>>(std::move(s));
-	} else if (s == "exp") {
-		return std::make_unique<FuncToken<FuncExp>>(std::move(s));
-	}
-
-	throw std::runtime_error(std::format("Unsupported function \"{}\"", s));
-}
-
 std::unique_ptr<Token> Tokenizer::next() {
 	// skip whitespace
 	while (_position < _expression.size() && _expression[_position] == ' ') {
@@ -114,42 +110,26 @@ std::unique_ptr<Token> Tokenizer::next() {
 		return std::make_unique<LiteralToken>(parseFloat());
 	}
 
+	std::string s;
+
 	if (isAlpha(curChar)) {
-		std::string s = parseAlphaString();
+		s = parseAlphaString();
 
 		if (s.size() == 1) {
 			return std::make_unique<VarToken>(*_vars, s[0]);
-		} else {
-			return makeFunction(std::move(s));
 		}
+	} else {
+		s.push_back(curChar);
+		_position++;
 	}
 
-	_position++;
-	switch (curChar) {
-		case LPAREN:
-			return std::make_unique<StartParenToken>();
-		case RPAREN:
-			return std::make_unique<EndParenToken>();
-		case OpAdd::c:
-			return std::make_unique<BinaryOpToken<OpAdd>>();
-		case OpSub::c:
-			return std::make_unique<BinaryOpToken<OpSub>>();
-		case OpMul::c:
-			return std::make_unique<BinaryOpToken<OpMul>>();
-		case OpDiv::c:
-			return std::make_unique<BinaryOpToken<OpDiv>>();
-		case OpExp::c:
-			return std::make_unique<BinaryOpToken<OpExp>>();
-		case OpGt::c:
-			return std::make_unique<BinaryOpToken<OpGt>>();
-		case OpLt::c:
-			return std::make_unique<BinaryOpToken<OpLt>>();
-		case OpEq::c:
-			return std::make_unique<BinaryOpToken<OpEq>>();
-		default:
-			throw std::runtime_error(
-				"Could not tokenize expression, invalid character"
-			);
+	auto symbol = _registry->makeSymbol(s);
+	if (!symbol) {
+		throw std::runtime_error(std::format(
+			"Could not tokenize expression, invalid symbol {}", s
+		));
+	} else {
+		return std::move(symbol);
 	}
 }
 
@@ -169,9 +149,9 @@ ParseNode Parser::expression(unsigned int rbp) {
 	return left;
 }
 
-void Parser::expect(char c) {
-	if (c != _cur.get()->c) {
-		throw std::runtime_error(std::format("Expected \"{}\"", c));
+void Parser::expect(const std::string& s) {
+	if (s != _cur.get()->str) {
+		throw std::runtime_error(std::format("Expected \"{}\"", s));
 	}
 	nextToken();
 }
@@ -181,9 +161,34 @@ ParseNode Parser::parse() {
 	return expression();
 }
 
+TokenRegistry makeTokenRegistry() {
+	TokenRegistry r;
+
+	r.registerSymbol<StartParenToken>();
+	r.registerSymbol<EndParenToken>();
+
+	// Binary operators
+	r.registerSymbol<BinaryOpToken<OpAdd>>();
+	r.registerSymbol<BinaryOpToken<OpSub>>();
+	r.registerSymbol<BinaryOpToken<OpMul>>();
+	r.registerSymbol<BinaryOpToken<OpDiv>>();
+	r.registerSymbol<BinaryOpToken<OpExp>>();
+	r.registerSymbol<BinaryOpToken<OpGt>>();
+	r.registerSymbol<BinaryOpToken<OpLt>>();
+	r.registerSymbol<BinaryOpToken<OpEq>>();
+
+	// Built in functions
+	r.registerSymbol<BuiltinFuncToken<FuncSin>>();
+	r.registerSymbol<BuiltinFuncToken<FuncCos>>();
+	r.registerSymbol<BuiltinFuncToken<FuncExp>>();
+
+	return r;
+}
+
 void tokenizerTest(const std::string& expression) {
 	VariableRegistry vars {};
-	Tokenizer t { vars, expression };
+	auto registry = makeTokenRegistry();
+	Tokenizer t { registry, vars, expression };
 
 	std::cout << "Tokenizer test: " << expression << std::endl;
 	try {
@@ -199,7 +204,8 @@ void tokenizerTest(const std::string& expression) {
 
 void parserTest(const std::string& expression) {
 	VariableRegistry vars {};
-	Parser p { vars, expression };
+	auto registry = makeTokenRegistry();
+	Parser p { registry, vars, expression };
 
 	// Populate with some test variables
 	vars.set('x', 1.0f);
