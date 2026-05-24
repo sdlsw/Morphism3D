@@ -35,7 +35,7 @@ private:
 	//		
 	// graph_x and graph_y will both range from -range to +range.
 	float _range;
-	const F* _func;
+	F* _func;
 
 	// TODO Store Positions in func space coordinates and convert to model
 	// space when constructing entities
@@ -167,7 +167,7 @@ private:
 	}
 public:
 	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(const F& f, unsigned int cells, float range)
+	GraphMeshBuilder(F& f, unsigned int cells, float range)
 	: _func { &f },
 	  _cells { cells },
 	  _range { range }
@@ -179,6 +179,7 @@ public:
 	void cells(unsigned int cells) { _cells = cells; }
 
 	auto range() const { return _range; }
+	auto& func() const { return *_func; }
 	const auto& positions() const { return _positions; }
 	const auto& colors() const { return _colors; }
 	const auto& normals() const { return _normals; }
@@ -305,7 +306,7 @@ public:
 
 	Graph(
 		Renderer& renderer,
-		const F& func,
+		F& func,
 		unsigned int cells,
 		float range
 	)
@@ -325,6 +326,8 @@ public:
 		populateWireframeEntity(renderer);
 		populateNormalEntity(renderer);
 	}
+
+	auto& func() { return _builder.func(); }
 
 	// Allow outside access to the surface material so the UI can
 	// manipulate it.

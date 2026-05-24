@@ -124,6 +124,7 @@ template<typename T>
 class GraphWindow : public UiWindow {
 private:
 	const std::string _title { "Graph" };
+	std::array<char, 255> _expressionBuf;
 
 	Graph<T>* _graph;
 	int _cells;
@@ -135,6 +136,11 @@ public:
 		if (ImGui::Button("Update")) {
 			_graph->cells(static_cast<unsigned int>(_cells));
 		}
+		bool changed = ImGui::InputText("Expression", _expressionBuf.data(), _expressionBuf.size());
+		if (changed) {
+			_graph->func().updateExpression(_expressionBuf.data());
+		}
+
 		ImGui::SeparatorText("Debug");
 		ImGui::Checkbox("GPU Upload", &_graph->doUpload);
 		ImGui::Checkbox("Regenerate", &_graph->doRegen);
@@ -144,7 +150,9 @@ public:
 	GraphWindow(Graph<T>& graph)
 	: _graph { &graph },
 	  _cells { static_cast<int>(graph.cells()) }
-	{}
+	{
+		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
+	}
 };
 
 class DebugWindow : public UiWindow {
@@ -153,6 +161,8 @@ private:
 
 	DebugSettings* _debugSettings;
 
+	void tokenizerTestInput();
+	void parserTestInput();
 public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override;

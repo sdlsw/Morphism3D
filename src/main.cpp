@@ -1,5 +1,6 @@
 #include "camera_control.h"
 #include "container.h"
+#include "expression.h"
 #include "graph.h"
 #include "primitive.h"
 #include "ui.h"
@@ -134,6 +135,41 @@ public:
 	}
 };
 
+class ExpressionFunc {
+private:
+	g3d::VariableRegistry _vars;
+	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
+	std::unique_ptr<g3d::ParseNode> _parsedExpression;
+
+public:
+	ExpressionFunc() : _startTime { now() } {}
+
+	float eval(float x, float y) {
+		if (!_parsedExpression) {
+			return 0.0f;
+		}
+
+		_vars.set('x', x);
+		_vars.set('y', y);
+		return _parsedExpression.get()->eval();
+	}
+
+	void update() {
+		_vars.set('t', secondsSince(_startTime));
+	}
+
+	void updateExpression(const std::string& expression) {
+		g3d::Parser p { _vars, expression };
+
+		try {
+			_parsedExpression.reset(new g3d::ParseNode(p.parse()));
+		} catch (const std::exception& e) {
+			std::cerr << "Failed to parse expression: " << expression << std::endl;
+			std::cerr << e.what() << std::endl;
+		}
+	}
+};
+
 void buildArrow(g3d::MeshBuilder& b) {
 	constexpr unsigned int hRes = 10;
 	constexpr unsigned int cylVRes = 30;
@@ -221,8 +257,8 @@ void mainloop(g3d::Renderer& renderer) {
 	unsigned int cells = 40;
 	float range = 3.0f;
 
-	WobbleFunc f;
-	g3d::Graph<WobbleFunc> graph { renderer, f, cells, range };
+	ExpressionFunc f;
+	g3d::Graph<ExpressionFunc> graph { renderer, f, cells, range };
 
 	auto axes = buildAxes(renderer);
 	auto frame = buildFrame(renderer);
@@ -237,7 +273,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::Ui ui;
 	ui.addWindow<g3d::CameraWindow>(camController);
 	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graph.surfaceMaterial());
-	ui.addWindow<g3d::GraphWindow<WobbleFunc>>(graph);
+	ui.addWindow<g3d::GraphWindow<ExpressionFunc>>(graph);
 	ui.addWindow<g3d::DebugWindow>(debugSettings);
 
 	g3d::PrimitiveTest testObject { renderer };
