@@ -186,7 +186,7 @@ TokenRegistry makeTokenRegistry() {
 }
 
 void tokenizerTest(const std::string& expression) {
-	VariableRegistry vars {};
+	VariableStore vars {};
 	auto registry = makeTokenRegistry();
 	Tokenizer t { registry, vars, expression };
 
@@ -203,7 +203,7 @@ void tokenizerTest(const std::string& expression) {
 }
 
 void parserTest(const std::string& expression) {
-	VariableRegistry vars {};
+	VariableStore vars {};
 	auto registry = makeTokenRegistry();
 	Parser p { registry, vars, expression };
 

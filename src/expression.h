@@ -21,7 +21,7 @@ constexpr char LPAREN = '(';
 constexpr char RPAREN = ')';
 constexpr char DEC_POINT = '.';
 
-class VariableRegistry {
+class VariableStore {
 private:
 	std::unordered_map<char, float> _vars;
 
@@ -146,12 +146,12 @@ private:
 	std::string _expression;
 	size_t _position = 0;
 	bool _atEnd = false;
-	VariableRegistry* _vars;
+	VariableStore* _vars;
 	TokenRegistry* _registry;
 public:
 	Tokenizer(
 		TokenRegistry& registry,
-		VariableRegistry& vars,
+		VariableStore& vars,
 		const std::string& expression
 	)
 	: _registry { &registry },
@@ -177,7 +177,7 @@ private:
 public:
 	Parser(
 		TokenRegistry& registry,
-		VariableRegistry& vars,
+		VariableStore& vars,
 		const std::string& expression
 	)
 	: _tokenizer { registry, vars, expression } {}
@@ -209,9 +209,9 @@ struct LiteralToken : public Token {
 
 struct VarToken : public Token {
 private:
-	VariableRegistry* _vars;
+	VariableStore* _vars;
 public:
-	VarToken(VariableRegistry& vars, char _c) : Token(_c),  _vars { &vars } {}
+	VarToken(VariableStore& vars, char _c) : Token(_c),  _vars { &vars } {}
 
 	ParseNode nud(Parser& parser) override {
 		return { std::make_unique<VarToken>(*this) };

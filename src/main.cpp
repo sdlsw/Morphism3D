@@ -138,7 +138,7 @@ public:
 class ExpressionFunc {
 private:
 	g3d::TokenRegistry _tokenRegistry;
-	g3d::VariableRegistry _vars;
+	g3d::VariableStore _vars;
 	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
 	std::unique_ptr<g3d::ParseNode> _parsedExpression;
 
