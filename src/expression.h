@@ -26,13 +26,8 @@ private:
 	std::unordered_map<char, float> _vars;
 
 public:
-	void set(char c, float val) {
-		_vars[c] = val;
-	}
-
-	float get(char c) {
-		return _vars[c];
-	}
+	void set(char c, float val);
+	float get(char c);
 };
 
 struct Token;
@@ -113,26 +108,14 @@ struct Token {
 	Token(char c) : str { c } {}
 
 	// Null denotation
-	virtual ParseNode nud(Parser& parser) {
-		throw std::runtime_error(
-			std::format("\"{}\": nud() not implemented", str)
-		);
-	}
+	virtual ParseNode nud(Parser& parser);
 
 	// Left denotation
-	virtual ParseNode led(Parser& parser, ParseNode&& left) {
-		throw std::runtime_error(
-			std::format("\"{}\": led() not implemented", str)
-		);
-	}
+	virtual ParseNode led(Parser& parser, ParseNode&& left);
 
-	virtual float eval(const std::vector<ParseNode>& children) const {
-		throw std::runtime_error(
-			std::format("\"{}\": eval() not implemented", str)
-		);
-	}
+	// Used for evaluating parse trees
+	virtual float eval(const std::vector<ParseNode>& children) const;
 
-	// For debug
 	virtual std::string toString() { return str; }
 };
 
@@ -196,43 +179,27 @@ struct LiteralToken : public Token {
 
 	LiteralToken(float value) : value { value } { lbp = 0; };
 
-	ParseNode nud(Parser& parser) override {
-		return { std::make_unique<LiteralToken>(*this) };
-	}
-
-	float eval(const std::vector<ParseNode>& children) const override {
-		return value;
-	}
-
-	std::string toString() override { return std::format("LITERAL:{}", value); }
+	ParseNode nud(Parser& parser) override;
+	float eval(const std::vector<ParseNode>& children) const override;
+	std::string toString() override;
 };
 
 struct VarToken : public Token {
 private:
 	VariableStore* _vars;
 public:
-	VarToken(VariableStore& vars, char _c) : Token(_c),  _vars { &vars } {}
+	VarToken(VariableStore& vars, char _c) : Token(_c),  _vars { &vars } { lbp = 0; }
 
-	ParseNode nud(Parser& parser) override {
-		return { std::make_unique<VarToken>(*this) };
-	}
-
-	float eval(const std::vector<ParseNode>& children) const override {
-		return _vars->get(str[0]);
-	}
-
-	std::string toString() override { return std::format("VAR:{}", str[0]); }
+	ParseNode nud(Parser& parser) override;
+	float eval(const std::vector<ParseNode>& children) const override;
+	std::string toString() override;
 };
 
 struct StartParenToken : public Token {
 	static constexpr char s[] { "(" };
 	StartParenToken() : Token(s) {}
 
-	ParseNode nud(Parser& parser) override {
-		ParseNode node = parser.expression();
-		parser.expect({RPAREN});
-		return node;
-	}
+	ParseNode nud(Parser& parser) override;
 };
 
 struct EndParenToken : public Token {

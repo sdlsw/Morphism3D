@@ -16,6 +16,38 @@ bool isAlpha(char c) {
 }
 
 namespace g3d {
+TokenRegistry makeTokenRegistry() {
+	TokenRegistry r;
+
+	r.registerSymbol<StartParenToken>();
+	r.registerSymbol<EndParenToken>();
+
+	// Binary operators
+	r.registerSymbol<BinaryOpToken<OpAdd>>();
+	r.registerSymbol<BinaryOpToken<OpSub>>();
+	r.registerSymbol<BinaryOpToken<OpMul>>();
+	r.registerSymbol<BinaryOpToken<OpDiv>>();
+	r.registerSymbol<BinaryOpToken<OpExp>>();
+	r.registerSymbol<BinaryOpToken<OpGt>>();
+	r.registerSymbol<BinaryOpToken<OpLt>>();
+	r.registerSymbol<BinaryOpToken<OpEq>>();
+
+	// Built in functions
+	r.registerSymbol<BuiltinFuncToken<FuncSin>>();
+	r.registerSymbol<BuiltinFuncToken<FuncCos>>();
+	r.registerSymbol<BuiltinFuncToken<FuncExp>>();
+
+	return r;
+}
+
+void VariableStore::set(char c, float val) {
+	_vars[c] = val;
+}
+
+float VariableStore::get(char c) {
+	return _vars[c];
+}
+
 std::unique_ptr<Token> TokenRegistry::makeSymbol(const std::string& s) {
 	if (!symbols.contains(s)) {
 		return {};
@@ -43,6 +75,24 @@ std::string ParseNode::toString() {
 	} else {
 		throw std::runtime_error("Bad _children size");
 	}
+}
+
+ParseNode Token::nud(Parser& parser) {
+	throw std::runtime_error(
+		std::format("\"{}\": nud() not implemented", str)
+	);
+}
+
+ParseNode Token::led(Parser& parser, ParseNode&& left) {
+	throw std::runtime_error(
+		std::format("\"{}\": led() not implemented", str)
+	);
+}
+
+float Token::eval(const std::vector<ParseNode>& children) const {
+	throw std::runtime_error(
+		std::format("\"{}\": eval() not implemented", str)
+	);
 }
 
 ParseIntResult Tokenizer::parseInt() {
@@ -161,29 +211,39 @@ ParseNode Parser::parse() {
 	return expression();
 }
 
-TokenRegistry makeTokenRegistry() {
-	TokenRegistry r;
+// SPECIAL TOKEN IMPLEMENTATIONS
 
-	r.registerSymbol<StartParenToken>();
-	r.registerSymbol<EndParenToken>();
-
-	// Binary operators
-	r.registerSymbol<BinaryOpToken<OpAdd>>();
-	r.registerSymbol<BinaryOpToken<OpSub>>();
-	r.registerSymbol<BinaryOpToken<OpMul>>();
-	r.registerSymbol<BinaryOpToken<OpDiv>>();
-	r.registerSymbol<BinaryOpToken<OpExp>>();
-	r.registerSymbol<BinaryOpToken<OpGt>>();
-	r.registerSymbol<BinaryOpToken<OpLt>>();
-	r.registerSymbol<BinaryOpToken<OpEq>>();
-
-	// Built in functions
-	r.registerSymbol<BuiltinFuncToken<FuncSin>>();
-	r.registerSymbol<BuiltinFuncToken<FuncCos>>();
-	r.registerSymbol<BuiltinFuncToken<FuncExp>>();
-
-	return r;
+ParseNode LiteralToken::nud(Parser& parser) {
+	return { std::make_unique<LiteralToken>(*this) };
 }
+
+float LiteralToken::eval(const std::vector<ParseNode>& children) const {
+	return value;
+}
+
+std::string LiteralToken::toString() {
+	return std::format("LITERAL:{}", value);
+}
+
+ParseNode VarToken::nud(Parser& parser) {
+	return { std::make_unique<VarToken>(*this) };
+}
+
+float VarToken::eval(const std::vector<ParseNode>& childre) const {
+	return _vars->get(str[0]);
+}
+
+std::string VarToken::toString() {
+	return std::format("VAR:{}", str[0]);
+}
+
+ParseNode StartParenToken::nud(Parser& parser) {
+	ParseNode node = parser.expression();
+	parser.expect({RPAREN});
+	return node;
+}
+
+// TESTS
 
 void tokenizerTest(const std::string& expression) {
 	VariableStore vars {};
