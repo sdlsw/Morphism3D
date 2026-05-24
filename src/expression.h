@@ -217,9 +217,24 @@ struct FuncCos {
 	static inline float op(float x) { return std::cos(x); }
 };
 
+struct FuncTan {
+	static constexpr char s[] { "tan" };
+	static inline float op(float x) { return std::tan(x); }
+};
+
 struct FuncExp {
 	static constexpr char s[] { "exp" };
 	static inline float op(float x) { return std::exp(x); }
+};
+
+struct FuncLog {
+	static constexpr char s[] { "log" };
+	static inline float op(float x) { return std::log(x); }
+};
+
+struct FuncAbs {
+	static constexpr char s[] { "abs" };
+	static inline float op(float x) { return std::abs(x); }
 };
 
 template<typename T>
@@ -279,6 +294,15 @@ struct OpDiv {
 	static constexpr bool allowUnary = false;
 
 	static inline float op(float a, float b) { return a / b; }
+};
+
+struct OpMod {
+	static constexpr char s[] { "%" };
+	static constexpr unsigned int lbp = 30;
+	static constexpr unsigned int lbpSub = 0;
+	static constexpr bool allowUnary = false;
+
+	static inline float op(float a, float b) { return std::fmod(a, b); }
 };
 
 struct OpExp {

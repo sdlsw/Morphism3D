@@ -27,6 +27,7 @@ TokenRegistry makeTokenRegistry() {
 	r.registerSymbol<BinaryOpToken<OpSub>>();
 	r.registerSymbol<BinaryOpToken<OpMul>>();
 	r.registerSymbol<BinaryOpToken<OpDiv>>();
+	r.registerSymbol<BinaryOpToken<OpMod>>();
 	r.registerSymbol<BinaryOpToken<OpExp>>();
 	r.registerSymbol<BinaryOpToken<OpGt>>();
 	r.registerSymbol<BinaryOpToken<OpLt>>();
@@ -35,7 +36,10 @@ TokenRegistry makeTokenRegistry() {
 	// Built in functions
 	r.registerSymbol<BuiltinFuncToken<FuncSin>>();
 	r.registerSymbol<BuiltinFuncToken<FuncCos>>();
+	r.registerSymbol<BuiltinFuncToken<FuncTan>>();
 	r.registerSymbol<BuiltinFuncToken<FuncExp>>();
+	r.registerSymbol<BuiltinFuncToken<FuncLog>>();
+	r.registerSymbol<BuiltinFuncToken<FuncAbs>>();
 
 	return r;
 }
