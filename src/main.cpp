@@ -273,7 +273,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::RenderSettings renderSettings;
 	g3d::DebugSettings debugSettings;
 
-	unsigned int cells = 40;
+	unsigned int cells = 80;
 	float range = 3.0f;
 
 	ExpressionFunc f;
@@ -329,28 +329,12 @@ void mainloop(g3d::Renderer& renderer) {
 			frame.render();
 		}
 
-		// TODO This is really dumb but it doesn't look too terrible...
-		// Look into using textures for the grid, maybe.
-		bool shouldRenderSurfaceGrid = (
-			renderSettings.renderGrid &&
-			renderSettings.graphRenderMode == g3d::GraphRenderMode::surface
-		);
-		if (shouldRenderSurfaceGrid) {
-			graph.gridTop().render();
-			graph.gridBottom().render();
-		}
-
-		if (renderSettings.renderNormals) {
-			graph.normals().render();
-		}
-
-		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::wireframe) {
-			graph.wireframe().render();
-		}
-
 		if (debugSettings.renderTestObject) {
 			testObject.renderLines();
 		}
+
+		// Note: Graph handles its own render modes
+		graph.renderLines();
 
 		// TODO: Manually managing all these modes kind of sucks
 		renderer.setMode(g3d::RenderMode::triangle);
@@ -359,9 +343,7 @@ void mainloop(g3d::Renderer& renderer) {
 		}
 
 		renderer.setMode(g3d::RenderMode::litTriangle);
-		if (renderSettings.graphRenderMode == g3d::GraphRenderMode::surface) {
-			graph.surface().render();
-		}
+		graph.renderSurface();
 
 		renderer.setMode(g3d::RenderMode::litTriangleCulled);
 		if (renderSettings.renderAxes) {

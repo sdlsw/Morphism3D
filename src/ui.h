@@ -50,6 +50,13 @@ void resettableSlider(const std::string& label, T* setting, const T& _default, U
 template<typename T, typename U>
 void resettableDrag(const std::string& label, T* setting, const T& _default, U inc);
 
+// Unfortunately need to define this in header since it's used in a template.
+constexpr const char SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP[] {
+	"This setting cannot be changed outside Surface rendering mode."
+};
+
+const std::string& renderModeName(const GraphRenderMode& mode);
+
 class UiWindow {
 private:
 	const std::string unknownTitle { "unknown" };
@@ -100,7 +107,6 @@ private:
 	WithInitial<Light>* _light;
 	WithInitial<Material>* _material;
 
-	void showGridToggle();
 	void basicSettingsSection();
 	void lightSection();
 	void materialSection();
@@ -129,17 +135,55 @@ private:
 	Graph<T>* _graph;
 	int _cells;
 
-public:
-	const std::string& title() const override { return _title; }
-	void drawUi() override {
-		ImGui::SliderInt("Resolution", &_cells, 10, 100);
-		if (ImGui::Button("Update")) {
-			_graph->cells(static_cast<unsigned int>(_cells));
-		}
+	void expressionInput() {
 		bool changed = ImGui::InputText("Expression", _expressionBuf.data(), _expressionBuf.size());
 		if (changed) {
 			_graph->func().updateExpression(_expressionBuf.data());
 		}
+	}
+
+	void gridToggle() {
+		bool disabled = _graph->renderMode != GraphRenderMode::surface;
+		bool forceSetting = _graph->renderMode == GraphRenderMode::wireframe;
+		bool* setting = disabled ? &forceSetting : &_graph->renderGrid;
+
+		ImGui::BeginDisabled(disabled);
+		ImGui::Checkbox("Show Grid", setting);
+		if (disabled) ImGui::SetItemTooltip(SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP);
+		ImGui::EndDisabled();
+	}
+
+	void renderModeSlider() {
+		ImGui::SliderInt(
+			"Render Mode",
+			reinterpret_cast<int*>(&_graph->renderMode),
+			0,
+			GraphRenderModeCount-1,
+			renderModeName(_graph->renderMode).c_str(),
+			ImGuiSliderFlags_NoInput
+		);
+	}
+
+	void resolutionInput() {
+		// Maximum safe resolution is about 250 due to use of
+		// uint16_t for indices, so always clamp. TODO switch to
+		// uint32_t for even higher max resolution?
+		ImGui::SliderInt("Resolution", &_cells, 10, 250, "%d", ImGuiSliderFlags_AlwaysClamp);
+		ImGui::SameLine();
+		if (ImGui::Button("Update")) {
+			_graph->cells(static_cast<unsigned int>(_cells));
+		}
+	}
+public:
+	const std::string& title() const override { return _title; }
+	void drawUi() override {
+		expressionInput();
+
+		ImGui::SeparatorText("Render Settings");
+		resolutionInput();
+		renderModeSlider();
+		gridToggle();
+		ImGui::Checkbox("Show Normals", &_graph->renderNormals);
 
 		ImGui::SeparatorText("Debug");
 		ImGui::Checkbox("GPU Upload", &_graph->doUpload);

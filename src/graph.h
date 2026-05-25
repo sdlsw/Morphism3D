@@ -23,10 +23,6 @@ private:
 	// vertices.
 	unsigned int _cells;
 
-	// When the cells value changes, the buffers need to be updated for
-	// multiple frames since everything is double buffered.
-	unsigned int _cellsChangedFrames = 0;
-
 	// The x, y coordinates of the model vertices always range from
 	// -1.0f to 1.0f. The range determines how those coordinates map to
 	// function input space with a simple relation:
@@ -232,6 +228,14 @@ enum class GraphUploadMode {
 	all
 };
 
+enum class GraphRenderMode : int {
+	surface = 0,
+	wireframe,
+	none
+};
+
+constexpr unsigned int GraphRenderModeCount = 3;
+
 template<Graphable F>
 class Graph {
 private:
@@ -390,6 +394,9 @@ private:
 public:
 	bool doUpload = true;
 	bool doRegen = true;
+	bool renderGrid = true;
+	bool renderNormals = false;
+	GraphRenderMode renderMode = GraphRenderMode::surface;
 
 	Graph(
 		Renderer& renderer,
@@ -467,6 +474,29 @@ public:
 		if (temporaryUploadFrames > 0) {
 			temporaryUploadFrames--;
 			if (temporaryUploadFrames == 0) _uploadMode = defaultUploadMode();
+		}
+	}
+
+	void renderLines() {
+		// TODO This is really dumb but it doesn't look too terrible...
+		// Look into using textures for the grid, maybe.
+		if (renderGrid && renderMode == GraphRenderMode::surface) {
+			_gridTop.render();
+			_gridBottom.render();
+		}
+
+		if (renderNormals) {
+			_normals.render();
+		}
+
+		if (renderMode == GraphRenderMode::wireframe) {
+			_wireframe.render();
+		}
+	}
+
+	void renderSurface() {
+		if (renderMode == GraphRenderMode::surface) {
+			_surface.render();
 		}
 	}
 };
