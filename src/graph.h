@@ -342,6 +342,51 @@ private:
 		_uploadMode = mode;
 		temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
 	}
+
+	void regen() {
+		if (!doRegen) return;
+
+		switch (_regenMode) {
+			case GraphRegenMode::partial:
+				_builder.regeneratePositions();
+				break;
+			case GraphRegenMode::all:
+				_builder.regenerateEverything();
+				break;
+			default:
+				return;
+		}
+	}
+
+	void uploadPartial() {
+		_surfacePositions.copyData(_builder.positions());
+		_surfaceNormals.copyData(_builder.normals());
+	}
+
+	void uploadAll() {
+		uploadPartial();
+		_surfaceColors.copyData(_builder.colors());
+		_surfaceIndices.copyData(_builder.triangleIndices());
+		_gridIndices.copyData(_builder.lineIndices());
+		_gridColors.copyData(makeGridColors());
+		_normalIndices.copyData(_builder.normalIndices());
+		_normalColors.copyData(makeNormalColors());
+	}
+
+	void upload() {
+		if (!doUpload) return;
+
+		switch (_uploadMode) {
+			case GraphUploadMode::partial:
+				uploadPartial();
+				break;
+			case GraphUploadMode::all:
+				uploadAll();
+				break;
+			default:
+				return;
+		}
+	}
 public:
 	bool doUpload = true;
 	bool doRegen = true;
@@ -390,51 +435,6 @@ public:
 
 	unsigned int cells() const {
 		return _builder.cells();
-	}
-
-	void regen() {
-		if (!doRegen) return;
-
-		switch (_regenMode) {
-			case GraphRegenMode::partial:
-				_builder.regeneratePositions();
-				break;
-			case GraphRegenMode::all:
-				_builder.regenerateEverything();
-				break;
-			default:
-				return;
-		}
-	}
-
-	void uploadPartial() {
-		_surfacePositions.copyData(_builder.positions());
-		_surfaceNormals.copyData(_builder.normals());
-	}
-
-	void uploadAll() {
-		uploadPartial();
-		_surfaceColors.copyData(_builder.colors());
-		_surfaceIndices.copyData(_builder.triangleIndices());
-		_gridIndices.copyData(_builder.lineIndices());
-		_gridColors.copyData(makeGridColors());
-		_normalIndices.copyData(_builder.normalIndices());
-		_normalColors.copyData(makeNormalColors());
-	}
-
-	void upload() {
-		if (!doUpload) return;
-
-		switch (_uploadMode) {
-			case GraphUploadMode::partial:
-				uploadPartial();
-				break;
-			case GraphUploadMode::all:
-				uploadAll();
-				break;
-			default:
-				return;
-		}
 	}
 
 	void update() {
