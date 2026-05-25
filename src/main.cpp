@@ -141,12 +141,18 @@ private:
 	g3d::VariableStore _vars;
 	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
 	std::unique_ptr<g3d::ParseNode> _parsedExpression;
+	bool _animated = false;
+	bool _updated = false;
 
 public:
 	ExpressionFunc()
 	: _tokenRegistry { g3d::makeTokenRegistry() },
 	  _startTime { now() }
 	{}
+
+	bool animated() const { return _animated; }
+	bool updated() const { return _updated; }
+	void resetUpdated() { _updated = false; }
 
 	float eval(float x, float y) {
 		if (!_parsedExpression) {
@@ -162,11 +168,20 @@ public:
 		_vars.set('t', secondsSince(_startTime));
 	}
 
+	void updateAnimated() {
+		_animated = (_parsedExpression && _parsedExpression.get()->hasTokenStr("t"));
+	}
+
 	void updateExpression(const std::string& expression) {
 		g3d::Parser p { _tokenRegistry, _vars, expression };
 
 		try {
 			_parsedExpression.reset(new g3d::ParseNode(p.parse()));
+			updateAnimated();
+			_updated = true;
+
+			std::cerr << "Expression updated: " << expression << std::endl;
+			std::cerr << "Animated: " << _animated << std::endl;
 		} catch (const std::exception& e) {
 			std::cerr << "Failed to parse expression: " << expression << std::endl;
 			std::cerr << e.what() << std::endl;

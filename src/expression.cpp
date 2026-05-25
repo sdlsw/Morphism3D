@@ -64,6 +64,18 @@ float ParseNode::eval() const {
 	return _token.get()->eval(_children);
 }
 
+bool ParseNode::hasTokenStr(const std::string& s) const {
+	if (_token && _token.get()->str == s) {
+		return true;
+	}
+
+	for (const auto& child : _children) {
+		if (child.hasTokenStr(s)) return true;
+	}
+
+	return false;
+}
+
 std::string ParseNode::toString() {
 	if (_children.size() == 0) {
 		return std::format("({})", _token.get()->toString());
@@ -233,12 +245,12 @@ ParseNode VarToken::nud(Parser& parser) {
 	return { std::make_unique<VarToken>(*this) };
 }
 
-float VarToken::eval(const std::vector<ParseNode>& childre) const {
+float VarToken::eval(const std::vector<ParseNode>& children) const {
 	return _vars->get(str[0]);
 }
 
 std::string VarToken::toString() {
-	return std::format("VAR:{}", str[0]);
+	return std::format("VAR:{}", str);
 }
 
 ParseNode StartParenToken::nud(Parser& parser) {

@@ -220,17 +220,33 @@ public:
 	}
 };
 
+enum class GraphRegenMode {
+	none,
+	partial,
+	all
+};
+
+enum class GraphUploadMode {
+	none,
+	partial,
+	all
+};
+
 template<Graphable F>
 class Graph {
 private:
 	static constexpr float gridLoft = 0.002f;
 
 	GraphMeshBuilder<F> _builder;
+
 	bool cellsChanged = false;
+	bool temporaryRegen = false;
 
 	// When the cells value changes, the buffers need to be updated for
 	// multiple frames since everything is double buffered.
-	unsigned int cellChangeUploadFrames = 0;
+	unsigned int temporaryUploadFrames = 0;
+	GraphRegenMode _regenMode = GraphRegenMode::none;
+	GraphUploadMode _uploadMode = GraphUploadMode::none;
 
 	DynamicVertexAttributes<Position> _surfacePositions;
 
@@ -300,6 +316,32 @@ private:
 	std::vector<Color> makeNormalColors() {
 		return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 	}
+
+	GraphRegenMode defaultRegenMode() {
+		if (_builder.func().animated()) {
+			return GraphRegenMode::partial;
+		}
+
+		return GraphRegenMode::none;
+	}
+
+	GraphUploadMode defaultUploadMode() {
+		if (_builder.func().animated()) {
+			return GraphUploadMode::partial;
+		}
+
+		return GraphUploadMode::none;
+	}
+
+	void setTemporaryRegenMode(GraphRegenMode mode) {
+		_regenMode = mode;
+		temporaryRegen = true;
+	}
+
+	void setTemporaryUploadMode(GraphUploadMode mode) {
+		_uploadMode = mode;
+		temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
+	}
 public:
 	bool doUpload = true;
 	bool doRegen = true;
@@ -318,7 +360,9 @@ public:
 	  _gridIndices { renderer, _builder.lineIndices() },
 	  _gridColors { renderer, makeGridColors() },
 	  _normalIndices { renderer, _builder.normalIndices() },
-	  _normalColors { renderer, makeNormalColors() }
+	  _normalColors { renderer, makeNormalColors() },
+	  _regenMode { defaultRegenMode() },
+	  _uploadMode { defaultUploadMode() }
 	{
 		populateSurfaceEntity(renderer);
 		populateGridEntity(renderer, _gridTop, 1.0f);
@@ -342,39 +386,88 @@ public:
 	void cells(unsigned int cells) {
 		_builder.cells(cells);
 		cellsChanged = true;
-		cellChangeUploadFrames = MAX_FRAMES_IN_FLIGHT;
 	}
 
 	unsigned int cells() const {
 		return _builder.cells();
 	}
 
-	void update() {
-		if (doRegen) {
-			if (cellsChanged) {
-				_builder.regenerateEverything();
-			} else {
+	void regen() {
+		if (!doRegen) return;
+
+		switch (_regenMode) {
+			case GraphRegenMode::partial:
 				_builder.regeneratePositions();
+				break;
+			case GraphRegenMode::all:
+				_builder.regenerateEverything();
+				break;
+			default:
+				return;
+		}
+	}
+
+	void uploadPartial() {
+		_surfacePositions.copyData(_builder.positions());
+		_surfaceNormals.copyData(_builder.normals());
+	}
+
+	void uploadAll() {
+		uploadPartial();
+		_surfaceColors.copyData(_builder.colors());
+		_surfaceIndices.copyData(_builder.triangleIndices());
+		_gridIndices.copyData(_builder.lineIndices());
+		_gridColors.copyData(makeGridColors());
+		_normalIndices.copyData(_builder.normalIndices());
+		_normalColors.copyData(makeNormalColors());
+	}
+
+	void upload() {
+		if (!doUpload) return;
+
+		switch (_uploadMode) {
+			case GraphUploadMode::partial:
+				uploadPartial();
+				break;
+			case GraphUploadMode::all:
+				uploadAll();
+				break;
+			default:
+				return;
+		}
+	}
+
+	void update() {
+		if (_builder.func().updated()) {
+			if (_builder.func().animated()) {
+				_regenMode = defaultRegenMode();
+				_uploadMode = defaultUploadMode();
+			} else {
+				setTemporaryRegenMode(GraphRegenMode::partial);
+				setTemporaryUploadMode(GraphUploadMode::partial);
 			}
+			_builder.func().resetUpdated();
 		}
 
-		if (doUpload || cellChangeUploadFrames > 0) {
-			_surfacePositions.copyData(_builder.positions());
-			_surfaceNormals.copyData(_builder.normals());
-
-			if (cellChangeUploadFrames > 0) {
-				_surfaceColors.copyData(_builder.colors());
-				_surfaceIndices.copyData(_builder.triangleIndices());
-				_gridIndices.copyData(_builder.lineIndices());
-				_gridColors.copyData(makeGridColors());
-				_normalIndices.copyData(_builder.normalIndices());
-				_normalColors.copyData(makeNormalColors());
-
-				cellChangeUploadFrames--;
-			}
+		// Cell update overrides normal update handling
+		if (cellsChanged) {
+			setTemporaryRegenMode(GraphRegenMode::all);
+			setTemporaryUploadMode(GraphUploadMode::all);
+			cellsChanged = false;
 		}
 
-		if (cellsChanged) cellsChanged = false;
+		regen();
+		upload();
+
+		if (temporaryRegen) {
+			temporaryRegen = false;
+			_regenMode = defaultRegenMode();
+		}
+
+		if (temporaryUploadFrames > 0) {
+			temporaryUploadFrames--;
+			if (temporaryUploadFrames == 0) _uploadMode = defaultUploadMode();
+		}
 	}
 };
 }

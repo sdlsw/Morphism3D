@@ -91,6 +91,7 @@ public:
 	ParseNode& operator=(ParseNode&& other) = default;
 
 	float eval() const;
+	bool hasTokenStr(const std::string& s) const;
 	std::string toString();
 };
 
