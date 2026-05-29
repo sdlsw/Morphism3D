@@ -261,6 +261,9 @@ public:
 	// Gets the window's current cursor mode.
 	int cursorMode();
 
+	// Increments the current cursor position. Used for a couple UI tricks.
+	void incCursorPosition(double xinc, double yinc);
+
 	vk::raii::SurfaceKHR createSurface(vk::raii::Instance& instance);
 };
 }

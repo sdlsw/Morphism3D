@@ -11,11 +11,11 @@ unsigned int toDigit(char c) {
 	return static_cast<unsigned int>(c - '0');
 }
 
+namespace g3d {
 bool isAlpha(char c) {
 	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
-namespace g3d {
 TokenRegistry makeTokenRegistry() {
 	TokenRegistry r;
 

@@ -156,6 +156,14 @@ vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance& instance) {
 	return std::move(raiiSurface);
 }
 
+void Window::incCursorPosition(double xinc, double yinc) {
+	double x;
+	double y;
+
+	glfwGetCursorPos(_glfwWindow, &x, &y);
+	glfwSetCursorPos(_glfwWindow, x + xinc, y + yinc);
+}
+
 int Window::cursorMode() {
 	return glfwGetInputMode(_glfwWindow, GLFW_CURSOR);
 }

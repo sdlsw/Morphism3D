@@ -21,6 +21,8 @@ constexpr char LPAREN = '(';
 constexpr char RPAREN = ')';
 constexpr char DEC_POINT = '.';
 
+bool isAlpha(char c);
+
 class VariableStore {
 private:
 	std::unordered_map<char, float> _vars;

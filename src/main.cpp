@@ -152,7 +152,9 @@ public:
 
 	bool animated() const { return _animated; }
 	bool updated() const { return _updated; }
+	void setUpdated() { _updated = true; }
 	void resetUpdated() { _updated = false; }
+	auto& vars() { return _vars; }
 
 	float eval(float x, float y) {
 		if (!_parsedExpression) {
@@ -292,7 +294,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::Ui ui;
 	ui.addWindow<g3d::CameraWindow>(camController);
 	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graph.surfaceMaterial());
-	ui.addWindow<g3d::GraphWindow<ExpressionFunc>>(graph);
+	ui.addWindow<g3d::GraphWindow<ExpressionFunc>>(graph, device.window());
 	ui.addWindow<g3d::DebugWindow>(debugSettings);
 
 	g3d::PrimitiveTest testObject { renderer };
