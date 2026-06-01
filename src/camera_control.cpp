@@ -1,13 +1,13 @@
 #include "camera_control.h"
 
 namespace g3d {
-void CameraController::_MouseHandler::body(MouseButtonEvent& e) {
+void CameraController::_MouseHandler::handle(const MouseButtonEvent& e) {
 	if (glfwGetWindowAttrib(e.window, GLFW_HOVERED)) {
 		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 }
 
-void CameraController::_KeyHandler::body(KeyEvent& e) {
+void CameraController::_KeyHandler::handle(const KeyEvent& e) {
 	Camera& camera = _this->camera();
 
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
@@ -46,7 +46,7 @@ void CameraController::_KeyHandler::body(KeyEvent& e) {
 	}
 }
 
-void CameraController::_PosHandler::body(MousePositionEvent& e) {
+void CameraController::_PosHandler::handle(const MousePositionEvent& e) {
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode == GLFW_CURSOR_DISABLED) {
 		if (_this->hasPreviousPos) {
@@ -68,7 +68,7 @@ void CameraController::_PosHandler::body(MousePositionEvent& e) {
 	}
 }
 
-void CameraController::_ScrollHandler::body(ScrollEvent& e) {
+void CameraController::_ScrollHandler::handle(const ScrollEvent& e) {
 	Camera& camera = _this->camera();
 
 	// Scroll control only enabled in fixedLook mode
@@ -125,20 +125,6 @@ void CameraController::update() {
 	}
 
 	_camera.update();
-}
-
-void CameraController::disable() {
-	mouseHandler.disable();
-	keyHandler.disable();
-	posHandler.disable();
-	scrollHandler.disable();
-}
-
-void CameraController::enable() {
-	mouseHandler.enable();
-	keyHandler.enable();
-	posHandler.enable();
-	scrollHandler.enable();
 }
 
 bool CameraController::mouseCaptured() {

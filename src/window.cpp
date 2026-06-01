@@ -5,15 +5,6 @@
 #include <iostream>
 
 namespace g3d {
-EventSystem::~EventSystem() {
-	// Deregister all handlers upon EventSystem destruction, so that the
-	// handlers don't try to dereference a pointer to an EventSystem which
-	// doesn't exist anymore when they're deconstructed themselves.
-	for (const auto& [id, handler] : _allHandlers) {
-		handler->unlink();
-	}
-}
-
 void Window::initWindowingSystem() {
 	std::cerr << "initializing GLFW..." << std::endl;
 	glfwInit();
@@ -24,6 +15,7 @@ void Window::initWindowingSystem() {
 }
 
 Window::Window(
+	EventRouter& eventRouter,
 	std::string title,
 	uint32_t initialWidth,
 	uint32_t initialHeight,
@@ -43,6 +35,8 @@ Window::Window(
 	if (_glfwWindow == nullptr) {
 		throw std::runtime_error("could not create GLFW window!");
 	}
+
+	_eventRouter = &eventRouter;
 
 	// Load window icon
 	GLFWimage images[1];
@@ -86,7 +80,7 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
 	Window* wrapper = Window::getWrapperPointer(window);
 	if (!wrapper->_discardKeyboardEvents) {
 		KeyEvent e { window, key, scancode, action, mods };
-		wrapper->eventSystem().handleEvent(e);
+		wrapper->eventRouter().routeEvent(e);
 	}
 }
 
@@ -94,7 +88,7 @@ void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int
 	Window* wrapper = Window::getWrapperPointer(window);
 	if (!wrapper->_discardMouseEvents) {
 		MouseButtonEvent e { window, button, action, mods };
-		wrapper->eventSystem().handleEvent(e);
+		wrapper->eventRouter().routeEvent(e);
 	}
 }
 
@@ -102,7 +96,7 @@ void Window::mousePositionCallback(GLFWwindow* window, double xpos, double ypos)
 	Window* wrapper = Window::getWrapperPointer(window);
 	if (!wrapper->_discardMouseEvents) {
 		MousePositionEvent e { window, xpos, ypos };
-		wrapper->eventSystem().handleEvent(e);
+		wrapper->eventRouter().routeEvent(e);
 	}
 }
 
@@ -110,7 +104,7 @@ void Window::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) 
 	Window* wrapper = Window::getWrapperPointer(window);
 	if (!wrapper->_discardMouseEvents) {
 		ScrollEvent e { window, xoffset, yoffset };
-		wrapper->eventSystem().handleEvent(e);
+		wrapper->eventRouter().routeEvent(e);
 	}
 }
 

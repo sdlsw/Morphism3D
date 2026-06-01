@@ -23,44 +23,33 @@ private:
 	};
 
 	class _MouseHandler : public EventHandler<MouseButtonEvent> {
-	private:
-		const std::string _name = "CameraController::_MouseHandler";
-
-	public:
-		const std::string& name() const override { return _name; }
-		void body(MouseButtonEvent& e) override;
+		void handle(const MouseButtonEvent& e) override;
 	};
 
 	class _KeyHandler : public EventHandler<KeyEvent> {
 	private:
-		const std::string _name = "CameraController::_KeyHandler";
 		CameraController* _this;
 
 	public:
-		const std::string& name() const override { return _name; }
-		void body(KeyEvent& e) override;
+		void handle(const KeyEvent& e) override;
 		_KeyHandler(CameraController* parent) : _this { parent } {}
 	};
 
 	class _PosHandler : public EventHandler<MousePositionEvent> {
 	private:
-		const std::string _name = "CameraController::_PosHandler";
 		CameraController* _this;
 
 	public:
-		const std::string& name() const override { return _name; }
-		void body(MousePositionEvent& e) override;
+		void handle(const MousePositionEvent& e) override;
 		_PosHandler(CameraController* parent) : _this { parent } {}
 	};
 
 	class _ScrollHandler : public EventHandler<ScrollEvent> {
 	private:
-		const std::string _name = "CameraController::_ScrollHandler";
 		CameraController* _this;
 
 	public:
-		const std::string& name() const override { return _name; }
-		void body(ScrollEvent& e) override;
+		void handle(const ScrollEvent& e) override;
 		_ScrollHandler(CameraController* parent) : _this { parent} {}
 	};
 
@@ -95,17 +84,15 @@ public:
 		_camera.lookPosition = center;
 		_camera.lookAt(center);
 
-		window.eventSystem().registerHandler(mouseHandler);
-		window.eventSystem().registerHandler(keyHandler);
-		window.eventSystem().registerHandler(posHandler);
-		window.eventSystem().registerHandler(scrollHandler);
+		window.eventRouter().addHandler(mouseHandler);
+		window.eventRouter().addHandler(keyHandler);
+		window.eventRouter().addHandler(posHandler);
+		window.eventRouter().addHandler(scrollHandler);
 	}
 
 	Camera& camera() { return _camera; }
 	const Camera& camera() const { return _camera; }
 	void update();
-	void disable();
-	void enable();
 
 	bool mouseCaptured();
 	void reset();

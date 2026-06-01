@@ -43,46 +43,43 @@ float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_cl
 
 class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
 public:
-	const std::string _name = "CursorPosDumper";
+	bool enabled = false;
 
-	const std::string& name() const override { return _name; }
-
-	void body(g3d::MousePositionEvent& e) override {
+	void handle(const g3d::MousePositionEvent& e) override {
+		if (!enabled) return;
 		std::cout << "MousePositionEvent: " << e.xpos << ", " << e.ypos << std::endl;
 	}
 
-	CursorPosDumper(g3d::Window& window) {
-		window.eventSystem().registerHandler(*this);
+	CursorPosDumper(g3d::EventRouter& router) {
+		router.addHandler(*this);
 	}
 };
 
 class KeyDumper : public g3d::EventHandler<g3d::KeyEvent> {
 public:
-	const std::string _name = "KeyDumper";
+	bool enabled = false;
 
-	const std::string& name() const override { return _name; }
-
-	void body(g3d::KeyEvent& e) override {
+	void handle(const g3d::KeyEvent& e) override {
+		if (!enabled) return;
 		std::cout << "KeyEvent: " << e.key << ", " << e.action << std::endl;
 	}
 
-	KeyDumper(g3d::Window& window) {
-		window.eventSystem().registerHandler(*this);
+	KeyDumper(g3d::EventRouter& router) {
+		router.addHandler(*this);
 	}
 };
 
 class ScrollDumper : public g3d::EventHandler<g3d::ScrollEvent> {
 public:
-	const std::string _name = "ScrollDumper";
+	bool enabled = false;
 
-	const std::string& name() const override { return _name; }
-
-	void body(g3d::ScrollEvent& e) override {
+	void handle(const g3d::ScrollEvent& e) override {
+		if (!enabled) return;
 		std::cout << "ScrollEvent: " << e.xoffset << ", " << e.yoffset << std::endl;
 	}
 
-	ScrollDumper(g3d::Window& window) {
-		window.eventSystem().registerHandler(*this);
+	ScrollDumper(g3d::EventRouter& router) {
+		router.addHandler(*this);
 	}
 };
 
@@ -98,7 +95,8 @@ public:
 		_axis { axis } {}
 
 	glm::mat4 matrix() {
-		return glm::rotate({1.0f}, secondsSince(_start) * _radiansPerSecond, _axis);
+		glm::mat4 id { 1.0f };
+		return glm::rotate(id, secondsSince(_start) * _radiansPerSecond, _axis);
 	}
 };
 
@@ -381,19 +379,23 @@ int main() {
 		g3d::Window::initWindowingSystem();
 
 		auto vkTop = init_top();
+		g3d::EventRouter eventRouter {};
 		g3d::Window window {
+			eventRouter,
 			vkTop.appInfo().pApplicationName,
 			WINDOW_INITIAL_WIDTH,
 			WINDOW_INITIAL_HEIGHT,
 			APPLICATION_ICON
 		};
 
-		CursorPosDumper posDumper { window };
-		posDumper.disable();
-		KeyDumper keyDumper { window };
-		keyDumper.disable();
-		ScrollDumper scrollDumper { window };
-		scrollDumper.disable();
+		CursorPosDumper posDumper { eventRouter };
+		posDumper.enabled = false;
+
+		KeyDumper keyDumper { eventRouter };
+		keyDumper.enabled = false;
+
+		ScrollDumper scrollDumper { eventRouter };
+		scrollDumper.enabled = false;
 
 		g3d::GraphDevice graphDevice { vkTop, window };
 		g3d::Renderer renderer { graphDevice };

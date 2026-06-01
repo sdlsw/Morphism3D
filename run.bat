@@ -1,3 +1,3 @@
-cd .\build\Debug
+cd .\build
 graph3d.exe
 pause

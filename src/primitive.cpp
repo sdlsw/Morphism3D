@@ -294,9 +294,9 @@ static inline void radialTriangleIndices(
 	};
 	uint16_t posCount = buf.indexSource.posCount();
 
-	buf.fanRunX<IxOrd::CCW>(0, 0);
-	buf.quadFieldX<IxOrd::CCW>();
-	buf.fanRunX<IxOrd::CW>(posCount - 1, buf.endY() - 1);
+	buf.template fanRunX<IxOrd::CCW>(0, 0);
+	buf.template quadFieldX<IxOrd::CCW>();
+	buf.template fanRunX<IxOrd::CW>(posCount - 1, buf.endY() - 1);
 }
 
 // IMPLEMENTATION OF PUBLIC INTERFACE

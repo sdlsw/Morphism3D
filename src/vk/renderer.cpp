@@ -483,7 +483,11 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
 
-	device.waitForFences(*frameResources.inFlightFence(), vk::True, UINT64_MAX);
+	auto waitResult = device.waitForFences(*frameResources.inFlightFence(), vk::True, UINT64_MAX);
+	if (waitResult != vk::Result::eSuccess) {
+		std::cerr << "[RENDERER] beginFrame: Failed while waiting for inFlightFence" << std::endl;
+		return;
+	}
 
 	auto [result, imageIndex] = _windowResources->swapchain().acquireNextImage(
 		UINT64_MAX, frameResources.imageAvailableSemaphore()
@@ -507,7 +511,7 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 
 	std::array<vk::ClearValue, 2> clearValues {};
 	clearValues[0].color.setFloat32({0.0f, 0.0f, 0.0f, 1.0f});
-	clearValues[1].depthStencil = {1.0f, 0};
+	clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
 
 	vk::RenderPassBeginInfo beginInfo {
 		.renderPass = *_renderPass,

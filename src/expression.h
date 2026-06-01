@@ -1,4 +1,5 @@
 #pragma once
+#include "global_defines.h"
 
 #include <format>
 #include <memory>
@@ -7,6 +8,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <glm/common.hpp>
+#include <glm/exponential.hpp>
+#include <glm/trigonometric.hpp>
 
 namespace g3d {
 constexpr char ADD_CHAR = '+';
@@ -212,32 +217,32 @@ struct EndParenToken : public Token {
 
 struct FuncSin {
 	static constexpr char s[] { "sin" };
-	static inline float op(float x) { return std::sin(x); }
+	static inline float op(float x) { return glm::sin(x); }
 };
 
 struct FuncCos {
 	static constexpr char s[] { "cos" };
-	static inline float op(float x) { return std::cos(x); }
+	static inline float op(float x) { return glm::cos(x); }
 };
 
 struct FuncTan {
 	static constexpr char s[] { "tan" };
-	static inline float op(float x) { return std::tan(x); }
+	static inline float op(float x) { return glm::tan(x); }
 };
 
 struct FuncExp {
 	static constexpr char s[] { "exp" };
-	static inline float op(float x) { return std::exp(x); }
+	static inline float op(float x) { return glm::exp(x); }
 };
 
 struct FuncLog {
 	static constexpr char s[] { "log" };
-	static inline float op(float x) { return std::log(x); }
+	static inline float op(float x) { return glm::log(x); }
 };
 
 struct FuncAbs {
 	static constexpr char s[] { "abs" };
-	static inline float op(float x) { return std::abs(x); }
+	static inline float op(float x) { return glm::abs(x); }
 };
 
 template<typename T>
@@ -305,7 +310,7 @@ struct OpMod {
 	static constexpr unsigned int lbpSub = 0;
 	static constexpr bool allowUnary = false;
 
-	static inline float op(float a, float b) { return std::fmod(a, b); }
+	static inline float op(float a, float b) { return glm::mod(a, b); }
 };
 
 struct OpExp {
@@ -314,7 +319,7 @@ struct OpExp {
 	static constexpr unsigned int lbpSub = 1; // makes right-associative
 	static constexpr bool allowUnary = false;
 
-	static inline float op(float a, float b) { return std::pow(a, b); }
+	static inline float op(float a, float b) { return glm::pow(a, b); }
 };
 
 struct OpGt {
