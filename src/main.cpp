@@ -58,39 +58,6 @@ public:
 	}
 };
 
-// The function to graph. TODO let the user specify this
-struct TestFunc {
-	float eval(float x, float y) const {
-		return 0.3f*x*y;
-	}
-};
-
-class WobbleFunc {
-private:
-	float ofs = 0.0f;
-	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
-
-public:
-	WobbleFunc() : startTime { now() } {}
-
-	// Couple test funcs to swap between
-	float rippler(float x, float y) const {
-		return 0.2f*glm::sin(3*glm::sqrt(x*x + y*y) - 2*ofs);
-	}
-
-	float diagonalWave(float x, float y) const {
-		return glm::sin(x+ofs)*glm::sin(y+ofs);
-	}
-
-	float eval(float x, float y) const {
-		return diagonalWave(x, y);
-	}
-
-	void update() {
-		ofs = secondsSince(startTime);
-	}
-};
-
 class ExpressionFunc {
 private:
 	g3d::TokenRegistry _tokenRegistry;
