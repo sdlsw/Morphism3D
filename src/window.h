@@ -19,6 +19,8 @@ struct KeyEvent {
 	int mods;
 };
 
+std::ostream& operator<<(std::ostream& out, const KeyEvent& e);
+
 struct MouseButtonEvent {
 	GLFWwindow* window;
 	int button;
@@ -26,17 +28,23 @@ struct MouseButtonEvent {
 	int mods;
 };
 
+std::ostream& operator<<(std::ostream& out, const MouseButtonEvent& e);
+
 struct MousePositionEvent {
 	GLFWwindow* window;
 	double xpos;
 	double ypos;
 };
 
+std::ostream& operator<<(std::ostream& out, const MousePositionEvent& e);
+
 struct ScrollEvent {
 	GLFWwindow* window;
 	double xoffset;
 	double yoffset;
 };
+
+std::ostream& operator<<(std::ostream& out, const ScrollEvent& e);
 
 struct WindowSize {
 	uint32_t width;

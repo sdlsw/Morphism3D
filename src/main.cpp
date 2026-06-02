@@ -41,48 +41,6 @@ float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_cl
 	return std::chrono::duration<float, std::chrono::seconds::period>(after - before).count();
 }
 
-class CursorPosDumper : public g3d::EventHandler<g3d::MousePositionEvent> {
-public:
-	bool enabled = false;
-
-	void handle(const g3d::MousePositionEvent& e) override {
-		if (!enabled) return;
-		std::cout << "MousePositionEvent: " << e.xpos << ", " << e.ypos << std::endl;
-	}
-
-	CursorPosDumper(g3d::EventRouter& router) {
-		router.addHandler(*this);
-	}
-};
-
-class KeyDumper : public g3d::EventHandler<g3d::KeyEvent> {
-public:
-	bool enabled = false;
-
-	void handle(const g3d::KeyEvent& e) override {
-		if (!enabled) return;
-		std::cout << "KeyEvent: " << e.key << ", " << e.action << std::endl;
-	}
-
-	KeyDumper(g3d::EventRouter& router) {
-		router.addHandler(*this);
-	}
-};
-
-class ScrollDumper : public g3d::EventHandler<g3d::ScrollEvent> {
-public:
-	bool enabled = false;
-
-	void handle(const g3d::ScrollEvent& e) override {
-		if (!enabled) return;
-		std::cout << "ScrollEvent: " << e.xoffset << ", " << e.yoffset << std::endl;
-	}
-
-	ScrollDumper(g3d::EventRouter& router) {
-		router.addHandler(*this);
-	}
-};
-
 class ConstantRotation {
 private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> _start;
@@ -388,13 +346,13 @@ int main() {
 			APPLICATION_ICON
 		};
 
-		CursorPosDumper posDumper { eventRouter };
+		g3d::EventPrinter<g3d::MousePositionEvent> posDumper { eventRouter };
 		posDumper.enabled = false;
 
-		KeyDumper keyDumper { eventRouter };
+		g3d::EventPrinter<g3d::KeyEvent> keyDumper { eventRouter };
 		keyDumper.enabled = false;
 
-		ScrollDumper scrollDumper { eventRouter };
+		g3d::EventPrinter<g3d::ScrollEvent> scrollDumper { eventRouter };
 		scrollDumper.enabled = false;
 
 		g3d::GraphDevice graphDevice { vkTop, window };

@@ -1,6 +1,9 @@
 #pragma once
 
+#include "type.h"
+
 #include <cstdint>
+#include <iostream>
 #include <typeindex>
 #include <stdexcept>
 #include <unordered_map>
@@ -120,6 +123,27 @@ public:
 		}
 
 		// Event types with no known handlers are just skipped
+	}
+};
+
+template<typename T>
+concept Printable = requires(std::ostream out, T printable) {
+	{ out << printable } -> std::convertible_to<std::ostream&>;
+};
+
+// Utility template for debug purposes.
+template<Printable E>
+class EventPrinter : public EventHandler<E> {
+public:
+	bool enabled = false;
+
+	void handle(const E& e) override {
+		if (!enabled) return;
+		std::cerr << prettyType<E>() << ": " << e << std::endl;
+	}
+
+	EventPrinter(EventRouter& router) {
+		router.addHandler(*this);
 	}
 };
 }

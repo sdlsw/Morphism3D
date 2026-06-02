@@ -161,4 +161,20 @@ void Window::incCursorPosition(double xinc, double yinc) {
 int Window::cursorMode() {
 	return glfwGetInputMode(_glfwWindow, GLFW_CURSOR);
 }
+
+std::ostream& operator<<(std::ostream& out, const KeyEvent& e) {
+	return out << e.key << ", " << e.action;
+}
+
+std::ostream& operator<<(std::ostream& out, const MouseButtonEvent& e) {
+	return out << e.button << ", " << e.action;
+}
+
+std::ostream& operator<<(std::ostream& out, const MousePositionEvent& e) {
+	return out << e.xpos << ", " << e.ypos;
+}
+
+std::ostream& operator<<(std::ostream& out, const ScrollEvent& e) {
+	return out << e.xoffset << ", " << e.yoffset;
+}
 }
