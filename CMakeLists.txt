@@ -9,8 +9,9 @@ target_compile_options(compiler-flags INTERFACE "$<${msvc}:-W3>")
 target_compile_definitions(compiler-flags INTERFACE "$<$<CONFIG:Debug>:DEBUG>")
 
 # Set up libraries
-set(ENV{VULKAN_SDK} "C:/VulkanSDK/1.4.321.1")
-find_package(Vulkan REQUIRED)
+# If Vulkan can't be found, set the env variable VULKAN_SDK to the root
+# directory of the Vulkan SDK.
+find_package(Vulkan REQUIRED) # Developed with 1.4.321.1
 add_subdirectory("lib/glfw")
 
 # Application source code
