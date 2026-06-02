@@ -11,8 +11,7 @@ target_compile_definitions(compiler-flags INTERFACE "$<$<CONFIG:Debug>:DEBUG>")
 set(ENV{VULKAN_SDK} "C:/VulkanSDK/1.4.321.1")
 find_package(Vulkan REQUIRED)
 
-list(APPEND CMAKE_PREFIX_PATH "lib/glfw/lib-mingw-w64")
-find_library(glfw NAMES glfw3 REQUIRED)
+add_subdirectory("lib/glfw")
 
 add_executable(main "src/main.cpp" icon.rc)
 target_sources(main PUBLIC "src/stb_impl.cpp")
@@ -46,12 +45,12 @@ target_sources(main PUBLIC "lib/imgui/backends/imgui_impl_vulkan.cpp")
 target_include_directories(main PUBLIC "src")
 target_include_directories(main PUBLIC "src/vk")
 target_include_directories(main PUBLIC ${Vulkan_INCLUDE_DIRS})
-target_include_directories(main PUBLIC "lib/glfw/include")
 target_include_directories(main PUBLIC "lib/glm")
 target_include_directories(main PUBLIC "lib/imgui")
 target_include_directories(main PUBLIC "lib/imgui/backends")
 target_include_directories(main PUBLIC "lib/stb")
-target_link_libraries(main PUBLIC compiler-flags ${glfw} Vulkan::Vulkan)
+
+target_link_libraries(main PUBLIC compiler-flags glfw Vulkan::Vulkan)
 
 # copy files
 add_custom_command(
