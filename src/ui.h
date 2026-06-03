@@ -239,6 +239,9 @@ private:
 	const std::string _title { "Graph" };
 	std::array<char, 255> _expressionBuf;
 
+	glm::vec3 _rangeLow;
+	glm::vec3 _rangeHigh;
+
 	Graph<T>* _graph;
 	int _cells;
 
@@ -284,6 +287,48 @@ private:
 		}
 	}
 
+	void rangeInput(char dim, float& low, float& high) {
+		float lastLow = low;
+		bool lowChanged = ImGui::InputFloat(std::format("##rangelow{}", dim).c_str(), &low);
+		if (lowChanged) {
+			if (low >= high) {
+				low = lastLow;
+			} else {
+				_graph->rangeLow(_rangeLow);
+			}
+		}
+
+		char dimStr[] { dim, '\0' };
+		ImGui::SameLine();
+		ImGui::Text("<=");
+		ImGui::SameLine();
+		ImGui::Text(dimStr);
+		ImGui::SameLine();
+		ImGui::Text("<=");
+		ImGui::SameLine();
+
+		float lastHigh = high;
+		bool highChanged = ImGui::InputFloat(std::format("##rangehigh{}", dim).c_str(), &high);
+		if (highChanged) {
+			if (high <= low) {
+				high = lastHigh;
+			} else {
+				_graph->rangeHigh(_rangeHigh);
+			}
+		}
+	}
+
+	void rangeInputs() {
+		ImGui::SeparatorText("Range");
+		char dims[] { 'X', 'Y', 'Z' };
+
+		ImGui::PushItemWidth(100.0f);
+		for (unsigned int i = 0; i < 3; i++) {
+			rangeInput(dims[i], _rangeLow[i], _rangeHigh[i]);
+		}
+		ImGui::PopItemWidth();
+	}
+
 	void sliders() {
 		ImGui::SeparatorText("Sliders");
 		_sliders.show();
@@ -296,7 +341,8 @@ public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override {
 		expressionInput();
-		sliders();
+
+		rangeInputs();
 
 		ImGui::SeparatorText("Render Settings");
 		resolutionInput();
@@ -307,13 +353,17 @@ public:
 		ImGui::SeparatorText("Debug");
 		ImGui::Checkbox("GPU Upload", &_graph->doUpload);
 		ImGui::Checkbox("Regenerate", &_graph->doRegen);
+
+		sliders();
 	}
 
 	GraphWindow() = delete;
 	GraphWindow(Graph<T>& graph, Window& window)
 	: _graph { &graph },
 	  _cells { static_cast<int>(graph.cells()) },
-	  _sliders { window, graph.func().vars() }
+	  _sliders { window, graph.func().vars() },
+	  _rangeLow { graph.rangeLow() },
+	  _rangeHigh { graph.rangeHigh() }
 	{
 		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	}

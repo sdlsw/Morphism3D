@@ -18,23 +18,8 @@ class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
 
-	// The number of discrete steps to walk along each input variable.
-	// Higher values yield higher accuracy at the cost of additional
-	// vertices.
-	unsigned int _cells;
-
-	// The x, y coordinates of the model vertices always range from
-	// -1.0f to 1.0f. The range determines how those coordinates map to
-	// function input space with a simple relation:
-	//
-	//     (model_x, model_y, model_z)*range = (graph_x, graph_y, f(graph_x, graph_y))
-	//		
-	// graph_x and graph_y will both range from -range to +range.
-	float _range;
 	F* _func;
 
-	// TODO Store Positions in func space coordinates and convert to model
-	// space when constructing entities
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
 	std::vector<Normal> _normals;
@@ -43,8 +28,10 @@ private:
 	std::vector<uint16_t> _lineIndices;
 	std::vector<uint16_t> _normalIndices;
 
-	glm::vec3 toModelSpace(const glm::vec3& funcSpace) {
-		return funcSpace / _range;
+	glm::vec3 toModelSpace(const glm::vec3& funcSpace) const {
+		// Simplified from (funcSpace - (H+L)/2) / ((H - L)/2), that
+		// is, a translation followed by a scale.
+		return (2.0f*funcSpace - rangeHigh - rangeLow) / (rangeHigh - rangeLow);
 	}
 
 	uint16_t idx(unsigned int x, unsigned int y) {
@@ -56,7 +43,7 @@ private:
 		// |_|_|
 		//
 		// 2 cell grid, but 3 points.
-		return y*(_cells+1) + x;
+		return y*(cells+1) + x;
 	}
 
 	const Position& getPosition(unsigned int x, unsigned int y) {
@@ -64,12 +51,12 @@ private:
 	}
 
 	void generatePositions() {
-		float inc = 1.0f / static_cast<float>(_cells);
-		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
-			float y = glm::mix(-_range, _range, inc*ypt);
+		float inc = 1.0f / static_cast<float>(cells);
+		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
+			float y = glm::mix(rangeLow.y, rangeHigh.y, inc*ypt);
 
-			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
-				float x = glm::mix(-_range, _range, inc*xpt);
+			for (unsigned int xpt = 0; xpt <= cells; xpt++) {
+				float x = glm::mix(rangeLow.x, rangeHigh.x, inc*xpt);
 				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
 			}
 		}
@@ -86,15 +73,13 @@ private:
 		glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
 		glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
 
-		float inc = 1.0f / static_cast<float>(_cells);
-		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
+		float inc = 1.0f / static_cast<float>(cells);
+		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 			float lerp_a_y = inc*ypt;
-			float y = glm::mix(-_range, _range, lerp_a_y);
-
 			glm::vec3 colornx = glm::mix(nxny, nxpy, lerp_a_y);
 			glm::vec3 colorpx = glm::mix(pxny, pxpy, lerp_a_y);
 
-			for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
+			for (unsigned int xpt = 0; xpt <= cells; xpt++) {
 				float lerp_a_x = inc*xpt;
 				glm::vec3 color = glm::mix(colornx, colorpx, lerp_a_x);
 				_colors.push_back(color);
@@ -119,16 +104,16 @@ private:
 
 	void generateLineIndices() {
 		// generate horizontal lines
-		for (unsigned int ypt = 0; ypt <= _cells; ypt++) {
-			for (unsigned int xpt = 0; xpt < _cells; xpt++) {
+		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
+			for (unsigned int xpt = 0; xpt < cells; xpt++) {
 				_lineIndices.push_back(idx(xpt, ypt));
 				_lineIndices.push_back(idx(xpt+1, ypt));
 			}
 		}
 
 		// generate vertical lines
-		for (unsigned int xpt = 0; xpt <= _cells; xpt++) {
-			for (unsigned int ypt = 0; ypt < _cells; ypt++) {
+		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
+			for (unsigned int ypt = 0; ypt < cells; ypt++) {
 				_lineIndices.push_back(idx(xpt, ypt));
 				_lineIndices.push_back(idx(xpt, ypt+1));
 			}
@@ -138,8 +123,8 @@ private:
 	void generateTriangleIndices() {
 		// X and Y correspond to the top left vertex of the quad being
 		// generated.
-		for (unsigned int ypt = 0; ypt < _cells; ypt++) {
-			for (unsigned int xpt = 0; xpt < _cells; xpt++) {
+		for (unsigned int ypt = 0; ypt < cells; ypt++) {
+			for (unsigned int xpt = 0; xpt < cells; xpt++) {
 				// first tri
 				_triangleIndices.push_back(idx(xpt, ypt));
 				_triangleIndices.push_back(idx(xpt+1, ypt));
@@ -161,36 +146,6 @@ private:
 			_normalIndices.push_back(i + ptCount);
 		}
 	}
-public:
-	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(F& f, unsigned int cells, float range)
-	: _func { &f },
-	  _cells { cells },
-	  _range { range }
-	{
-		regenerateEverything();
-	}
-
-	auto cells() const { return _cells; }
-	void cells(unsigned int cells) { _cells = cells; }
-
-	auto range() const { return _range; }
-	auto& func() const { return *_func; }
-	const auto& positions() const { return _positions; }
-	const auto& colors() const { return _colors; }
-	const auto& normals() const { return _normals; }
-	const auto& lineIndices() const { return _lineIndices; }
-	const auto& triangleIndices() const { return _triangleIndices; }
-	const auto& normalIndices() const { return _normalIndices; }
-	auto pointCount() const { return (_cells + 1) * (_cells + 1); }
-
-	void regeneratePositions() {
-		_positions.clear();
-		_normals.clear();
-		generatePositions();
-		generateNormals();
-		generateNormalPositions();
-	}
 
 	void regenerateVertices() {
 		regeneratePositions();
@@ -207,7 +162,53 @@ public:
 		generateTriangleIndices();
 		generateNormalIndices();
 	}
+public:
+	// The number of discrete steps to walk along each input variable.
+	// Higher values yield higher accuracy at the cost of additional
+	// vertices.
+	unsigned int cells;
 
+	// The x, y coordinates of the model vertices always range from
+	// -1.0f to 1.0f. The range determines how those coordinates map to
+	// function input space with a simple relation. See toModelSpace().
+	glm::vec3 rangeHigh;
+	glm::vec3 rangeLow;
+
+	GraphMeshBuilder() = delete;
+	GraphMeshBuilder(F& f, unsigned int cells, float range)
+	: _func { &f },
+	  cells { cells },
+	  rangeHigh { range, range, range },
+	  rangeLow { -range, -range, -range }
+	{
+		regenerateEverything();
+	}
+
+	auto& func() const { return *_func; }
+	const auto& positions() const { return _positions; }
+	const auto& colors() const { return _colors; }
+	const auto& normals() const { return _normals; }
+	const auto& lineIndices() const { return _lineIndices; }
+	const auto& triangleIndices() const { return _triangleIndices; }
+	const auto& normalIndices() const { return _normalIndices; }
+	auto pointCount() const { return (cells + 1) * (cells + 1); }
+
+	// Gets the model space coordinates of the origin of the graph.
+	glm::vec3 origin() const {
+		return toModelSpace({0, 0, 0});
+	}
+
+	// Must be called whenever _func changes, and whenever `rangeLow` or
+	// `rangeHigh` change.
+	void regeneratePositions() {
+		_positions.clear();
+		_normals.clear();
+		generatePositions();
+		generateNormals();
+		generateNormalPositions();
+	}
+
+	// Must be called whenever `cells` changes.
 	void regenerateEverything() {
 		// Indices need to be regenerated first, since the
 		// generateNormals() is dependent on them.
@@ -245,6 +246,7 @@ private:
 
 	bool cellsChanged = false;
 	bool temporaryRegen = false;
+	bool shouldUpdate = false;
 
 	// When the cells value changes, the buffers need to be updated for
 	// multiple frames since everything is double buffered.
@@ -436,16 +438,43 @@ public:
 	auto& wireframe() { return _wireframe; }
 
 	void cells(unsigned int cells) {
-		_builder.cells(cells);
+		_builder.cells = cells;
 		cellsChanged = true;
 	}
 
 	unsigned int cells() const {
-		return _builder.cells();
+		return _builder.cells;
+	}
+
+	void rangeLow(const glm::vec3& range) {
+		_builder.rangeLow = range;
+		shouldUpdate = true;
+	}
+
+	const glm::vec3& rangeLow() const {
+		return _builder.rangeLow;
+	}
+
+	void rangeHigh(const glm::vec3& range) {
+		_builder.rangeHigh = range;
+		shouldUpdate = true;
+	}
+
+	const glm::vec3& rangeHigh() const {
+		return _builder.rangeHigh;
+	}
+
+	glm::vec3 origin() const {
+		return _builder.origin();
 	}
 
 	void update() {
 		if (_builder.func().updated()) {
+			shouldUpdate = true;
+			_builder.func().resetUpdated();
+		}
+
+		if (shouldUpdate) {
 			if (_builder.func().animated()) {
 				_regenMode = defaultRegenMode();
 				_uploadMode = defaultUploadMode();
@@ -453,7 +482,7 @@ public:
 				setTemporaryRegenMode(GraphRegenMode::partial);
 				setTemporaryUploadMode(GraphUploadMode::partial);
 			}
-			_builder.func().resetUpdated();
+			shouldUpdate = false;
 		}
 
 		// Cell update overrides normal update handling

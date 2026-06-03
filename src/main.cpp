@@ -236,6 +236,7 @@ void mainloop(g3d::Renderer& renderer) {
 		camController.update();
 		g3d::getTransform(lightObject.entity()).translation = light.current.position;
 		f.update();
+		g3d::getTransform(axes.entity()).translation = graph.origin();
 
 		// Draw the frame.
 		renderer.beginFrame(camController.camera(), light);
