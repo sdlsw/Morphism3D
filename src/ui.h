@@ -370,7 +370,8 @@ public:
 	  _cells { static_cast<int>(graph.cells()) },
 	  _sliders { window, graph.func().vars() },
 	  _rangeLow { graph.rangeLow() },
-	  _rangeHigh { graph.rangeHigh() }
+	  _rangeHigh { graph.rangeHigh() },
+	  _clampZ { graph.clampZ() }
 	{
 		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	}
