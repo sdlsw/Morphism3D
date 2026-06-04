@@ -58,6 +58,11 @@ private:
 			for (unsigned int xpt = 0; xpt <= cells; xpt++) {
 				float x = glm::mix(rangeLow.x, rangeHigh.x, inc*xpt);
 				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
+
+				if (clampZ) {
+					auto& p = _positions.back().vec;
+					p.z = glm::clamp(p.z, -1.0f, 1.0f);
+				}
 			}
 		}
 	}
@@ -173,6 +178,8 @@ public:
 	// function input space with a simple relation. See toModelSpace().
 	glm::vec3 rangeHigh;
 	glm::vec3 rangeLow;
+
+	bool clampZ = false;
 
 	GraphMeshBuilder() = delete;
 	GraphMeshBuilder(F& f, unsigned int cells, float range)
@@ -436,6 +443,15 @@ public:
 	auto& gridBottom() { return _gridBottom; }
 	auto& normals() { return _normals; }
 	auto& wireframe() { return _wireframe; }
+
+	void clampZ(bool b) {
+		_builder.clampZ = b;
+		shouldUpdate = true;
+	}
+
+	bool clampZ() const {
+		return _builder.clampZ;
+	}
 
 	void cells(unsigned int cells) {
 		_builder.cells = cells;

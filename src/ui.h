@@ -241,6 +241,7 @@ private:
 
 	glm::vec3 _rangeLow;
 	glm::vec3 _rangeHigh;
+	bool _clampZ;
 
 	Graph<T>* _graph;
 	int _cells;
@@ -284,6 +285,18 @@ private:
 		ImGui::SameLine();
 		if (ImGui::Button("Update")) {
 			_graph->cells(static_cast<unsigned int>(_cells));
+		}
+	}
+
+	void renderSettings() {
+		ImGui::SeparatorText("Render Settings");
+		resolutionInput();
+		renderModeSlider();
+		gridToggle();
+		ImGui::Checkbox("Show Normals", &_graph->renderNormals);
+		bool clampChanged = ImGui::Checkbox("Clamp Z", &_clampZ);
+		if (clampChanged) {
+			_graph->clampZ(_clampZ);
 		}
 	}
 
@@ -341,14 +354,8 @@ public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override {
 		expressionInput();
-
 		rangeInputs();
-
-		ImGui::SeparatorText("Render Settings");
-		resolutionInput();
-		renderModeSlider();
-		gridToggle();
-		ImGui::Checkbox("Show Normals", &_graph->renderNormals);
+		renderSettings();
 
 		ImGui::SeparatorText("Debug");
 		ImGui::Checkbox("GPU Upload", &_graph->doUpload);
