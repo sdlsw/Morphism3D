@@ -16,7 +16,7 @@
 
 static const uint32_t WINDOW_INITIAL_WIDTH = 800;
 static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
-static const std::string APPLICATION_NAME = "graph3d";
+static const std::string APPLICATION_NAME = "Morphism3D";
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 static const std::string APPLICATION_ICON = "icon.png";
 

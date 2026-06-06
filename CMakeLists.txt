@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(graph3d)
+project(morphism3d)
 
 # Compiler options
 add_library(compiler-flags INTERFACE)
@@ -32,7 +32,7 @@ target_sources(main PRIVATE "src/vk/device.cpp")
 target_sources(main PRIVATE "src/vk/helper.cpp")
 target_sources(main PRIVATE "src/vk/renderer.cpp")
 target_sources(main PRIVATE "src/window.cpp")
-set_target_properties(main PROPERTIES OUTPUT_NAME "graph3d")
+set_target_properties(main PROPERTIES OUTPUT_NAME "morphism3d")
 
 # ImGui sources
 target_sources(main PRIVATE "lib/imgui/imgui.cpp")
