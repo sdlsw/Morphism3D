@@ -38,11 +38,23 @@ Window::Window(
 
 	_eventRouter = &eventRouter;
 
-	// Load window icon
-	GLFWimage images[1];
-	images[0].pixels = stbi_load(iconPath.c_str(), &images[0].width, &images[0].height, 0, 4);
-	glfwSetWindowIcon(_glfwWindow, 1, images);
-	stbi_image_free(images[0].pixels);
+	// Load window icons
+	constexpr unsigned int numImages = 2;
+	std::array<std::string, numImages> sizes { "16", "32" };
+	std::vector<GLFWimage> images;
+	for (const auto& size : sizes) {
+		std::string iconPath = std::format("icon{}.png", size);
+
+		GLFWimage image;
+		image.pixels = stbi_load(iconPath.c_str(), &image.width, &image.height, 0, 4);
+		if (image.pixels != nullptr) {
+			images.push_back(image);
+		} else {
+			std::cerr << "[WINDOW][Warn] Could not load icon: " << iconPath << std::endl;
+		}
+	}
+	glfwSetWindowIcon(_glfwWindow, images.size(), images.data());
+	for (auto& image : images) stbi_image_free(image.pixels);
 
 	glfwSetWindowUserPointer(_glfwWindow, this);
 	glfwSetFramebufferSizeCallback(_glfwWindow, frameBufferResizeCallback);

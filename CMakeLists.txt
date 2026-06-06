@@ -75,9 +75,15 @@ add_shader(unlit.frag unlit_frag)
 add_shader(lit.vert lit_vert)
 add_shader(lit.frag lit_frag)
 
-# Copy icon
-add_custom_command(
-    TARGET main POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/logosmall.png
-        ${CMAKE_CURRENT_BINARY_DIR}/icon.png)
+function(add_icon SIZE)
+    set(FNAME icon${SIZE}.png)
+
+    add_custom_command(
+        TARGET main POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/${FNAME}
+        ${CMAKE_CURRENT_BINARY_DIR}/${FNAME})
+endfunction()
+
+add_icon(16)
+add_icon(32)

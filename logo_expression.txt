@@ -1,0 +1,12 @@
+TODO: Implement the ability to save/load all this data in the application
+
+((x^2+y^2)^0.5>c)*a*x*y+((x^2+y^2)^0.5<c)*(b*(x^2+y^2)^0.5-d)
+Clamp Z on
+Perspective 0
+Camera: Fixed, angles 4.95, 0
+a=0.711
+b=0.961
+c=0.880
+d=1.202
+Resolution 250
+Range: -3 to 3 on all dimensions
