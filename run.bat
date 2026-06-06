@@ -1,3 +1,3 @@
 cd .\build
-graph3d.exe
+morphism3d.exe
 pause
