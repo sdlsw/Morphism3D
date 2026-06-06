@@ -18,7 +18,6 @@ static const uint32_t WINDOW_INITIAL_WIDTH = 800;
 static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
 static const std::string APPLICATION_NAME = "Morphism3D";
 static const std::string ENGINE_NAME = APPLICATION_NAME;
-static const std::string APPLICATION_ICON = "icon.png";
 
 g3d::VkTop init_top() {
 	vk::ApplicationInfo appInfo {
@@ -310,8 +309,7 @@ int main() {
 			eventRouter,
 			vkTop.appInfo().pApplicationName,
 			WINDOW_INITIAL_WIDTH,
-			WINDOW_INITIAL_HEIGHT,
-			APPLICATION_ICON
+			WINDOW_INITIAL_HEIGHT
 		};
 
 		g3d::EventPrinter<g3d::MousePositionEvent> posDumper { eventRouter };

@@ -18,8 +18,7 @@ Window::Window(
 	EventRouter& eventRouter,
 	std::string title,
 	uint32_t initialWidth,
-	uint32_t initialHeight,
-	const std::string& iconPath
+	uint32_t initialHeight
 ) {
 	if (!_glfwInitialized) {
 		initWindowingSystem();
