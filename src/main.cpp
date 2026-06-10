@@ -3,7 +3,7 @@
 #include "expression.h"
 #include "graph.h"
 #include "primitive.h"
-#include "ui.h"
+#include "ui/all.h"
 #include "vk/renderer.h"
 #include "window.h"
 
