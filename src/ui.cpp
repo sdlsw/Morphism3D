@@ -560,6 +560,14 @@ void SliderPanel::show() {
 			_changedVar = true;
 		}
 	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Remove All")) {
+		for (auto& [_, slider] : _sliders) {
+			slider.exists = false;
+		}
+	}
+
 	showSliders();
 }
 
