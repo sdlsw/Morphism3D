@@ -495,20 +495,19 @@ void SliderPanel::showSlider(size_t i) {
 }
 
 void SliderPanel::showSliders() {
-	std::vector<size_t> toDelete;
-	for (size_t i = 0; i < _sliderOrder.size(); i++) {
-		if (!getSlider(i).exists) toDelete.push_back(i);
-	}
-	for (const auto& i : toDelete) {
-		auto id = _sliderOrder[i];
+	// Handle slider removal
+	std::erase_if(_sliderOrder, [this](size_t id) {
 		auto& slider = _sliders.at(id);
 
-		_vars->set(slider.var(), 0.0f);
-		_changedVar = true;
+		if (!slider.exists) {
+			_vars->set(slider.var(), 0.0f);
+			_changedVar = true;
+			_sliders.erase(id);
+			return true;
+		}
 
-		_sliders.erase(id);
-		_sliderOrder.erase(_sliderOrder.begin() + i);
-	}
+		return false;
+	});
 
 	for (size_t i = 0; i < _sliderOrder.size(); i++) {
 		showSlider(i);
