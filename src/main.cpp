@@ -185,7 +185,7 @@ void mainloop(g3d::Renderer& renderer) {
 	};
 
 	// Use last 50 frames to calculate average FPS
-	g3d::MovingAverage<float> avgFps { 50 };
+	g3d::TimeMeasurement frameTimer { 50 };
 
 	g3d::RenderSettings renderSettings;
 	g3d::DebugSettings debugSettings;
@@ -215,7 +215,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::PrimitiveTest testObject { renderer };
 
 	while (!device.window().shouldClose()) {
-		auto frameStartTime = g3d::now();
+		frameTimer.begin();
 
 		g3d::Window::pollEvents();
 		g3d::imGuiNewFrame();
@@ -280,12 +280,12 @@ void mainloop(g3d::Renderer& renderer) {
 		// isn't actually finished drawing until a bit later. For now
 		// seems fine since there's almost 0 work to do and we're
 		// hitting vsync limit.
-		avgFps.put(1.0f / g3d::secondsSince(frameStartTime));
+		frameTimer.end();
 
 		device.window().title(std::format(
 			"{} | {:.2f} FPS",
 			APPLICATION_NAME,
-			avgFps.get()
+			1.0f / frameTimer.get()
 		));
 	}
 

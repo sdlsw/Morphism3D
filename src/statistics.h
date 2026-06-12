@@ -1,5 +1,7 @@
 #pragma once
 
+#include "temporal.h"
+
 #include <concepts>
 #include <deque>
 
@@ -32,5 +34,19 @@ public:
 
 		return sum / static_cast<T>(_contents.size());
 	}
+};
+
+class TimeMeasurement {
+private:
+	bool _inMeasurement = false;
+	TimePoint _start;
+	MovingAverage<float> _measurement;
+
+public:
+	TimeMeasurement(size_t maxSize) : _measurement { maxSize } {}
+
+	void begin();
+	void end();
+	float get();
 };
 }
