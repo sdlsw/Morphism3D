@@ -24,6 +24,8 @@ target_sources(main PRIVATE "src/event.cpp")
 target_sources(main PRIVATE "src/expression.cpp")
 target_sources(main PRIVATE "src/graph.cpp")
 target_sources(main PRIVATE "src/primitive.cpp")
+target_sources(main PRIVATE "src/statistics.cpp")
+target_sources(main PRIVATE "src/temporal.cpp") # Would prefer "time.h" but that's taken.
 target_sources(main PRIVATE "src/type.cpp")
 target_sources(main PRIVATE "src/ui/camera_window.cpp")
 target_sources(main PRIVATE "src/ui/common.cpp")

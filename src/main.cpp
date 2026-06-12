@@ -3,6 +3,8 @@
 #include "expression.h"
 #include "graph.h"
 #include "primitive.h"
+#include "temporal.h"
+#include "statistics.h"
 #include "ui/all.h"
 #include "vk/renderer.h"
 #include "window.h"
@@ -31,15 +33,6 @@ g3d::VkTop init_top() {
 	return vk_top;
 }
 
-std::chrono::time_point<std::chrono::high_resolution_clock> now() {
-	return std::chrono::high_resolution_clock::now();
-}
-
-float secondsSince(const std::chrono::time_point<std::chrono::high_resolution_clock>& before) {
-	auto after = now();
-	return std::chrono::duration<float, std::chrono::seconds::period>(after - before).count();
-}
-
 class ConstantRotation {
 private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> _start;
@@ -47,13 +40,13 @@ private:
 	glm::vec3 _axis;
 public:
 	ConstantRotation(float radiansPerSecond, const glm::vec3& axis) :
-		_start { now() },
+		_start { g3d::now() },
 		_radiansPerSecond { radiansPerSecond },
 		_axis { axis } {}
 
 	glm::mat4 matrix() {
 		glm::mat4 id { 1.0f };
-		return glm::rotate(id, secondsSince(_start) * _radiansPerSecond, _axis);
+		return glm::rotate(id, g3d::secondsSince(_start) * _radiansPerSecond, _axis);
 	}
 };
 
@@ -69,7 +62,7 @@ private:
 public:
 	ExpressionFunc()
 	: _tokenRegistry { g3d::makeTokenRegistry() },
-	  _startTime { now() }
+	  _startTime { g3d::now() }
 	{}
 
 	bool animated() const { return _animated; }
@@ -89,7 +82,7 @@ public:
 	}
 
 	void update() {
-		_vars.set('t', secondsSince(_startTime));
+		_vars.set('t', g3d::secondsSince(_startTime));
 	}
 
 	void updateAnimated() {
@@ -222,7 +215,7 @@ void mainloop(g3d::Renderer& renderer) {
 	g3d::PrimitiveTest testObject { renderer };
 
 	while (!device.window().shouldClose()) {
-		auto frameStartTime = now();
+		auto frameStartTime = g3d::now();
 
 		g3d::Window::pollEvents();
 		g3d::imGuiNewFrame();
@@ -287,7 +280,7 @@ void mainloop(g3d::Renderer& renderer) {
 		// isn't actually finished drawing until a bit later. For now
 		// seems fine since there's almost 0 work to do and we're
 		// hitting vsync limit.
-		avgFps.put(1.0f / secondsSince(frameStartTime));
+		avgFps.put(1.0f / g3d::secondsSince(frameStartTime));
 
 		device.window().title(std::format(
 			"{} | {:.2f} FPS",
