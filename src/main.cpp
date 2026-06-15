@@ -184,8 +184,7 @@ void mainloop(g3d::Renderer& renderer) {
 		device.window()
 	};
 
-	// Use last 50 frames to calculate average FPS
-	g3d::TimeMeasurement frameTimer { 50 };
+	g3d::TimerCollection perfTimers { 50 };
 
 	g3d::RenderSettings renderSettings;
 	g3d::DebugSettings debugSettings;
@@ -194,7 +193,7 @@ void mainloop(g3d::Renderer& renderer) {
 	float range = 3.0f;
 
 	ExpressionFunc f;
-	g3d::Graph<ExpressionFunc> graph { renderer, f, cells, range };
+	g3d::Graph<ExpressionFunc> graph { renderer, f, cells, range, perfTimers };
 
 	auto axes = buildAxes(renderer);
 	auto frame = buildFrame(renderer);
@@ -210,12 +209,13 @@ void mainloop(g3d::Renderer& renderer) {
 	ui.addWindow<g3d::CameraWindow>(camController);
 	ui.addWindow<g3d::RenderWindow>(renderSettings, light, graph.surfaceMaterial());
 	ui.addWindow<g3d::GraphWindow<ExpressionFunc>>(graph, device.window());
+	ui.addWindow<g3d::StatsWindow>(perfTimers);
 	ui.addWindow<g3d::DebugWindow>(debugSettings);
 
 	g3d::PrimitiveTest testObject { renderer };
 
 	while (!device.window().shouldClose()) {
-		frameTimer.begin();
+		perfTimers.start("frame");
 
 		g3d::Window::pollEvents();
 		g3d::imGuiNewFrame();
@@ -280,12 +280,12 @@ void mainloop(g3d::Renderer& renderer) {
 		// isn't actually finished drawing until a bit later. For now
 		// seems fine since there's almost 0 work to do and we're
 		// hitting vsync limit.
-		frameTimer.end();
+		perfTimers.stop("frame");
 
 		device.window().title(std::format(
 			"{} | {:.2f} FPS",
 			APPLICATION_NAME,
-			1.0f / frameTimer.get()
+			1.0f / perfTimers.getAverage("frame")
 		));
 	}
 

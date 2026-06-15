@@ -2,6 +2,7 @@
 
 #include "container.h"
 #include "primitive.h"
+#include "statistics.h"
 #include "vk/renderer.h"
 
 #include <concepts>
@@ -19,6 +20,7 @@ private:
 	static constexpr float normLength = 0.1f;
 
 	F* _func;
+	TimerCollection* _perfTimers;
 
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
@@ -51,6 +53,7 @@ private:
 	}
 
 	void generatePositions() {
+		_perfTimers->start("regenPositions");
 		float inc = 1.0f / static_cast<float>(cells);
 		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 			float y = glm::mix(rangeLow.y, rangeHigh.y, inc*ypt);
@@ -65,6 +68,7 @@ private:
 				}
 			}
 		}
+		_perfTimers->stop("regenPositions");
 	}
 
 	void generateColors() {
@@ -93,10 +97,13 @@ private:
 	}
 
 	void generateNormals() {
+		_perfTimers->start("regenNormals");
 		autoGenerateNormals(_normals, _positions, _triangleIndices);
+		_perfTimers->stop("regenNormals");
 	}
 
 	void generateNormalPositions() {
+		_perfTimers->start("regenNormalPositions");
 		auto ptCount = pointCount();
 		for (unsigned int i = 0; i < ptCount; i++) {
 			// Note: The positions for visualizing the normals are
@@ -105,6 +112,7 @@ private:
 			// the GPU.
 			_positions.push_back(_positions[i].vec + normLength*_normals[i].vec);
 		}
+		_perfTimers->stop("regenNormalPositions");
 	}
 
 	void generateLineIndices() {
@@ -182,11 +190,12 @@ public:
 	bool clampZ = false;
 
 	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(F& f, unsigned int cells, float range)
+	GraphMeshBuilder(F& f, unsigned int cells, float range, TimerCollection& perfTimers)
 	: _func { &f },
 	  cells { cells },
 	  rangeHigh { range, range, range },
-	  rangeLow { -range, -range, -range }
+	  rangeLow { -range, -range, -range },
+	  _perfTimers { &perfTimers }
 	{
 		regenerateEverything();
 	}
@@ -250,6 +259,7 @@ private:
 	static constexpr float gridLoft = 0.002f;
 
 	GraphMeshBuilder<F> _builder;
+	TimerCollection* _perfTimers;
 
 	bool cellsChanged = false;
 	bool temporaryRegen = false;
@@ -359,6 +369,7 @@ private:
 	void regen() {
 		if (!doRegen) return;
 
+		_perfTimers->start("regen");
 		switch (_regenMode) {
 			case GraphRegenMode::partial:
 				_builder.regeneratePositions();
@@ -367,8 +378,9 @@ private:
 				_builder.regenerateEverything();
 				break;
 			default:
-				return;
+				break;
 		}
+		_perfTimers->stop("regen");
 	}
 
 	void uploadPartial() {
@@ -389,6 +401,7 @@ private:
 	void upload() {
 		if (!doUpload) return;
 
+		_perfTimers->start("upload");
 		switch (_uploadMode) {
 			case GraphUploadMode::partial:
 				uploadPartial();
@@ -397,8 +410,9 @@ private:
 				uploadAll();
 				break;
 			default:
-				return;
+				break;
 		}
+		_perfTimers->stop("upload");
 	}
 public:
 	bool doUpload = true;
@@ -411,9 +425,10 @@ public:
 		Renderer& renderer,
 		F& func,
 		unsigned int cells,
-		float range
+		float range,
+		TimerCollection& perfTimers
 	)
-	: _builder { func, cells, range },
+	: _builder { func, cells, range, perfTimers },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },
 	  _surfaceNormals { renderer, _builder.normals() },
@@ -423,7 +438,8 @@ public:
 	  _normalIndices { renderer, _builder.normalIndices() },
 	  _normalColors { renderer, makeNormalColors() },
 	  _regenMode { defaultRegenMode() },
-	  _uploadMode { defaultUploadMode() }
+	  _uploadMode { defaultUploadMode() },
+	  _perfTimers { &perfTimers }
 	{
 		populateSurfaceEntity(renderer);
 		populateGridEntity(renderer, _gridTop, 1.0f);

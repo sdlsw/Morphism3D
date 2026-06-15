@@ -10,3 +10,4 @@
 #include "ui/debug_window.h"
 #include "ui/render_window.h"
 #include "ui/graph_window.h"
+#include "ui/stats_window.h"

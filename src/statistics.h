@@ -4,6 +4,7 @@
 
 #include <concepts>
 #include <deque>
+#include <unordered_map>
 
 namespace g3d {
 template<std::floating_point T>
@@ -22,7 +23,7 @@ public:
 		_contents.push_front(x);
 	}
 
-	T get() {
+	T getAverage() {
 		T sum { static_cast<T>(0) };
 
 		// TODO: For now, use simple method of adding every
@@ -34,19 +35,42 @@ public:
 
 		return sum / static_cast<T>(_contents.size());
 	}
+
+	size_t size() {
+		return _contents.size();
+	}
+
+	T getMeasurement(size_t i) {
+		return _contents[i];
+	}
 };
 
-class TimeMeasurement {
+class Timer {
 private:
 	bool _inMeasurement = false;
 	TimePoint _start;
-	MovingAverage<float> _measurement;
+	MovingAverage<float> _measurements;
 
 public:
-	TimeMeasurement(size_t maxSize) : _measurement { maxSize } {}
+	Timer(size_t maxSize) : _measurements { maxSize } {}
 
-	void begin();
-	void end();
-	float get();
+	void start();
+	void stop();
+
+	MovingAverage<float>& measurements() { return _measurements; }
+};
+
+class TimerCollection {
+private:
+	size_t _defaultTimerSize;
+	std::unordered_map<std::string, Timer> _timers;
+
+public:
+	TimerCollection(size_t defaultTimerSize) : _defaultTimerSize { defaultTimerSize } {}
+
+	void start(const std::string& key);
+	void stop(const std::string& key);
+	float getAverage(const std::string& key);
+	Timer& getTimer(const std::string& key);
 };
 }
