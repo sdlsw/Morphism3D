@@ -16,7 +16,6 @@ add_subdirectory("lib/glfw")
 
 # Application source code
 add_executable(main "src/main.cpp" icon.rc)
-target_sources(main PRIVATE "src/stb_impl.cpp")
 target_sources(main PRIVATE "src/camera_control.cpp")
 target_sources(main PRIVATE "src/container.cpp")
 target_sources(main PRIVATE "src/entity.cpp")
@@ -25,6 +24,7 @@ target_sources(main PRIVATE "src/expression.cpp")
 target_sources(main PRIVATE "src/graph.cpp")
 target_sources(main PRIVATE "src/primitive.cpp")
 target_sources(main PRIVATE "src/statistics.cpp")
+target_sources(main PRIVATE "src/stb_impl.cpp")
 target_sources(main PRIVATE "src/temporal.cpp") # Would prefer "time.h" but that's taken.
 target_sources(main PRIVATE "src/type.cpp")
 target_sources(main PRIVATE "src/ui/camera_window.cpp")
