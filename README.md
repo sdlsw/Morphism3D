@@ -62,13 +62,27 @@ All dependencies except the Vulkan SDK are included as submodules at [`lib`](lib
 Morphism3D uses the [CMake](https://cmake.org/) build system. See the first line of [CMakeLists.txt](CMakeLists.txt) for the minimum required version of CMake.
 The only officially supported compiler is GCC, used on Windows through the [MSYS2](https://www.msys2.org/) environment.
 
-To build:
+To set up the build:
 ```sh
 git checkout https://github.com/sdlsw/Morphism3D.git
 git submodule init
 git submodule update
 mkdir build
 cd build
-cmake ..
+```
+
+The next step depends on your choice of [CMake generator](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html). For single config generators like Ninja or Make:
+
+```sh
+# (in build directory)
+cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
+```
+
+For multi config generators like Visual Studio, Xcode or Ninja Multi-Config:
+
+```sh
+# (in build directory)
+cmake ..
+cmake --build . --config Release
 ```
