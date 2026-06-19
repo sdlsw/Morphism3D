@@ -31,6 +31,11 @@ target_compile_options(
     # Note: CMake uses -O3 by default when build type is Release
     "$<${is_gcc}:$<${is_debug}:-Og>>"
 )
+target_link_options(
+    compiler-flags
+    INTERFACE
+    $<${is_gcc}:-static -static-libgcc -static-libstdc++>
+)
 target_compile_definitions(compiler-flags INTERFACE "$<${is_debug}:DEBUG>")
 
 # Set up libraries
