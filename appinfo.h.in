@@ -1,0 +1,26 @@
+#pragma once
+
+#include <cstdint>
+
+#define APPLICATION_NAME "Morphism3D"
+#define VERSION "@PROJECT_VERSION@"
+#define VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+namespace g3d {
+consteval uint32_t calcVulkanVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+	return (
+		static_cast<uint32_t>(major) << 24 |
+		static_cast<uint32_t>(minor) << 16 |
+		static_cast<uint32_t>(patch) << 8
+		// Last 8 bits are reserved for now.
+	);
+}
+}
+
+constexpr uint32_t VULKAN_VERSION = g3d::calcVulkanVersion(
+	VERSION_MAJOR,
+	VERSION_MINOR,
+	VERSION_PATCH
+);

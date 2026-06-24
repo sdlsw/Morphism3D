@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(morphism3d)
+project(morphism3d VERSION 0.1.0)
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
@@ -44,6 +44,8 @@ target_compile_definitions(compiler-flags INTERFACE "$<${is_debug}:DEBUG>")
 find_package(Vulkan REQUIRED) # Developed with 1.4.321.1
 add_subdirectory("lib/glfw")
 
+configure_file("appinfo.h.in" "${bindir}/generated/appinfo.h")
+
 # Application source code
 add_executable(main "src/main.cpp" icon.rc)
 target_sources(main PRIVATE "src/camera_control.cpp")
@@ -87,6 +89,7 @@ target_sources(main PRIVATE "lib/imgui/backends/imgui_impl_vulkan.cpp")
 
 # Application and lib includes
 target_include_directories(main PRIVATE "src")
+target_include_directories(main PRIVATE "${bindir}")
 target_include_directories(main PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_include_directories(main PRIVATE "lib/glm")
 target_include_directories(main PRIVATE "lib/imgui")

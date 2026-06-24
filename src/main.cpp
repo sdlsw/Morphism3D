@@ -1,6 +1,7 @@
 #include "camera_control.h"
 #include "container.h"
 #include "expression.h"
+#include "generated/appinfo.h"
 #include "graph.h"
 #include "primitive.h"
 #include "temporal.h"
@@ -18,15 +19,15 @@
 
 static const uint32_t WINDOW_INITIAL_WIDTH = 800;
 static const uint32_t WINDOW_INITIAL_HEIGHT = 600;
-static const std::string APPLICATION_NAME = "Morphism3D";
+static const std::string APPNAME = APPLICATION_NAME;
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 
 g3d::VkTop init_top() {
 	vk::ApplicationInfo appInfo {
-		.pApplicationName = APPLICATION_NAME.c_str(),
-		.applicationVersion = 1,
+		.pApplicationName = APPNAME.c_str(),
+		.applicationVersion = VULKAN_VERSION,
 		.pEngineName = ENGINE_NAME.c_str(),
-		.engineVersion = 1,
+		.engineVersion = VULKAN_VERSION,
 		.apiVersion = VK_API_VERSION_1_1
 	};
 	g3d::VkTop vk_top { appInfo };
