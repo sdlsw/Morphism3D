@@ -6,6 +6,7 @@
 #include "ui/ui.h"
 
 // Windows
+#include "ui/about_window.h"
 #include "ui/camera_window.h"
 #include "ui/debug_window.h"
 #include "ui/render_window.h"

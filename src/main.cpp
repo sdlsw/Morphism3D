@@ -211,6 +211,7 @@ void mainloop(g3d::Renderer& renderer) {
 	ui.addWindow<g3d::GraphWindow<ExpressionFunc>>(graph, device.window());
 	ui.addWindow<g3d::StatsWindow>(perfTimers);
 	ui.addWindow<g3d::DebugWindow>(debugSettings);
+	ui.addWindow<g3d::AboutWindow>();
 
 	g3d::PrimitiveTest testObject { renderer };
 

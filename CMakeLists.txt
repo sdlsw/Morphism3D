@@ -57,6 +57,7 @@ target_sources(main PRIVATE "src/statistics.cpp")
 target_sources(main PRIVATE "src/stb_impl.cpp")
 target_sources(main PRIVATE "src/temporal.cpp") # Would prefer "time.h" but that's taken.
 target_sources(main PRIVATE "src/type.cpp")
+target_sources(main PRIVATE "src/ui/about_window.cpp")
 target_sources(main PRIVATE "src/ui/camera_window.cpp")
 target_sources(main PRIVATE "src/ui/common.cpp")
 target_sources(main PRIVATE "src/ui/debug_window.cpp")
