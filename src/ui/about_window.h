@@ -12,6 +12,12 @@ private:
 
 	std::string makeVersionString();
 	std::string makeLicenseString();
+
+	void dependency(
+		const std::string& name,
+		const std::string& link,
+		const std::string& linkType
+	);
 public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override;
