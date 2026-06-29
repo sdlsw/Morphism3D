@@ -48,6 +48,7 @@ configure_file("appinfo.h.in" "${bindir}/generated/appinfo.h")
 
 # Application source code
 add_executable(main "src/main.cpp" icon.rc)
+target_sources(main PRIVATE "src/application.cpp")
 target_sources(main PRIVATE "src/camera_control.cpp")
 target_sources(main PRIVATE "src/container.cpp")
 target_sources(main PRIVATE "src/entity.cpp")
