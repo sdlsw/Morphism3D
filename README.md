@@ -2,6 +2,12 @@
 
 Morphism3D is a real time, interactive visualization program that can graph arbitrary functions of two variables (more graph types planned).
 
+# Download
+
+See [Releases](https://github.com/sdlsw/Morphism3D/releases). Pick the
+appropriate ZIP file for your platform, extract it, and run. No install
+necessary.
+
 # Tour
 
 Here's a brief demo of some of the current features of Morphism3D.

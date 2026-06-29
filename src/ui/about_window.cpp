@@ -23,6 +23,8 @@ void AboutWindow::dependency(
 void AboutWindow::drawUi() {
 	ImGui::Text(_versionString.c_str());
 	ImGui::TextLinkOpenURL("Homepage", "https://github.com/sdlsw/Morphism3D");
+	ImGui::SameLine();
+	ImGui::TextLinkOpenURL("Releases", "https://github.com/sdlsw/Morphism3D/releases");
 
 	ImGui::Separator();
 
