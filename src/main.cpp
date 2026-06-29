@@ -5,7 +5,7 @@
 static const std::string APPNAME = APPLICATION_NAME;
 static const std::string ENGINE_NAME = APPLICATION_NAME;
 
-g3d::VkTop init_top() {
+g3d::VkTop initTop() {
 	vk::ApplicationInfo appInfo {
 		.pApplicationName = APPNAME.c_str(),
 		.applicationVersion = VULKAN_VERSION,
@@ -13,8 +13,8 @@ g3d::VkTop init_top() {
 		.engineVersion = VULKAN_VERSION,
 		.apiVersion = VK_API_VERSION_1_1
 	};
-	g3d::VkTop vk_top { appInfo };
-	return vk_top;
+	g3d::VkTop vkTop { appInfo };
+	return vkTop;
 }
 
 int main() {
@@ -23,7 +23,7 @@ int main() {
 		// creation, but that doesn't seem to work.
 		g3d::Window::initWindowingSystem();
 
-		auto vkTop = init_top();
+		auto vkTop = initTop();
 		g3d::Application app { vkTop };
 		app.mainloop();
 	} catch (const std::exception& e) {
