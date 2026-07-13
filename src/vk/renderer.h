@@ -199,12 +199,33 @@ enum class RenderMode {
 	litTriangleCulled
 };
 
+// Simple component that tags an entity with its render mode.
+class RenderModeComponent : public Component {
+public:
+	RenderMode renderMode;
+	RenderModeComponent(RenderMode renderMode) : renderMode { renderMode } {}
+};
+
+class RenderList {
+private:
+	std::unordered_map<RenderMode, std::vector<Entity*>> _toRender;
+
+public:
+	void clear();
+	void add(Entity& ent);
+
+	auto begin() { return _toRender.begin(); }
+	auto end() { return _toRender.end(); }
+};
+
 class Renderer {
 private:
 	unsigned int _currentFrame = 0;
 	unsigned int _currentSwapchainImage = 0;
 	bool _inFrame = false;
 	RenderMode _mode = RenderMode::line;
+
+	RenderList _renderList;
 
 	GraphDevice* _graphDevice;
 	std::unique_ptr<WindowResources> _windowResources;
@@ -238,6 +259,8 @@ private:
 
 	void updateRenderContext();
 	void recreateWindowResources();
+	void setMode(RenderMode mode);
+	void renderEntitiesInList();
 public:
 	Renderer() = delete;
 	Renderer(Renderer&&) = default;
@@ -264,9 +287,18 @@ public:
 		return static_cast<uint32_t>(_windowResources->swapchain().getImages().size());
 	}
 
+	// Starts a new frame, clears render list
 	void beginFrame(const Camera& camera, const Light& light);
 	bool inFrame() const { return _inFrame; }
-	void setMode(RenderMode mode);
+
+	// Adds an entity to the render list. Renderable entities can also be
+	// drawn by calling entity.draw()
+	void drawEntity(Entity& entity);
+
+	// Records all entities in the render list to the command buffer
+	void recordEntities();
+
+	// Ends the frame
 	void endFrame();
 };
 
@@ -482,6 +514,7 @@ public:
 	: _indices { &indices } {}
 
 	void render() override { _indices->record(); }
+	void draw() override;
 };
 
 class DynamicIndexBufferComponent : public Component {
@@ -493,6 +526,7 @@ public:
 	: _indices { &indices } {}
 
 	void render() override { _indices->record(); }
+	void draw() override;
 };
 
 class StaticMeshComponent : public Component {
@@ -502,6 +536,7 @@ private:
 public:
 	StaticMeshComponent(StaticMesh& mesh) : _mesh { &mesh } {}
 	void render() override { _mesh->record(); }
+	void draw() override;
 };
 
 class MaterialComponent : public Component {
@@ -521,6 +556,7 @@ public:
 void populateStaticEntity(
 	Renderer& renderer,
 	Entity& entity,
+	RenderMode renderMode,
 	const Transform& transform,
 	StaticMesh& mesh,
 	StaticVertexAttributes<Color>& colors
@@ -529,6 +565,7 @@ void populateStaticEntity(
 void populateStaticEntity(
 	Renderer& renderer,
 	Entity& entity,
+	RenderMode renderMode,
 	const Transform& transform,
 	StaticMesh& mesh,
 	StaticVertexAttributes<Color>& colors,

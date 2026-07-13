@@ -245,6 +245,22 @@ void PerFrameResources::updateLightData(const Light& light) {
 	_lightData.copyIn(light);
 }
 
+void RenderList::clear() {
+	for (auto& [_, vec] : _toRender) {
+		vec.clear();
+	}
+}
+
+void RenderList::add(Entity& ent) {
+	auto* modeComponent = ent.getComponent<RenderModeComponent>();
+	if (modeComponent == nullptr) {
+		throw std::runtime_error("Cannot render entity without RenderMode");
+	}
+
+	auto mode = modeComponent->renderMode;
+	_toRender[mode].push_back(&ent);
+}
+
 vk::raii::RenderPass Renderer::createRenderPass() {
 	vk::AttachmentDescription colorAttachment {
 		.format = _windowResources->swapchainFormat(),
@@ -479,6 +495,17 @@ void Renderer::recreateWindowResources() {
 	_framebuffers = _windowResources->createFramebuffers(_renderPass);
 }
 
+
+// Renders everything in the render list, in the correct order.
+void Renderer::renderEntitiesInList() {
+	for (auto& [mode, vec] : _renderList) {
+		setMode(mode);
+		for (auto& ent : vec) {
+			ent->render();
+		}
+	}
+}
+
 void Renderer::beginFrame(const Camera& camera, const Light& light) {
 	auto& device = _graphDevice->logicalDevice();
 	auto& frameResources = _perFrameResources[_currentFrame];
@@ -498,6 +525,8 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 		recreateWindowResources();
 		return;
 	}
+
+	_renderList.clear();
 
 	const auto& extent = _windowResources->swapchainExtent();
 	frameResources.updateCamData(camera, extent.width, extent.height);
@@ -525,13 +554,31 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 	};
 
 	cmdBuffer.beginRenderPass(beginInfo, vk::SubpassContents::eInline);
+	_currentSwapchainImage = imageIndex;
+
+	_inFrame = true;
+}
+
+void Renderer::setMode(RenderMode mode) {
+	auto& cmd = currentCommandBuffer();
+	cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipelines.at(mode));
+}
+
+void Renderer::drawEntity(Entity& entity) {
+	_renderList.add(entity);
+}
+
+void Renderer::recordEntities() {
+	auto& frameResources = currentFrameResources();
+	auto& cmdBuffer = frameResources.commandBuffer();
+	const auto& extent = _windowResources->swapchainExtent();
 
 	// per frame descriptor set referring to camera and light info
 	cmdBuffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_pipelineLayout,
 		0,
-		*currentFrameResources().descriptorSet(),
+		*frameResources.descriptorSet(),
 		nullptr
 	);
 
@@ -550,19 +597,14 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 		.extent = extent
 	};
 	cmdBuffer.setScissor(0, scissor);
-	_currentSwapchainImage = imageIndex;
 
-	_inFrame = true;
-}
-
-void Renderer::setMode(RenderMode mode) {
-	auto& cmd = currentCommandBuffer();
-	cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipelines.at(mode));
+	renderEntitiesInList();
 }
 
 void Renderer::endFrame() {
 	auto& frameResources = currentFrameResources();
 	auto& cmdBuffer = frameResources.commandBuffer();
+
 	cmdBuffer.endRenderPass();
 	cmdBuffer.end();
 
@@ -577,7 +619,7 @@ void Renderer::endFrame() {
 		.pWaitSemaphores = waitSemaphores,
 		.pWaitDstStageMask = waitStages,
 		.commandBufferCount = 1,
-		.pCommandBuffers = &(*frameResources.commandBuffer()),
+		.pCommandBuffers = &(*cmdBuffer),
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = signalSemaphores
 	};
@@ -649,13 +691,27 @@ void MaterialComponent::render() {
 	);
 }
 
+void StaticIndexBufferComponent::draw() {
+	_indices->renderer().drawEntity(this->entity());
+}
+
+void DynamicIndexBufferComponent::draw() {
+	_indices->renderer().drawEntity(this->entity());
+}
+
+void StaticMeshComponent::draw() {
+	_mesh->renderer().drawEntity(this->entity());
+}
+
 void populateStaticEntity(
 	Renderer& renderer,
 	Entity& entity,
+	RenderMode renderMode,
 	const Transform& transform,
 	StaticMesh& mesh,
 	StaticVertexAttributes<Color>& colors
 ) {
+	entity.addComponent<RenderModeComponent>(renderMode);
 	entity.addComponent<TransformComponent>(renderer, transform);
 	entity.addComponent<StaticMeshComponent>(mesh);
 	entity.addComponent<StaticVertexAttributeComponent<Color>>(colors);
@@ -666,12 +722,13 @@ void populateStaticEntity(
 void populateStaticEntity(
 	Renderer& renderer,
 	Entity& entity,
+	RenderMode renderMode,
 	const Transform& transform,
 	StaticMesh& mesh,
 	StaticVertexAttributes<Color>& colors,
 	StaticVertexAttributes<Normal>& normals
 ) {
-	populateStaticEntity(renderer, entity, transform, mesh, colors);
+	populateStaticEntity(renderer, entity, renderMode, transform, mesh, colors);
 	entity.addComponent<StaticVertexAttributeComponent<Normal>>(normals);
 }
 

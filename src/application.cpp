@@ -135,36 +135,26 @@ void Application::mainloop() {
 		// synchronization
 		_graph.update();
 
-		_renderer.setMode(RenderMode::line);
+		// Note: Graph handles its own draw settings
+		_graph.draw();
+
 		if (_renderSettings.renderFrame) {
-			_frame.render();
+			_frame.draw();
 		}
 
-		if (_debugSettings.renderTestObject) {
-			_testObject.renderLines();
-		}
-
-		// Note: Graph handles its own render modes
-		_graph.renderLines();
-
-		// TODO: Manually managing all these modes kind of sucks
-		_renderer.setMode(RenderMode::triangle);
-		if (_renderSettings.renderLightObject) {
-			_lightObject.render();
-		}
-
-		_renderer.setMode(RenderMode::litTriangle);
-		_graph.renderSurface();
-
-		_renderer.setMode(RenderMode::litTriangleCulled);
 		if (_renderSettings.renderAxes) {
-			_axes.render();
+			_axes.draw();
+		}
+
+		if (_renderSettings.renderLightObject) {
+			_lightObject.draw();
 		}
 
 		if (_debugSettings.renderTestObject) {
-			_testObject.renderLit();
+			_testObject.draw();
 		}
 
+		_renderer.recordEntities();
 		imGuiRecord(_renderer);
 		_renderer.endFrame();
 

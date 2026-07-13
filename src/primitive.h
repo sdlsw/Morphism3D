@@ -262,11 +262,11 @@ public:
 	: _mesh { builder.lineMesh() },
 	  _colors { builder.colors() }
 	{
-		populateStaticEntity(builder.renderer(), _entity, {}, _mesh, _colors);
+		populateStaticEntity(builder.renderer(), _entity, RenderMode::line, {}, _mesh, _colors);
 	}
 
-	void render() {
-		_entity.render();
+	void draw() {
+		_entity.draw();
 	}
 
 	Entity& entity() {
@@ -293,11 +293,11 @@ public:
 	: _mesh { builder.triMesh() },
 	  _colors { builder.colors() }
 	{
-		populateStaticEntity(builder.renderer(), _entity, {}, _mesh, _colors);
+		populateStaticEntity(builder.renderer(), _entity, RenderMode::triangle, {}, _mesh, _colors);
 	}
 
-	void render() {
-		_entity.render();
+	void draw() {
+		_entity.draw();
 	}
 
 	Entity& entity() {
@@ -328,12 +328,12 @@ public:
 	  _normals { builder.normals() },
 	  _material { builder.material() }
 	{
-		populateStaticEntity(builder.renderer(), _entity, {}, _mesh, _colors, _normals);
+		populateStaticEntity(builder.renderer(), _entity, RenderMode::litTriangleCulled, {}, _mesh, _colors, _normals);
 		_entity.addComponent<MaterialComponent>(builder.renderer(), _material);
 	}
 
-	void render() {
-		_entity.render();
+	void draw() {
+		_entity.draw();
 	}
 
 	Entity& entity() {
@@ -368,12 +368,17 @@ public:
 	  _normals { builder.normals() },
 	  _material { defaultMaterial() }
 	{
-		populateStaticEntity(builder.renderer(), _lineEntity, {}, _lineMesh, _colors);
+		populateStaticEntity(builder.renderer(), _lineEntity, RenderMode::line, {}, _lineMesh, _colors);
 		getTransform(_lineEntity).translation = {x, 0.0f, -z};
 
-		populateStaticEntity(builder.renderer(), _triEntity, {}, _triMesh, _colors, _normals);
+		populateStaticEntity(builder.renderer(), _triEntity, RenderMode::litTriangleCulled, {}, _triMesh, _colors, _normals);
 		_triEntity.addComponent<MaterialComponent>(builder.renderer(), _material);
 		getTransform(_triEntity).translation = {x, 0.0f, z};
+	}
+
+	void draw() {
+		_lineEntity.draw();
+		_triEntity.draw();
 	}
 
 	Entity& lineEntity() {
@@ -429,18 +434,11 @@ public:
 	}
 	{}
 
-	void renderLit() {
-		_cones.triEntity().render();
-		_cylinders.triEntity().render();
-		_spheres.triEntity().render();
-		_cubes.triEntity().render();
-	}
-
-	void renderLines() {
-		_cones.lineEntity().render();
-		_cylinders.lineEntity().render();
-		_spheres.lineEntity().render();
-		_cubes.lineEntity().render();
+	void draw() {
+		_cones.draw();
+		_cylinders.draw();
+		_spheres.draw();
+		_cubes.draw();
 	}
 };
 }

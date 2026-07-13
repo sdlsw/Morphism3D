@@ -293,6 +293,7 @@ private:
 	void populateSurfaceEntity(Renderer& renderer) {
 		_surface.addComponent<TransformComponent>(renderer, Transform());
 
+		_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
 		_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
 		_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
 		_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
@@ -305,6 +306,7 @@ private:
 	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
 		ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
 
+		ent.addComponent<RenderModeComponent>(RenderMode::line);
 		ent.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
 		ent.addComponent<DynamicVertexAttributeComponent<Color>>(_gridColors);
 		ent.addComponent<DynamicIndexBufferComponent>(_gridIndices);
@@ -315,6 +317,7 @@ private:
 	void populateWireframeEntity(Renderer& renderer) {
 		_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
+		_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
 		_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
 		_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
 		_wireframe.addComponent<DynamicIndexBufferComponent>(_gridIndices);
@@ -325,6 +328,7 @@ private:
 	void populateNormalEntity(Renderer& renderer) {
 		_normals.addComponent<TransformComponent>(renderer, Transform());
 
+		_normals.addComponent<RenderModeComponent>(RenderMode::line);
 		_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
 		_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_normalColors);
 		_normals.addComponent<DynamicIndexBufferComponent>(_normalIndices);
@@ -538,26 +542,24 @@ public:
 		}
 	}
 
-	void renderLines() {
+	void draw() {
 		// TODO This is really dumb but it doesn't look too terrible...
 		// Look into using textures for the grid, maybe.
 		if (renderGrid && renderMode == GraphRenderMode::surface) {
-			_gridTop.render();
-			_gridBottom.render();
+			_gridTop.draw();
+			_gridBottom.draw();
 		}
 
 		if (renderNormals) {
-			_normals.render();
+			_normals.draw();
 		}
 
 		if (renderMode == GraphRenderMode::wireframe) {
-			_wireframe.render();
+			_wireframe.draw();
 		}
-	}
 
-	void renderSurface() {
 		if (renderMode == GraphRenderMode::surface) {
-			_surface.render();
+			_surface.draw();
 		}
 	}
 };

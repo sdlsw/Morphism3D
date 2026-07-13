@@ -9,10 +9,28 @@
 #include <unordered_map>
 
 namespace g3d {
+class Entity;
+
 class Component {
+	friend class Entity;
+
+private:
+	Entity* _owner = nullptr;
+
+	void setOwner(Entity& entity);
 public:
+	// Draw calls should signal to the renderer that a component should be
+	// rendered this frame.
+	virtual void draw() {};
+
+	// Updates the state of the component.
 	virtual void update() {};
+
+	// Render calls are called by the renderer when rendering an entity.
+	// Should generally not be called outside the renderer.
 	virtual void render() {};
+
+	Entity& entity();
 };
 
 class Entity {
@@ -38,28 +56,14 @@ public:
 
 	bool active = true;
 
-	void render() {
-		if (!active) return;
-
-		for (auto& [idx, component] : _components) {
-			if (component.get() == _lastRender) continue;
-			component->render();
-		}
-
-		if (_lastRender != nullptr) _lastRender->render();
-	}
-
-	void update() {
-		if (!active) return;
-
-		for (auto& [idx, component] : _components) {
-			component->update();
-		}
-	}
+	void draw();
+	void render();
+	void update();
 
 	template<std::derived_from<Component> C, typename... Args>
 	void addComponent(Args&&... args) {
 		auto component = std::make_unique<C>(std::forward<Args>(args)...);
+		component.get()->setOwner(*this);
 		_components.emplace(std::type_index(typeid(*component.get())), std::move(component));
 	}
 
