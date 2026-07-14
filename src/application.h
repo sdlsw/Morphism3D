@@ -81,6 +81,11 @@ private:
 	SimpleLitObject buildAxes();
 	SimpleUnlitObject buildLightObject();
 	SimpleLineObject buildFrame();
+
+	void update();
+	void updateSynchronized();
+	void drawObjects();
+	bool render();
 public:
 	Application(VkTop& vkTop) :
 	_window {

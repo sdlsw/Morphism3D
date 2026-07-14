@@ -106,63 +106,72 @@ SimpleLineObject Application::buildFrame() {
 	};
 }
 
+void Application::drawObjects() {
+	// Note: Graph handles its own draw settings
+	_graph.draw();
+
+	if (_renderSettings.renderFrame) {
+		_frame.draw();
+	}
+
+	if (_renderSettings.renderAxes) {
+		_axes.draw();
+	}
+
+	if (_renderSettings.renderLightObject) {
+		_lightObject.draw();
+	}
+
+	if (_debugSettings.renderTestObject) {
+		_testObject.draw();
+	}
+}
+
+void Application::update() {
+	Window::pollEvents();
+	imGuiNewFrame();
+	imGuiHandleControlExclusivity(_window, _camController);
+
+	// UI updates.
+	_ui.show();
+
+	// Entity and camera updates.
+	_camController.update();
+	getTransform(_lightObject.entity()).translation = _light.current.position;
+	_f.update();
+	getTransform(_axes.entity()).translation = _graph.origin();
+}
+
+void Application::updateSynchronized() {
+	// Objects with dynamic mesh data need to be updated after
+	// beginFrame() to ensure proper synchronization.
+	_graph.update();
+}
+
+// Renders a frame. Also handles updates that need to be synchronized with
+// rendering.
+bool Application::render() {
+	_renderer.beginFrame(_camController.camera(), _light);
+	if (!_renderer.inFrame()) {
+		// Indicates we failed to begin the frame for some
+		// outside reason - probably window resize
+		return false;
+	}
+	updateSynchronized();
+	drawObjects();
+	_renderer.recordEntities();
+	imGuiRecord(_renderer);
+	_renderer.endFrame();
+
+	return true;
+}
+
 void Application::mainloop() {
 	while (!_window.shouldClose()) {
 		_perfTimers.start("frame");
-
-		Window::pollEvents();
-		imGuiNewFrame();
-		imGuiHandleControlExclusivity(_window, _camController);
-
-		// UI updates.
-		_ui.show();
-
-		// Entity and camera updates.
-		_camController.update();
-		getTransform(_lightObject.entity()).translation = _light.current.position;
-		_f.update();
-		getTransform(_axes.entity()).translation = _graph.origin();
-
-		// Draw the frame.
-		_renderer.beginFrame(_camController.camera(), _light);
-		if (!_renderer.inFrame()) {
-			// Indicates we failed to begin the frame for some
-			// outside reason - probably window resize
-			continue;
-		}
-
-		// Update graph GPU resources after beginFrame() to ensure proper
-		// synchronization
-		_graph.update();
-
-		// Note: Graph handles its own draw settings
-		_graph.draw();
-
-		if (_renderSettings.renderFrame) {
-			_frame.draw();
-		}
-
-		if (_renderSettings.renderAxes) {
-			_axes.draw();
-		}
-
-		if (_renderSettings.renderLightObject) {
-			_lightObject.draw();
-		}
-
-		if (_debugSettings.renderTestObject) {
-			_testObject.draw();
-		}
-
-		_renderer.recordEntities();
-		imGuiRecord(_renderer);
-		_renderer.endFrame();
-
-		// TODO I don't think this is *quite* accurate since endFrame()
-		// is only the submit point for rendering commands; the frame
-		// isn't actually finished drawing until a bit later. For now
-		// seems fine since there's almost 0 work to do and we're
-		// hitting vsync limit.
+		update();
+		bool didRender = render();
+		if (!didRender) continue;
 		_perfTimers.stop("frame");
 
 		_window.title(std::format(
