@@ -14,18 +14,30 @@
 namespace g3d {
 class ExpressionFunc {
 private:
+	class _VariableChangedHandler : public EventHandler<VariableChangedEvent> {
+	private:
+		ExpressionFunc* _this;
+	public:
+		void handle(const VariableChangedEvent& e) override;
+		_VariableChangedHandler(ExpressionFunc* _this) : _this { _this } {}
+	};
+
 	TokenRegistry _tokenRegistry;
-	VariableStore _vars;
+	VariableStore* _vars;
 	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
 	std::unique_ptr<ParseNode> _parsedExpression;
 	bool _animated = false;
 	bool _updated = false;
 
+	_VariableChangedHandler _varChangedHandler { this };
 public:
-	ExpressionFunc()
-	: _tokenRegistry { makeTokenRegistry() },
+	ExpressionFunc(VariableStore& vars)
+	: _vars { &vars },
+	  _tokenRegistry { makeTokenRegistry() },
 	  _startTime { now() }
-	{}
+	{
+		vars.eventRouter().addHandler(_varChangedHandler);
+	}
 
 	bool animated() const { return _animated; }
 	bool updated() const { return _updated; }
@@ -59,6 +71,7 @@ private:
 	RenderSettings _renderSettings;
 	DebugSettings _debugSettings;
 
+	VariableStore _variableStore;
 	ExpressionFunc _f;
 	Graph<ExpressionFunc> _graph;
 
@@ -105,6 +118,8 @@ public:
 		{0.0f, 0.0f, 0.0f}, // initial center
 		_window
 	},
+	_variableStore { _eventRouter },
+	_f { _variableStore },
 	_graph { _renderer, _f, _initialCells, _initialRange, _perfTimers },
 	_axes { buildAxes() },
 	_frame { buildFrame() },
@@ -115,6 +130,7 @@ public:
 		_ui.addWindow<CameraWindow>(_camController);
 		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
 		_ui.addWindow<GraphWindow<ExpressionFunc>>(_graph, _window);
+		_ui.addWindow<VariableWindow>(_variableStore, _window);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);
 		_ui.addWindow<AboutWindow>();

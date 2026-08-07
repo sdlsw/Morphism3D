@@ -26,18 +26,31 @@ void buildArrow(g3d::MeshBuilder& b) {
 }
 
 namespace g3d {
+void ExpressionFunc::_VariableChangedHandler::handle(const VariableChangedEvent& event) {
+	char s[] { '\0', '\0' };
+	s[0] = event.c;
+
+	if (_this->_parsedExpression && _this->_parsedExpression.get()->hasTokenStr(s)) {
+		_this->_updated = true;
+	}
+}
+
 float ExpressionFunc::eval(float x, float y) {
 	if (!_parsedExpression) {
 		return 0.0f;
 	}
 
-	_vars.set('x', x);
-	_vars.set('y', y);
+	// Don't want to send event for x/y changes
+	// TODO find a less hacky way to do this that doesn't involve updating
+	// the variable store on every eval. Other graphs are going to need to
+	// share this.
+	_vars->set('x', x, false);
+	_vars->set('y', y, false);
 	return _parsedExpression.get()->eval();
 }
 
 void ExpressionFunc::update() {
-	_vars.set('t', secondsSince(_startTime));
+	_vars->set('t', secondsSince(_startTime));
 }
 
 void ExpressionFunc::updateAnimated() {
@@ -45,7 +58,7 @@ void ExpressionFunc::updateAnimated() {
 }
 
 void ExpressionFunc::updateExpression(const std::string& expression) {
-	Parser p { _tokenRegistry, _vars, expression };
+	Parser p { _tokenRegistry, *_vars, expression };
 
 	try {
 		_parsedExpression.reset(new ParseNode(p.parse()));

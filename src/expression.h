@@ -1,6 +1,8 @@
 #pragma once
 #include "global_defines.h"
 
+#include "event.h"
+
 #include <format>
 #include <memory>
 #include <iostream>
@@ -28,13 +30,24 @@ constexpr char DEC_POINT = '.';
 
 bool isAlpha(char c);
 
+struct VariableChangedEvent {
+	char c;
+	float val;
+};
+
 class VariableStore {
 private:
 	std::unordered_map<char, float> _vars;
+	EventRouter* _eventRouter = nullptr;
 
 public:
-	void set(char c, float val);
+	void set(char c, float val, bool sendEvent=true);
 	float get(char c);
+
+	EventRouter& eventRouter() { return *_eventRouter; }
+
+	VariableStore() = default;
+	VariableStore(EventRouter& eventRouter) : _eventRouter { &eventRouter } {}
 };
 
 struct Token;

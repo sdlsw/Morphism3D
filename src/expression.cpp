@@ -44,8 +44,13 @@ TokenRegistry makeTokenRegistry() {
 	return r;
 }
 
-void VariableStore::set(char c, float val) {
+void VariableStore::set(char c, float val, bool sendEvent) {
 	_vars[c] = val;
+
+	if (_eventRouter != nullptr && sendEvent) {
+		VariableChangedEvent e { c, val };
+		_eventRouter->routeEvent(e);
+	}
 }
 
 float VariableStore::get(char c) {
