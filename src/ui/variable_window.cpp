@@ -5,10 +5,15 @@ bool VariableSlider::varValid(char c) {
 	return isAlpha(c) && c != 't' && c != 'x' && c != 'y';
 }
 
+void VariableSlider::updateStore() {
+	char v = var();
+	if (v != '\0') _variableStore->set(v, _value);
+}
+
 bool VariableSlider::showHeader() {
-	upPressed = ImGui::ArrowButton(upArrowId.c_str(), ImGuiDir_Up);
+	_upPressed = ImGui::ArrowButton(_upArrowId.c_str(), ImGuiDir_Up);
 	ImGui::SameLine(0.0f, 0.0f);
-	downPressed = ImGui::ArrowButton(downArrowId.c_str(), ImGuiDir_Down);
+	_downPressed = ImGui::ArrowButton(_downArrowId.c_str(), ImGuiDir_Down);
 	ImGui::SameLine();
 
 	return ImGui::CollapsingHeader(
@@ -22,39 +27,51 @@ bool VariableSlider::showHeader() {
 	);
 }
 
-bool VariableSlider::showBody() {
+void VariableSlider::showBody() {
 	// Top row
 	ImGui::AlignTextToFramePadding();
 	ImGui::PushItemWidth(80);
-	ImGui::InputFloat(minEntryId.c_str(), &min);
+	ImGui::InputFloat(_minEntryId.c_str(), &_min);
 	ImGui::SameLine();
 	ImGui::Text("<=");
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(20);
 	char lastVar = var();
-	// FIXME If the variable is changed, say, a -> c, then a won't get
-	// zeroed out.
-	bool varChanged = ImGui::InputText(varEntryId.c_str(), entryBuffer.data(), entryBuffer.size());
+	bool varChanged = ImGui::InputText(_varEntryId.c_str(), _entryBuffer.data(), _entryBuffer.size());
 	if (varChanged && !varValid(var())) {
 		// Don't allow the user to enter an invalid variable name
-		entryBuffer[0] = lastVar;
+		_entryBuffer[0] = lastVar;
 		varChanged = false;
 	}
+
+	if (var() != lastVar) {
+		_variableStore->set(lastVar, 0.0f);
+	}
+
 	ImGui::SameLine();
 	ImGui::Text("<=");
 	ImGui::SameLine();
-	ImGui::InputFloat(maxEntryId.c_str(), &max);
+	ImGui::InputFloat(_maxEntryId.c_str(), &_max);
 	ImGui::PopItemWidth();
 
 	// Slider gets dedicated row
 	ImGui::SetNextItemWidth(-FLT_MIN);
-	bool valChanged = ImGui::SliderFloat(valueEntryId.c_str(), &value, min, max);
+	bool valChanged = ImGui::SliderFloat(_valueEntryId.c_str(), &_value, _min, _max);
 
-	return varChanged || valChanged;
+	if (varChanged || valChanged) updateStore();
+}
+
+void VariableSlider::onAdd() {
+	updateStore();
+}
+
+void VariableSlider::onRemove() {
+	_value = 0.0f;
+	updateStore();
 }
 
 char VariableSlider::var() const {
-	return entryBuffer[0];
+	return _entryBuffer[0];
 }
 
 VariableSlider& SliderPanel::getSlider(size_t i) {
@@ -74,12 +91,11 @@ void SliderPanel::showSlider(size_t i) {
 		ImGui::EndDragDropSource();
 	}
 
-	bool sliderChanged = false;
-	if (headerShown) sliderChanged = slider.showBody();
+	if (headerShown) slider.showBody();
 	ImGui::EndGroup();
 	ImVec2 end = ImGui::GetCursorScreenPos();
 
-	slider.height = static_cast<unsigned int>(end.y - start.y);
+	_heights[slider.id()] = static_cast<unsigned int>(end.y - start.y);
 
 	if (ImGui::BeginDragDropTarget()) {
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
@@ -100,28 +116,26 @@ void SliderPanel::showSlider(size_t i) {
 		ImGui::EndDragDropTarget();
 	}
 
-	if (slider.upPressed && i > 0) {
+	if (slider.upPressed() && i > 0) {
 		_rearrangeFrom = i;
 		_rearrangeTo = i-1;
 		_rearrange = true;
 
 		// Make cursor follow the up/down arrows, so you can click them
 		// many times in succession to move items quickly
-		double yinc = -static_cast<double>(getSlider(i-1).height);
+		auto& slider = getSlider(i-1);
+		double yinc = -static_cast<double>(_heights[slider.id()]);
 		_window->incCursorPosition(0, yinc);
 	}
 
-	if (slider.downPressed && i < _sliderOrder.size() - 1) {
+	if (slider.downPressed() && i < _sliderOrder.size() - 1) {
 		_rearrangeFrom = i;
 		_rearrangeTo = i+1;
 		_rearrange = true;
 
-		double yinc = static_cast<double>(getSlider(i+1).height);
+		auto& slider = getSlider(i+1);
+		double yinc = static_cast<double>(_heights[slider.id()]);
 		_window->incCursorPosition(0, yinc);
-	}
-
-	if (sliderChanged) {
-		_vars->set(slider.var(), slider.value);
 	}
 }
 
@@ -131,8 +145,9 @@ void SliderPanel::showSliders() {
 		auto& slider = _sliders.at(id);
 
 		if (!slider.exists) {
-			_vars->set(slider.var(), 0.0f);
+			slider.onRemove();
 			_sliders.erase(id);
+			_heights.erase(id);
 			return true;
 		}
 
@@ -201,13 +216,14 @@ void SliderPanel::show() {
 }
 
 void SliderPanel::addSlider(char c) {
-	_sliders.emplace(_nextSliderId, VariableSlider(_nextSliderId, c));
+	_sliders.emplace(_nextSliderId, VariableSlider(*_vars, _nextSliderId, c));
+	_heights[_nextSliderId] = 0;
 	_sliderOrder.push_back(_nextSliderId);
 
 	// New slider immediately sets a value, so need to make sure graph gets
 	// updated. FIXME assuming the added slider var is valid!
 	auto& newSlider = _sliders.at(_nextSliderId);
-	_vars->set(newSlider.var(), newSlider.value);
+	newSlider.onAdd();
 
 	_nextSliderId++;
 }

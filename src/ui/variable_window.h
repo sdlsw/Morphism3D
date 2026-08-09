@@ -5,67 +5,93 @@
 #include "window.h"
 
 namespace g3d {
-struct VariableSlider {
+class VariableSlider {
+private:
+	VariableStore* _variableStore;
+
+	// Text buffer used for variable entry
+	static constexpr size_t _entrySize = 2;
+	std::array<char, _entrySize> _entryBuffer;
+
+	// Every slider gets a unique numeric ID to differentiate it from the
+	// others.
+	unsigned int _id;
+	float _value;
+	float _min;
+	float _max;
+
+	// Flags for the up/down arrows
+	bool _upPressed = false;
+	bool _downPressed = false;
+
+	// IDs for each of the ImGui widgets
+	std::string _varEntryId;
+	std::string _valueEntryId;
+	std::string _minEntryId;
+	std::string _maxEntryId;
+	std::string _upArrowId;
+	std::string _downArrowId;
+
+	std::string headerId() { return std::format("{}##{}header", var(), _id); }
+
+	// Updates the variable store with the slider's current value.
+	void updateStore();
+
+public:
+	bool exists = true; // Set to false when the slider is closed
+
+	VariableSlider(
+		VariableStore& variableStore,
+		unsigned int id,
+		char var,
+		float value,
+		float min,
+		float max
+	)
+	: _variableStore { &variableStore },
+	  _id { id },
+	  _varEntryId { std::format("##{}varEntry", id) },
+	  _valueEntryId { std::format("##{}valueEntry", id) },
+	  _minEntryId { std::format("##{}minEntry", id) },
+	  _maxEntryId { std::format("##{}maxEntry", id) },
+	  _upArrowId { std::format("##{}up", id) },
+	  _downArrowId { std::format("##{}down", id) },
+	  _entryBuffer { var, '\0' },
+	  _value { value },
+	  _min { min },
+	  _max { max }
+	{}
+
+	VariableSlider(
+		VariableStore& variableStore,
+		unsigned int id,
+		char var
+	) : VariableSlider(variableStore, id, var, 1.0f, 0.0f, 3.0f) {}
+
+	VariableSlider(
+		VariableStore& variableStore,
+		unsigned int id
+	) : VariableSlider(variableStore, id, '\0') {}
+
 	// Tests whether a character can be used as a slider.
 	// TODO Factor this out? Will need to change when other types of graphs
 	// get added.
 	static bool varValid(char c);
 
-	// Text buffer used for variable entry
-	static constexpr size_t entrySize = 2;
-	std::array<char, entrySize> entryBuffer;
-
-	// Every slider gets a unique numeric ID to differentiate it from the
-	// others.
-	unsigned int id;
-	float value;
-	float min;
-	float max;
-	bool exists = true; // Set to false when the slider is closed
-
-	// Flags for the up/down arrows
-	bool upPressed = false;
-	bool downPressed = false;
-
-	// For convenience, this variable is stored in the slider,
-	// but the actual logic is done in SliderPanel.
-	unsigned int height = 0;
-
-	// IDs for each of the ImGui widgets
-	std::string varEntryId;
-	std::string valueEntryId;
-	std::string minEntryId;
-	std::string maxEntryId;
-	std::string upArrowId;
-	std::string downArrowId;
-
-	std::string headerId() { return std::format("{}##{}header", var(), id); }
-
-	VariableSlider(unsigned int id, char var, float value, float min, float max)
-	: id { id },
-	  varEntryId { std::format("##{}varEntry", id) },
-	  valueEntryId { std::format("##{}valueEntry", id) },
-	  minEntryId { std::format("##{}minEntry", id) },
-	  maxEntryId { std::format("##{}maxEntry", id) },
-	  upArrowId { std::format("##{}up", id) },
-	  downArrowId { std::format("##{}down", id) },
-	  entryBuffer { var, '\0' },
-	  value { value },
-	  min { min },
-	  max { max }
-	{}
-
-	VariableSlider(unsigned int id, char var) : VariableSlider(id, var, 1.0f, 0.0f, 3.0f) {}
-	VariableSlider(unsigned int id) : VariableSlider(id, '\0') {}
-
-	// Show logic split into two functions for imgui group stuff in SliderPanel
-
-	// Returns true if the body should be shown.
+	// Show logic split into two functions for imgui group stuff in SliderPanel.
+	// showHeader() returns true if the body should be shown
 	bool showHeader();
+	void showBody();
 
-	// Returns true if the variable slider was changed in any way that
-	// requires an update of the associated variable store.
-	bool showBody();
+	// Called when the slider is added.
+	void onAdd();
+
+	// Called when the slider is removed.
+	void onRemove();
+
+	unsigned int id() const { return _id; }
+	bool downPressed() const { return _downPressed; }
+	bool upPressed() const { return _upPressed; }
 
 	// Gets the variable this slider is connected to
 	char var() const;
@@ -77,6 +103,8 @@ private:
 	VariableStore* _vars;
 
 	std::unordered_map<unsigned int, VariableSlider> _sliders;
+	// Heights of each slider, indexed by slider ID
+	std::unordered_map<unsigned int, unsigned int> _heights;
 	std::vector<unsigned int> _sliderOrder;
 	unsigned int _nextSliderId = 0;
 
