@@ -344,6 +344,18 @@ private:
 		return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 	}
 
+	void setRegenMode(GraphRegenMode mode) {
+		if (temporaryRegen) return;
+		_regenMode = mode;
+	}
+
+	void setUploadMode(GraphUploadMode mode) {
+		// Ignore sets if in temporary mode so we don't accidentally
+		// override updates.
+		if (temporaryUploadFrames > 0) return;
+		_uploadMode = mode;
+	}
+
 	GraphRegenMode defaultRegenMode() {
 		if (_builder.func().animated()) {
 			return GraphRegenMode::partial;
@@ -512,8 +524,8 @@ public:
 
 		if (shouldUpdate) {
 			if (_builder.func().animated()) {
-				_regenMode = defaultRegenMode();
-				_uploadMode = defaultUploadMode();
+				setRegenMode(defaultRegenMode());
+				setUploadMode(defaultUploadMode());
 			} else {
 				setTemporaryRegenMode(GraphRegenMode::partial);
 				setTemporaryUploadMode(GraphUploadMode::partial);
