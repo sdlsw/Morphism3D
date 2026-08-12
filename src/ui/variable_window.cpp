@@ -1,16 +1,7 @@
 #include "ui/variable_window.h"
 
 namespace g3d {
-bool VariableSlider::varValid(char c) {
-	return isAlpha(c) && c != 't' && c != 'x' && c != 'y';
-}
-
-void VariableSlider::updateStore() {
-	char v = var();
-	if (v != '\0') _variableStore->set(v, _value);
-}
-
-bool VariableSlider::showHeader() {
+bool RearrangeFrame::showHeader() {
 	_upPressed = ImGui::ArrowButton(_upArrowId.c_str(), ImGuiDir_Up);
 	ImGui::SameLine(0.0f, 0.0f);
 	_downPressed = ImGui::ArrowButton(_downArrowId.c_str(), ImGuiDir_Down);
@@ -27,7 +18,22 @@ bool VariableSlider::showHeader() {
 	);
 }
 
-void VariableSlider::showBody() {
+void RearrangeFrame::showBody() {
+	_elem->show();
+}
+
+bool SliderElement::varValid(char c) {
+	return isAlpha(c) && c != 't' && c != 'x' && c != 'y';
+}
+
+void SliderElement::updateStore() {
+	char v = var();
+	if (v != '\0') {
+		_variableStore->set(v, _value);
+	}
+}
+
+void SliderElement::show() {
 	// Top row
 	ImGui::AlignTextToFramePadding();
 	ImGui::PushItemWidth(80);
@@ -61,41 +67,32 @@ void VariableSlider::showBody() {
 	if (varChanged || valChanged) updateStore();
 }
 
-void VariableSlider::onAdd() {
-	updateStore();
-}
-
-void VariableSlider::onRemove() {
-	_value = 0.0f;
-	updateStore();
-}
-
-char VariableSlider::var() const {
+char SliderElement::var() const {
 	return _entryBuffer[0];
 }
 
-VariableSlider& SliderPanel::getSlider(size_t i) {
-	return _sliders.at(_sliderOrder[i]);
+RearrangeFrame& SliderPanel::getFrame(size_t i) {
+	return _frames.at(_frameOrder[i]);
 }
 
-void SliderPanel::showSlider(size_t i) {
-	auto& slider = getSlider(i);
+void SliderPanel::showFrame(size_t i) {
+	auto& frame = getFrame(i);
 
 	ImVec2 start = ImGui::GetCursorScreenPos();
 	ImGui::BeginGroup();
-	bool headerShown = slider.showHeader();
+	bool headerShown = frame.showHeader();
 
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
 		ImGui::SetDragDropPayload("SLIDER_REARRANGE", &i, sizeof(size_t));
-		ImGui::Text(std::format("Moving {}", slider.var()).c_str());
+		ImGui::Text(frame.fromTooltip().c_str());
 		ImGui::EndDragDropSource();
 	}
 
-	if (headerShown) slider.showBody();
+	if (headerShown) frame.showBody();
 	ImGui::EndGroup();
 	ImVec2 end = ImGui::GetCursorScreenPos();
 
-	_heights[slider.id()] = static_cast<unsigned int>(end.y - start.y);
+	_heights[frame.elem().id()] = static_cast<unsigned int>(end.y - start.y);
 
 	if (ImGui::BeginDragDropTarget()) {
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
@@ -105,7 +102,7 @@ void SliderPanel::showSlider(size_t i) {
 		);
 
 		if (payload) {
-			ImGui::SetTooltip(std::format("Move to {}", slider.var()).c_str());
+			ImGui::SetTooltip(frame.toTooltip().c_str());
 			if (payload->IsDelivery()) {
 				_rearrangeFrom = *reinterpret_cast<const size_t*>(payload->Data);
 				_rearrangeTo = i;
@@ -116,37 +113,39 @@ void SliderPanel::showSlider(size_t i) {
 		ImGui::EndDragDropTarget();
 	}
 
-	if (slider.upPressed() && i > 0) {
+	if (frame.upPressed() && i > 0) {
 		_rearrangeFrom = i;
 		_rearrangeTo = i-1;
 		_rearrange = true;
 
 		// Make cursor follow the up/down arrows, so you can click them
 		// many times in succession to move items quickly
-		auto& slider = getSlider(i-1);
-		double yinc = -static_cast<double>(_heights[slider.id()]);
+		auto& prevFrame = getFrame(i-1);
+		double yinc = -static_cast<double>(_heights[prevFrame.elem().id()]);
 		_window->incCursorPosition(0, yinc);
 	}
 
-	if (slider.downPressed() && i < _sliderOrder.size() - 1) {
+	if (frame.downPressed() && i < _frameOrder.size() - 1) {
 		_rearrangeFrom = i;
 		_rearrangeTo = i+1;
 		_rearrange = true;
 
-		auto& slider = getSlider(i+1);
-		double yinc = static_cast<double>(_heights[slider.id()]);
+		auto& nextFrame = getFrame(i+1);
+		double yinc = static_cast<double>(_heights[nextFrame.elem().id()]);
 		_window->incCursorPosition(0, yinc);
 	}
 }
 
-void SliderPanel::showSliders() {
+void SliderPanel::showFrames() {
 	// Handle slider removal
-	std::erase_if(_sliderOrder, [this](size_t id) {
-		auto& slider = _sliders.at(id);
+	std::erase_if(_frameOrder, [this](unsigned int id) {
+		auto& frame = _frames.at(id);
 
-		if (!slider.exists) {
-			slider.onRemove();
+		if (!frame.exists) {
+			SliderRemovedEvent e { id };
+			_vars->eventRouter().routeEvent(e);
 			_sliders.erase(id);
+			_frames.erase(id);
 			_heights.erase(id);
 			return true;
 		}
@@ -154,8 +153,8 @@ void SliderPanel::showSliders() {
 		return false;
 	});
 
-	for (size_t i = 0; i < _sliderOrder.size(); i++) {
-		showSlider(i);
+	for (size_t i = 0; i < _frameOrder.size(); i++) {
+		showFrame(i);
 	}
 
 	if (_rearrange) {
@@ -163,11 +162,11 @@ void SliderPanel::showSliders() {
 		int to = static_cast<int>(_rearrangeTo);
 		if (std::abs(from - to) == 1) {
 			// slightly more efficient than erase/insert
-			std::swap(_sliderOrder[_rearrangeFrom], _sliderOrder[_rearrangeTo]);
+			std::swap(_frameOrder[_rearrangeFrom], _frameOrder[_rearrangeTo]);
 		} else {
-			auto id = _sliderOrder[_rearrangeFrom];
-			_sliderOrder.erase(_sliderOrder.begin() + _rearrangeFrom);
-			_sliderOrder.insert(_sliderOrder.begin() + _rearrangeTo, id);
+			auto id = _frameOrder[_rearrangeFrom];
+			_frameOrder.erase(_frameOrder.begin() + _rearrangeFrom);
+			_frameOrder.insert(_frameOrder.begin() + _rearrangeTo, id);
 		}
 
 		_rearrange = false;
@@ -187,11 +186,11 @@ char SliderPanel::findFirstAvailableVar() {
 		// NOTE: This is a bit slow (iterating over all sliders every
 		// time we check) but in practice it doesn't seem to matter, so
 		// stick with simpler algorithm
-		if (!hasSlider(c) && VariableSlider::varValid(c)) return c;
+		if (!hasSlider(c) && SliderElement::varValid(c)) return c;
 	}
 
 	for (char c = 'A'; c <= 'Z'; c++) {
-		if (!hasSlider(c) && VariableSlider::varValid(c)) return c;
+		if (!hasSlider(c) && SliderElement::varValid(c)) return c;
 	}
 
 	return '\0';
@@ -207,23 +206,22 @@ void SliderPanel::show() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("Remove All")) {
-		for (auto& [_, slider] : _sliders) {
-			slider.exists = false;
+		for (auto& [_, frame] : _frames) {
+			frame.exists = false;
 		}
 	}
 
-	showSliders();
+	showFrames();
 }
 
 void SliderPanel::addSlider(char c) {
-	_sliders.emplace(_nextSliderId, VariableSlider(*_vars, _nextSliderId, c));
-	_heights[_nextSliderId] = 0;
-	_sliderOrder.push_back(_nextSliderId);
-
-	// New slider immediately sets a value, so need to make sure graph gets
-	// updated. FIXME assuming the added slider var is valid!
+	_sliders.emplace(_nextSliderId, SliderElement(*_vars, _nextSliderId, c));
 	auto& newSlider = _sliders.at(_nextSliderId);
-	newSlider.onAdd();
+
+	_frames.emplace(_nextSliderId, RearrangeFrame(newSlider));
+	_heights[_nextSliderId] = 0;
+	_frameOrder.push_back(_nextSliderId);
+
 
 	_nextSliderId++;
 }

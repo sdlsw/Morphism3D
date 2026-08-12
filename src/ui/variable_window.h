@@ -5,13 +5,72 @@
 #include "window.h"
 
 namespace g3d {
-class VariableSlider {
+class RearrangeFrame {
+	UiElement* _elem;
+
+	// Flags for the up/down arrows
+	bool _upPressed = false;
+	bool _downPressed = false;
+
+	std::string _upArrowId;
+	std::string _downArrowId;
+
+	std::string headerId() { return std::format("{}##{}header", _elem->title(), _elem->id()); }
+
+public:
+	bool exists = true; // Set to false when the element is closed
+
+	RearrangeFrame(UiElement& elem)
+	: _elem { &elem },
+	  _upArrowId { std::format("##{}up", elem.id()) },
+	  _downArrowId { std::format("##{}down", elem.id()) }
+	{}
+
+	// Show logic split into two functions for imgui group stuff in
+	// RearrangablePanel. showHeader() returns true if the body should be
+	// shown
+	bool showHeader();
+	void showBody();
+
+	const std::string& title() const { return _elem->title(); }
+	UiElement& elem() { return *_elem; }
+	bool downPressed() const { return _downPressed; }
+	bool upPressed() const { return _upPressed; }
+
+	std::string fromTooltip() const { return std::format("Moving {}", _elem->title()); }
+	std::string toTooltip() const { return std::format("Move to {}", _elem->title()); }
+};
+
+struct SliderRemovedEvent {
+	unsigned int id;
+};
+
+class SliderElement : public UiElement {
 private:
 	VariableStore* _variableStore;
 
+	class _SliderRemovedHandler : public EventHandler<SliderRemovedEvent> {
+	public:
+		SliderElement* _this;
+
+		void handle(const SliderRemovedEvent& e) override {
+			std::cout <<
+				"Handle SliderRemovedEvent: " <<
+				"e.id=" << e.id <<
+				" _this->_id=" << _this->_id <<
+				std::endl;
+			if (e.id != _this->_id) return;
+
+			_this->_value = 0.0f;
+			_this->updateStore();
+		}
+
+		_SliderRemovedHandler(SliderElement* elem) : _this { elem } {}
+	};
+
 	// Text buffer used for variable entry
 	static constexpr size_t _entrySize = 2;
-	std::array<char, _entrySize> _entryBuffer;
+	std::string _entryBuffer;
 
 	// Every slider gets a unique numeric ID to differentiate it from the
 	// others.
@@ -20,27 +79,18 @@ private:
 	float _min;
 	float _max;
 
-	// Flags for the up/down arrows
-	bool _upPressed = false;
-	bool _downPressed = false;
-
 	// IDs for each of the ImGui widgets
 	std::string _varEntryId;
 	std::string _valueEntryId;
 	std::string _minEntryId;
 	std::string _maxEntryId;
-	std::string _upArrowId;
-	std::string _downArrowId;
-
-	std::string headerId() { return std::format("{}##{}header", var(), _id); }
 
 	// Updates the variable store with the slider's current value.
 	void updateStore();
 
+	_SliderRemovedHandler _sliderRemovedHandler { this };
 public:
-	bool exists = true; // Set to false when the slider is closed
-
-	VariableSlider(
+	SliderElement(
 		VariableStore& variableStore,
 		unsigned int id,
 		char var,
@@ -54,46 +104,61 @@ public:
 	  _valueEntryId { std::format("##{}valueEntry", id) },
 	  _minEntryId { std::format("##{}minEntry", id) },
 	  _maxEntryId { std::format("##{}maxEntry", id) },
-	  _upArrowId { std::format("##{}up", id) },
-	  _downArrowId { std::format("##{}down", id) },
 	  _entryBuffer { var, '\0' },
 	  _value { value },
 	  _min { min },
 	  _max { max }
-	{}
+	{
+		std::string msg = std::format(
+			"Created new SliderElement: id {} var {} val {}",
+			id, _entryBuffer[0], value
+		);
+		std::cerr << msg << std::endl;
+		variableStore.eventRouter().addHandler(_sliderRemovedHandler);
+		updateStore();
+	}
 
-	VariableSlider(
+	SliderElement(
 		VariableStore& variableStore,
 		unsigned int id,
 		char var
-	) : VariableSlider(variableStore, id, var, 1.0f, 0.0f, 3.0f) {}
+	) : SliderElement(variableStore, id, var, 1.0f, 0.0f, 3.0f) {}
 
-	VariableSlider(
+	SliderElement(
 		VariableStore& variableStore,
 		unsigned int id
-	) : VariableSlider(variableStore, id, '\0') {}
+	) : SliderElement(variableStore, id, '\0') {}
+
+	// FIXME gross, but required in order to put correct `this` pointer in
+	// _sliderRemovedHandler (default move constructor copies it from
+	// source object)
+	SliderElement(SliderElement&& other)
+	: _variableStore { other._variableStore },
+	  _id { other._id },
+	  _varEntryId { std::move(other._varEntryId) },
+	  _valueEntryId { std::move(other._valueEntryId) },
+	  _minEntryId { std::move(other._minEntryId) },
+	  _maxEntryId { std::move(other._maxEntryId) },
+	  _entryBuffer { std::move(other._entryBuffer) },
+	  _value { other._value },
+	  _min { other._min },
+	  _max { other._max },
+	  // Can't just be _sliderRemovedHandler { this } since event handler
+	  // move constructor updates the id->pointer maps in EventRouter
+	  _sliderRemovedHandler { std::move(other._sliderRemovedHandler) }
+	{
+		_sliderRemovedHandler._this = this;
+	}
 
 	// Tests whether a character can be used as a slider.
 	// TODO Factor this out? Will need to change when other types of graphs
 	// get added.
 	static bool varValid(char c);
 
-	// Show logic split into two functions for imgui group stuff in SliderPanel.
-	// showHeader() returns true if the body should be shown
-	bool showHeader();
-	void showBody();
+	void show() override;
+	unsigned int id() const override { return _id; }
+	const std::string& title() const override { return _entryBuffer; }
 
-	// Called when the slider is added.
-	void onAdd();
-
-	// Called when the slider is removed.
-	void onRemove();
-
-	unsigned int id() const { return _id; }
-	bool downPressed() const { return _downPressed; }
-	bool upPressed() const { return _upPressed; }
-
-	// Gets the variable this slider is connected to
 	char var() const;
 };
 
@@ -102,10 +167,11 @@ private:
 	Window* _window;
 	VariableStore* _vars;
 
-	std::unordered_map<unsigned int, VariableSlider> _sliders;
+	std::unordered_map<unsigned int, SliderElement> _sliders;
+	std::unordered_map<unsigned int, RearrangeFrame> _frames;
 	// Heights of each slider, indexed by slider ID
 	std::unordered_map<unsigned int, unsigned int> _heights;
-	std::vector<unsigned int> _sliderOrder;
+	std::vector<unsigned int> _frameOrder;
 	unsigned int _nextSliderId = 0;
 
 	size_t _rearrangeFrom = 0;
@@ -114,13 +180,13 @@ private:
 
 	// Need to do high level slider show logic here since drag/drop
 	// interacts with _sliderOrder.
-	void showSlider(size_t i);
+	void showFrame(size_t i);
 
 	// Shows all sliders, handles delete/variable update logic
-	void showSliders();
+	void showFrames();
 
 	// Utility function. Gets the i'th slider based on order in the UI
-	VariableSlider& getSlider(size_t i);
+	RearrangeFrame& getFrame(size_t i);
 
 	// Returns true if this panel has a slider with the given character
 	// defined.

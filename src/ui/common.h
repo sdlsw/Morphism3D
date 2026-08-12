@@ -34,6 +34,15 @@ void resettableSlider(const std::string& label, T* setting, const T& _default, U
 template<typename T, typename U>
 void resettableDrag(const std::string& label, T* setting, const T& _default, U inc);
 
+class UiElement {
+private:
+	const std::string unknownTitle { "unknown" };
+public:
+	virtual void show() = 0;
+	virtual const std::string& title() const { return unknownTitle; }
+	virtual unsigned int id() const = 0;
+};
+
 // Base class for all UI windows
 class UiWindow {
 private:
