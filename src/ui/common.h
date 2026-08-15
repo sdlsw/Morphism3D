@@ -38,9 +38,10 @@ class UiElement {
 private:
 	const std::string unknownTitle { "unknown" };
 public:
-	virtual void show() = 0;
+	bool shouldShow = true;
 	virtual const std::string& title() const { return unknownTitle; }
-	virtual unsigned int id() const = 0;
+	virtual unsigned int id() const { return 0; }
+	virtual void show() {}
 };
 
 // Base class for all UI windows

@@ -1,6 +1,8 @@
 #include "ui/variable_window.h"
 
 namespace g3d {
+unsigned int RearrangeablePanel::_nextPanelId = 1;
+
 bool RearrangeFrame::showHeader() {
 	_upPressed = ImGui::ArrowButton(_upArrowId.c_str(), ImGuiDir_Up);
 	ImGui::SameLine(0.0f, 0.0f);
@@ -71,11 +73,11 @@ char SliderElement::var() const {
 	return _entryBuffer[0];
 }
 
-RearrangeFrame& SliderPanel::getFrame(size_t i) {
+RearrangeFrame& RearrangeablePanel::getFrame(size_t i) {
 	return _frames.at(_frameOrder[i]);
 }
 
-void SliderPanel::showFrame(size_t i) {
+void RearrangeablePanel::showFrame(size_t i) {
 	auto& frame = getFrame(i);
 
 	ImVec2 start = ImGui::GetCursorScreenPos();
@@ -83,7 +85,7 @@ void SliderPanel::showFrame(size_t i) {
 	bool headerShown = frame.showHeader();
 
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoHoldToOpenOthers)) {
-		ImGui::SetDragDropPayload("SLIDER_REARRANGE", &i, sizeof(size_t));
+		ImGui::SetDragDropPayload(_dragDropTarget.c_str(), &i, sizeof(size_t));
 		ImGui::Text(frame.fromTooltip().c_str());
 		ImGui::EndDragDropSource();
 	}
@@ -96,7 +98,7 @@ void SliderPanel::showFrame(size_t i) {
 
 	if (ImGui::BeginDragDropTarget()) {
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(
-			"SLIDER_REARRANGE",
+			_dragDropTarget.c_str(),
 			ImGuiDragDropFlags_AcceptBeforeDelivery |
 			ImGuiDragDropFlags_AcceptNoPreviewTooltip
 		);
@@ -136,15 +138,13 @@ void SliderPanel::showFrame(size_t i) {
 	}
 }
 
-void SliderPanel::showFrames() {
-	// Handle slider removal
+void RearrangeablePanel::showFrames() {
+	// Handle frame removal
 	std::erase_if(_frameOrder, [this](unsigned int id) {
 		auto& frame = _frames.at(id);
 
 		if (!frame.exists) {
-			SliderRemovedEvent e { id };
-			_vars->eventRouter().routeEvent(e);
-			_sliders.erase(id);
+			frame.elem().shouldShow = false;
 			_frames.erase(id);
 			_heights.erase(id);
 			return true;
@@ -173,7 +173,24 @@ void SliderPanel::showFrames() {
 	}
 }
 
-bool SliderPanel::hasSlider(char c) {
+void RearrangeablePanel::addFrame(UiElement& elem) {
+	auto id = elem.id();
+	_frames.emplace(id, RearrangeFrame(elem));
+	_heights[id] = 0;
+	_frameOrder.push_back(id);
+}
+
+void RearrangeablePanel::removeAllFrames() {
+	for (auto& [_, frame] : _frames) {
+		frame.exists = false;
+	}
+}
+
+void RearrangeablePanel::show() {
+	showFrames();
+}
+
+bool VariableWindow::hasSlider(char c) {
 	for (const auto& [id, slider] : _sliders) {
 		if (slider.var() == c) return true;
 	}
@@ -181,7 +198,7 @@ bool SliderPanel::hasSlider(char c) {
 	return false;
 }
 
-char SliderPanel::findFirstAvailableVar() {
+char VariableWindow::findFirstAvailableVar() {
 	for (char c = 'a'; c <= 'z'; c++) {
 		// NOTE: This is a bit slow (iterating over all sliders every
 		// time we check) but in practice it doesn't seem to matter, so
@@ -196,7 +213,16 @@ char SliderPanel::findFirstAvailableVar() {
 	return '\0';
 }
 
-void SliderPanel::show() {
+void VariableWindow::addSlider(char c) {
+	_sliders.emplace(_nextSliderId, SliderElement(*_vars, _nextSliderId, c));
+	auto& newSlider = _sliders.at(_nextSliderId);
+
+	_panel.addFrame(newSlider);
+
+	_nextSliderId++;
+}
+
+void VariableWindow::drawUi() {
 	if (ImGui::Button("Add Slider")) {
 		char avail = findFirstAvailableVar();
 		if (avail != '\0') {
@@ -206,27 +232,20 @@ void SliderPanel::show() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("Remove All")) {
-		for (auto& [_, frame] : _frames) {
-			frame.exists = false;
-		}
+		_panel.removeAllFrames();
 	}
 
-	showFrames();
-}
+	_panel.show();
 
-void SliderPanel::addSlider(char c) {
-	_sliders.emplace(_nextSliderId, SliderElement(*_vars, _nextSliderId, c));
-	auto& newSlider = _sliders.at(_nextSliderId);
-
-	_frames.emplace(_nextSliderId, RearrangeFrame(newSlider));
-	_heights[_nextSliderId] = 0;
-	_frameOrder.push_back(_nextSliderId);
-
-
-	_nextSliderId++;
-}
-
-void VariableWindow::drawUi() {
-	_sliders.show();
+	// Erase any sliders that were removed from the panel
+	std::erase_if(_sliders, [this](const auto& item) {
+		const auto& [id, slider] = item;
+		if (!slider.shouldShow) {
+			SliderRemovedEvent e { slider.id() };
+			_vars->eventRouter().routeEvent(e);
+			return true;
+		}
+		return false;
+	});
 }
 }

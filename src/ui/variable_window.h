@@ -27,7 +27,7 @@ public:
 	{}
 
 	// Show logic split into two functions for imgui group stuff in
-	// RearrangablePanel. showHeader() returns true if the body should be
+	// RearrangeablePanel. showHeader() returns true if the body should be
 	// shown
 	bool showHeader();
 	void showBody();
@@ -162,12 +162,14 @@ public:
 	char var() const;
 };
 
-class SliderPanel {
+class RearrangeablePanel {
 private:
-	Window* _window;
-	VariableStore* _vars;
+	static unsigned int _nextPanelId;
 
-	std::unordered_map<unsigned int, SliderElement> _sliders;
+	Window* _window;
+	std::string _dragDropTarget;
+	unsigned int _id;
+
 	std::unordered_map<unsigned int, RearrangeFrame> _frames;
 	// Heights of each slider, indexed by slider ID
 	std::unordered_map<unsigned int, unsigned int> _heights;
@@ -187,6 +189,28 @@ private:
 
 	// Utility function. Gets the i'th slider based on order in the UI
 	RearrangeFrame& getFrame(size_t i);
+public:
+	RearrangeablePanel(Window& window)
+	: _window { &window },
+	  _id { _nextPanelId++ },
+	  _dragDropTarget { std::format("REARRANGE_PANEL{}", _id) }
+	{}
+
+	void show();
+
+	void addFrame(UiElement& elem);
+	void removeAllFrames();
+};
+
+class VariableWindow : public UiWindow {
+private:
+	const std::string _title { "Variables" };
+	RearrangeablePanel _panel;
+
+	VariableStore* _vars;
+
+	std::unordered_map<unsigned int, SliderElement> _sliders;
+	unsigned int _nextSliderId = 0;
 
 	// Returns true if this panel has a slider with the given character
 	// defined.
@@ -199,22 +223,14 @@ private:
 	// Finds an available variable that doesn't already have a slider.
 	// Returns '\0' on failure.
 	char findFirstAvailableVar();
-public:
-	SliderPanel(Window& window, VariableStore& vars)
-	: _window { &window }, _vars { &vars } {}
-	void show();
-};
 
-class VariableWindow : public UiWindow {
-private:
-	const std::string _title { "Variables" };
-	SliderPanel _sliders;
 public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override;
 
 	VariableWindow(VariableStore& vars, Window& window)
-	: _sliders { window, vars }
+	: _panel { window },
+	  _vars { &vars }
 	{}
 };
 }
