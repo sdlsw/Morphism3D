@@ -77,9 +77,6 @@ public:
 	  _downArrowId { std::format("##{}down", elem.id()) }
 	{}
 
-	// Show logic split into two functions for imgui group stuff in
-	// RearrangeablePanel. showHeader() returns true if the body should be
-	// shown
 	bool showHeader();
 	void showBody();
 
@@ -102,7 +99,8 @@ private:
 	unsigned int _id;
 
 	std::unordered_map<unsigned int, RearrangeFrame> _frames;
-	// Heights of each slider, indexed by slider ID
+	// Heights of each frame, indexed by ID. Used for moving cursor on
+	// up/down arrow presses
 	std::unordered_map<unsigned int, unsigned int> _heights;
 	std::vector<unsigned int> _frameOrder;
 	unsigned int _nextSliderId = 0;
@@ -111,14 +109,15 @@ private:
 	size_t _rearrangeTo = 0;
 	bool _rearrange = false;
 
-	// Need to do high level slider show logic here since drag/drop
-	// interacts with _sliderOrder.
+	// Need to do high level frame show logic here since drag/drop
+	// interacts with _frameOrder.
 	void showFrame(size_t i);
 
-	// Shows all sliders, handles delete/variable update logic
+	// Shows all sliders, handles delete logic and performs rearrangement
+	// if _rearrange is true
 	void showFrames();
 
-	// Utility function. Gets the i'th slider based on order in the UI
+	// Utility function. Gets the i'th frame based on order in the UI
 	RearrangeFrame& getFrame(size_t i);
 public:
 	RearrangeablePanel(Window& window)

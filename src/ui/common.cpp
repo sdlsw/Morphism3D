@@ -77,6 +77,9 @@ void RearrangeablePanel::showFrame(size_t i) {
 	auto& frame = getFrame(i);
 
 	ImVec2 start = ImGui::GetCursorScreenPos();
+	// We use a group here while still splitting the frame into header and
+	// body, so that the drag/drop source is *only* the header, while the
+	// drag/drop target is the entire frame.
 	ImGui::BeginGroup();
 	bool headerShown = frame.showHeader();
 
@@ -157,7 +160,7 @@ void RearrangeablePanel::showFrames() {
 		int from = static_cast<int>(_rearrangeFrom);
 		int to = static_cast<int>(_rearrangeTo);
 		if (std::abs(from - to) == 1) {
-			// slightly more efficient than erase/insert
+			// slightly more efficient than erase+insert
 			std::swap(_frameOrder[_rearrangeFrom], _frameOrder[_rearrangeTo]);
 		} else {
 			auto id = _frameOrder[_rearrangeFrom];
