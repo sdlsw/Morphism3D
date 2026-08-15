@@ -2,6 +2,7 @@
 #include "global_defines.h"
 
 #include "container.h"
+#include "window.h"
 
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -53,5 +54,82 @@ public:
 	void show();
 	virtual const std::string& title() const { return unknownTitle; }
 	virtual void drawUi() {}
+};
+
+class RearrangeFrame {
+	UiElement* _elem;
+
+	// Flags for the up/down arrows
+	bool _upPressed = false;
+	bool _downPressed = false;
+
+	std::string _upArrowId;
+	std::string _downArrowId;
+
+	std::string headerId() { return std::format("{}##{}header", _elem->title(), _elem->id()); }
+
+public:
+	bool exists = true; // Set to false when the element is closed
+
+	RearrangeFrame(UiElement& elem)
+	: _elem { &elem },
+	  _upArrowId { std::format("##{}up", elem.id()) },
+	  _downArrowId { std::format("##{}down", elem.id()) }
+	{}
+
+	// Show logic split into two functions for imgui group stuff in
+	// RearrangeablePanel. showHeader() returns true if the body should be
+	// shown
+	bool showHeader();
+	void showBody();
+
+	const std::string& title() const { return _elem->title(); }
+	UiElement& elem() { return *_elem; }
+	bool downPressed() const { return _downPressed; }
+	bool upPressed() const { return _upPressed; }
+
+	std::string fromTooltip() const { return std::format("Moving {}", _elem->title()); }
+	std::string toTooltip() const { return std::format("Move to {}", _elem->title()); }
+};
+
+class RearrangeablePanel {
+private:
+	// Initialized in source file
+	static unsigned int _nextPanelId;
+
+	Window* _window;
+	std::string _dragDropTarget;
+	unsigned int _id;
+
+	std::unordered_map<unsigned int, RearrangeFrame> _frames;
+	// Heights of each slider, indexed by slider ID
+	std::unordered_map<unsigned int, unsigned int> _heights;
+	std::vector<unsigned int> _frameOrder;
+	unsigned int _nextSliderId = 0;
+
+	size_t _rearrangeFrom = 0;
+	size_t _rearrangeTo = 0;
+	bool _rearrange = false;
+
+	// Need to do high level slider show logic here since drag/drop
+	// interacts with _sliderOrder.
+	void showFrame(size_t i);
+
+	// Shows all sliders, handles delete/variable update logic
+	void showFrames();
+
+	// Utility function. Gets the i'th slider based on order in the UI
+	RearrangeFrame& getFrame(size_t i);
+public:
+	RearrangeablePanel(Window& window)
+	: _window { &window },
+	  _id { _nextPanelId++ },
+	  _dragDropTarget { std::format("REARRANGE_PANEL{}", _id) }
+	{}
+
+	void show();
+
+	void addFrame(UiElement& elem);
+	void removeAllFrames();
 };
 }
