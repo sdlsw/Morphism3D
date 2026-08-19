@@ -138,6 +138,8 @@ void Application::drawObjects() {
 	if (_debugSettings.renderTestObject) {
 		_testObject.draw();
 	}
+
+	_figures.draw();
 }
 
 void Application::update() {
@@ -153,12 +155,15 @@ void Application::update() {
 	getTransform(_lightObject.entity()).translation = _light.current.position;
 	_f.update();
 	getTransform(_axes.entity()).translation = _graph.origin();
+
+	_figures.update();
 }
 
 void Application::updateSynchronized() {
 	// Objects with dynamic mesh data need to be updated after
 	// beginFrame() to ensure proper synchronization.
 	_graph.update();
+	_figures.updateSynchronized();
 }
 
 // Renders a frame. Also handles updates that need to be synchronized with

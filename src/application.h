@@ -3,6 +3,7 @@
 #include "camera_control.h"
 #include "container.h"
 #include "expression.h"
+#include "figure.h"
 #include "graph.h"
 #include "primitive.h"
 #include "temporal.h"
@@ -75,6 +76,8 @@ private:
 	ExpressionFunc _f;
 	Graph<ExpressionFunc> _graph;
 
+	FigureCollection _figures;
+
 	WithInitial<Light> _light {{
 		{0.0f, 0.0f, 1.5f}, // position
 		{1.0f, 1.0f, 1.0f}, // color
@@ -121,6 +124,7 @@ public:
 	_variableStore { _eventRouter },
 	_f { _variableStore },
 	_graph { _renderer, _f, _initialCells, _initialRange, _perfTimers },
+	_figures { _eventRouter },
 	_axes { buildAxes() },
 	_frame { buildFrame() },
 	_lightObject { buildLightObject() },
@@ -130,7 +134,7 @@ public:
 		_ui.addWindow<CameraWindow>(_camController);
 		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
 		_ui.addWindow<GraphWindow<ExpressionFunc>>(_graph, _window);
-		_ui.addWindow<VariableWindow>(_variableStore, _window);
+		_ui.addWindow<FigureWindow>(_figures, _window, _variableStore);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);
 		_ui.addWindow<AboutWindow>();
