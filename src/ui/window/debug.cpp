@@ -1,4 +1,4 @@
-#include "ui/debug_window.h"
+#include "ui/window/debug.h"
 
 #include "expression.h"
 

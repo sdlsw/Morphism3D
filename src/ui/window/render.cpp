@@ -1,4 +1,4 @@
-#include "ui/render_window.h"
+#include "ui/window/render.h"
 
 namespace g3d {
 void RenderWindow::basicSettingsSection() {

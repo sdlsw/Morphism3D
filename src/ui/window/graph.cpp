@@ -1,4 +1,4 @@
-#include "ui/graph_window.h"
+#include "ui/window/graph.h"
 
 static const std::string RENDER_MODE_SURFACE_NAME = "Surface";
 static const std::string RENDER_MODE_WIREFRAME_NAME = "Wireframe";

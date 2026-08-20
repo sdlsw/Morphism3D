@@ -1,4 +1,4 @@
-#include "ui/figure_slider_element.h"
+#include "ui/element/slider.h"
 
 namespace g3d {
 void SliderElement::updateStore() {

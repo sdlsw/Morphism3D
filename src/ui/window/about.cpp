@@ -1,4 +1,4 @@
-#include "ui/about_window.h"
+#include "ui/window/about.h"
 
 namespace g3d {
 std::string AboutWindow::makeVersionString() {

@@ -1,6 +1,6 @@
-#include "ui/figure_window.h"
+#include "ui/window/figure.h"
 
-#include "ui/figure_slider_element.h"
+#include "ui/element/slider.h"
 
 #include <typeinfo>
 

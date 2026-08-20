@@ -5,11 +5,6 @@
 // Top level UI class
 #include "ui/ui.h"
 
-// Windows
-#include "ui/about_window.h"
-#include "ui/camera_window.h"
-#include "ui/debug_window.h"
-#include "ui/figure_window.h"
-#include "ui/graph_window.h"
-#include "ui/render_window.h"
-#include "ui/stats_window.h"
+// UI element implementations
+#include "ui/window/all.h"
+#include "ui/element/all.h"

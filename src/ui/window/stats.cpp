@@ -1,4 +1,4 @@
-#include "stats_window.h"
+#include "ui/window/stats.h"
 
 float getTimerMeasurement(void* timer_ptr, int i) {
 	g3d::Timer& timer = *reinterpret_cast<g3d::Timer*>(timer_ptr);

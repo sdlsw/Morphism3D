@@ -1,4 +1,4 @@
-#include "ui/camera_window.h"
+#include "ui/window/camera.h"
 
 static const std::string CAM_MODE_FIXED_NAME = "Fixed";
 static const std::string CAM_MODE_FREE_NAME = "Free";

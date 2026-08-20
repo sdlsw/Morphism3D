@@ -1,6 +1,6 @@
 #pragma once
 
-#include "figure.h"
+#include <figure.h>
 #include "expression.h"
 #include "ui/common.h"
 #include "window.h"

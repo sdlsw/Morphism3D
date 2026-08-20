@@ -2,7 +2,7 @@
 
 #include "ui/common.h"
 #include "expression.h"
-#include "graph.h"
+#include <graph.h>
 
 namespace g3d {
 // Unfortunately need to define this in header since it's used in a template.
