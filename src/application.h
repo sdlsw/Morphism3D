@@ -4,6 +4,7 @@
 #include "container.h"
 #include "expression.h"
 #include "figure/figure.h"
+#include "function.h"
 #include "graph.h"
 #include "primitive.h"
 #include "temporal.h"
@@ -13,45 +14,6 @@
 #include "window.h"
 
 namespace g3d {
-class ExpressionFunc {
-private:
-	class _VariableChangedHandler : public EventHandler<VariableChangedEvent> {
-	private:
-		ExpressionFunc* _this;
-	public:
-		void handle(const VariableChangedEvent& e) override;
-		_VariableChangedHandler(ExpressionFunc* _this) : _this { _this } {}
-	};
-
-	TokenRegistry _tokenRegistry;
-	VariableStore* _vars;
-	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
-	std::unique_ptr<ParseNode> _parsedExpression;
-	bool _animated = false;
-	bool _updated = false;
-
-	_VariableChangedHandler _varChangedHandler { this };
-public:
-	ExpressionFunc(VariableStore& vars)
-	: _vars { &vars },
-	  _tokenRegistry { makeTokenRegistry() },
-	  _startTime { now() }
-	{
-		vars.eventRouter().addHandler(_varChangedHandler);
-	}
-
-	bool animated() const { return _animated; }
-	bool updated() const { return _updated; }
-	void setUpdated() { _updated = true; }
-	void resetUpdated() { _updated = false; }
-	auto& vars() { return _vars; }
-
-	float eval(float x, float y);
-	void update();
-	void updateAnimated();
-	void updateExpression(const std::string& expression);
-};
-
 class Application {
 private:
 	static constexpr unsigned int _initialCells = 80;
@@ -73,8 +35,8 @@ private:
 	DebugSettings _debugSettings;
 
 	VariableStore _variableStore;
-	ExpressionFunc _f;
-	Graph<ExpressionFunc> _graph;
+	Function _f;
+	Graph<Function> _graph;
 
 	FigureCollection _figures;
 
@@ -133,7 +95,7 @@ public:
 		// Set up UI
 		_ui.addWindow<CameraWindow>(_camController);
 		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
-		_ui.addWindow<GraphWindow<ExpressionFunc>>(_graph, _window);
+		_ui.addWindow<GraphWindow<Function>>(_graph, _window);
 		_ui.addWindow<FigureWindow>(_figures, _window, _variableStore);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);
