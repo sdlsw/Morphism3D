@@ -1,4 +1,4 @@
-#include "figure.h"
+#include "figure/figure.h"
 
 namespace g3d {
 unsigned int FigureCollection::nextId() {

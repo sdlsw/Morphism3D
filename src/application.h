@@ -3,7 +3,7 @@
 #include "camera_control.h"
 #include "container.h"
 #include "expression.h"
-#include "figure.h"
+#include "figure/figure.h"
 #include "graph.h"
 #include "primitive.h"
 #include "temporal.h"

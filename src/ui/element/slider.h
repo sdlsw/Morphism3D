@@ -1,7 +1,7 @@
 #pragma once
 
-#include "figure.h"
-#include "figure_slider.h"
+#include "figure/figure.h"
+#include "figure/slider.h"
 #include "ui/common.h"
 
 namespace g3d {

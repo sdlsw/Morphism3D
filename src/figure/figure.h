@@ -1,7 +1,7 @@
 #pragma once
 
 #include "event.h"
-#include "figure_iface.h"
+#include "figure/iface.h"
 #include "ui/common.h"
 
 #include <concepts>

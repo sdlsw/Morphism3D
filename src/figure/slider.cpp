@@ -1,4 +1,4 @@
-#include "figure_slider.h"
+#include "figure/slider.h"
 
 namespace g3d {
 bool SliderFigure::varValid(char c) {

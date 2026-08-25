@@ -1,7 +1,7 @@
 #pragma once
 
 #include "expression.h"
-#include "figure_iface.h"
+#include "figure/iface.h"
 
 #include <string>
 
