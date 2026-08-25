@@ -16,7 +16,7 @@ private:
 
 	TokenRegistry _tokenRegistry;
 	VariableStore* _vars;
-	std::chrono::time_point<std::chrono::high_resolution_clock> _startTime;
+	TimePoint _startTime;
 	std::unique_ptr<ParseNode> _parsedExpression;
 	bool _animated = false;
 	bool _updated = false;
