@@ -35,8 +35,7 @@ private:
 	DebugSettings _debugSettings;
 
 	VariableStore _variableStore;
-	Function _f;
-	Graph<Function> _graph;
+	Graph _graph;
 
 	FigureCollection _figures;
 
@@ -84,8 +83,7 @@ public:
 		_window
 	},
 	_variableStore { _eventRouter },
-	_f { _variableStore },
-	_graph { _renderer, _f, _initialCells, _initialRange, _perfTimers },
+	_graph { _renderer, _variableStore, _initialCells, _initialRange, _perfTimers },
 	_figures { _eventRouter },
 	_axes { buildAxes() },
 	_frame { buildFrame() },
@@ -95,7 +93,7 @@ public:
 		// Set up UI
 		_ui.addWindow<CameraWindow>(_camController);
 		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
-		_ui.addWindow<GraphWindow<Function>>(_graph, _window);
+		_ui.addWindow<GraphWindow>(_graph, _window);
 		_ui.addWindow<FigureWindow>(_figures, _window, _variableStore);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);

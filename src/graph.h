@@ -1,6 +1,7 @@
 #pragma once
 
 #include "container.h"
+#include "function.h"
 #include "primitive.h"
 #include "statistics.h"
 #include "vk/renderer.h"
@@ -9,17 +10,11 @@
 #include <vector>
 
 namespace g3d {
-template<typename F>
-concept Graphable = requires(F f, float x, float y) {
-	{ f.eval(x, y) } -> std::convertible_to<float>;
-};
-
-template<Graphable F>
 class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
 
-	F* _func;
+	Function* _func;
 	TimerCollection* _perfTimers;
 
 	std::vector<Position> _positions;
@@ -30,151 +25,19 @@ private:
 	std::vector<uint16_t> _lineIndices;
 	std::vector<uint16_t> _normalIndices;
 
-	glm::vec3 toModelSpace(const glm::vec3& funcSpace) const {
-		// Simplified from (funcSpace - (H+L)/2) / ((H - L)/2), that
-		// is, a translation followed by a scale.
-		return (2.0f*funcSpace - rangeHigh - rangeLow) / (rangeHigh - rangeLow);
-	}
+	glm::vec3 toModelSpace(const glm::vec3& funcSpace) const;
+	uint16_t idx(unsigned int x, unsigned int y);
+	const Position& getPosition(unsigned int x, unsigned int y);
 
-	uint16_t idx(unsigned int x, unsigned int y) {
-		// Note: cells+1 here because there's one more point than the
-		// number of cells, for instance:
-		//
-		//  _ _
-		// |_|_|
-		// |_|_|
-		//
-		// 2 cell grid, but 3 points.
-		return y*(cells+1) + x;
-	}
-
-	const Position& getPosition(unsigned int x, unsigned int y) {
-		return _positions[idx(x, y)];
-	}
-
-	void generatePositions() {
-		_perfTimers->start("regenPositions");
-		float inc = 1.0f / static_cast<float>(cells);
-		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-			float y = glm::mix(rangeLow.y, rangeHigh.y, inc*ypt);
-
-			for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-				float x = glm::mix(rangeLow.x, rangeHigh.x, inc*xpt);
-				_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
-
-				if (clampZ) {
-					auto& p = _positions.back().vec;
-					p.z = glm::clamp(p.z, -1.0f, 1.0f);
-				}
-			}
-		}
-		_perfTimers->stop("regenPositions");
-	}
-
-	void generateColors() {
-		// Colors for extreme points of graph.
-		// nxny - (-range, -range)
-		// pxny - (range, -range)
-		// nxpy - (-range, range)
-		// pxpy - (range, range)
-		glm::vec3 nxny {0.141f, 0.706f, 0.322f}; // green
-		glm::vec3 pxny {0.988f, 0.804f, 0.000f}; // yellow orange
-		glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
-		glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
-
-		float inc = 1.0f / static_cast<float>(cells);
-		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-			float lerp_a_y = inc*ypt;
-			glm::vec3 colornx = glm::mix(nxny, nxpy, lerp_a_y);
-			glm::vec3 colorpx = glm::mix(pxny, pxpy, lerp_a_y);
-
-			for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-				float lerp_a_x = inc*xpt;
-				glm::vec3 color = glm::mix(colornx, colorpx, lerp_a_x);
-				_colors.push_back(color);
-			}
-		}
-	}
-
-	void generateNormals() {
-		_perfTimers->start("regenNormals");
-		autoGenerateNormals(_normals, _positions, _triangleIndices);
-		_perfTimers->stop("regenNormals");
-	}
-
-	void generateNormalPositions() {
-		_perfTimers->start("regenNormalPositions");
-		auto ptCount = pointCount();
-		for (unsigned int i = 0; i < ptCount; i++) {
-			// Note: The positions for visualizing the normals are
-			// tacked onto the end of the surface positions, to
-			// save some bandwidth when copying the positions to
-			// the GPU.
-			_positions.push_back(_positions[i].vec + normLength*_normals[i].vec);
-		}
-		_perfTimers->stop("regenNormalPositions");
-	}
-
-	void generateLineIndices() {
-		// generate horizontal lines
-		for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-			for (unsigned int xpt = 0; xpt < cells; xpt++) {
-				_lineIndices.push_back(idx(xpt, ypt));
-				_lineIndices.push_back(idx(xpt+1, ypt));
-			}
-		}
-
-		// generate vertical lines
-		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			for (unsigned int ypt = 0; ypt < cells; ypt++) {
-				_lineIndices.push_back(idx(xpt, ypt));
-				_lineIndices.push_back(idx(xpt, ypt+1));
-			}
-		}
-	}
-
-	void generateTriangleIndices() {
-		// X and Y correspond to the top left vertex of the quad being
-		// generated.
-		for (unsigned int ypt = 0; ypt < cells; ypt++) {
-			for (unsigned int xpt = 0; xpt < cells; xpt++) {
-				// first tri
-				_triangleIndices.push_back(idx(xpt, ypt));
-				_triangleIndices.push_back(idx(xpt+1, ypt));
-				_triangleIndices.push_back(idx(xpt, ypt+1));
-
-				// second tri
-				_triangleIndices.push_back(idx(xpt+1, ypt));
-				_triangleIndices.push_back(idx(xpt+1, ypt+1));
-				_triangleIndices.push_back(idx(xpt, ypt+1));
-			}
-		}
-	}
-
-	void generateNormalIndices() {
-		auto ptCount = pointCount();
-
-		for (unsigned int i = 0; i < ptCount; i++) {
-			_normalIndices.push_back(i);
-			_normalIndices.push_back(i + ptCount);
-		}
-	}
-
-	void regenerateVertices() {
-		regeneratePositions();
-		_colors.clear();
-		generateColors();
-	}
-
-	void regenerateIndices() {
-		_lineIndices.clear();
-		_triangleIndices.clear();
-		_normalIndices.clear();
-
-		generateLineIndices();
-		generateTriangleIndices();
-		generateNormalIndices();
-	}
+	void generatePositions();
+	void generateColors();
+	void generateNormals();
+	void generateNormalPositions();
+	void generateLineIndices();
+	void generateTriangleIndices();
+	void generateNormalIndices();
+	void regenerateVertices();
+	void regenerateIndices();
 public:
 	// The number of discrete steps to walk along each input variable.
 	// Higher values yield higher accuracy at the cost of additional
@@ -190,7 +53,7 @@ public:
 	bool clampZ = false;
 
 	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(F& f, unsigned int cells, float range, TimerCollection& perfTimers)
+	GraphMeshBuilder(Function& f, unsigned int cells, float range, TimerCollection& perfTimers)
 	: _func { &f },
 	  cells { cells },
 	  rangeHigh { range, range, range },
@@ -200,7 +63,6 @@ public:
 		regenerateEverything();
 	}
 
-	auto& func() const { return *_func; }
 	const auto& positions() const { return _positions; }
 	const auto& colors() const { return _colors; }
 	const auto& normals() const { return _normals; }
@@ -210,27 +72,14 @@ public:
 	auto pointCount() const { return (cells + 1) * (cells + 1); }
 
 	// Gets the model space coordinates of the origin of the graph.
-	glm::vec3 origin() const {
-		return toModelSpace({0, 0, 0});
-	}
+	glm::vec3 origin() const;
 
 	// Must be called whenever _func changes, and whenever `rangeLow` or
 	// `rangeHigh` change.
-	void regeneratePositions() {
-		_positions.clear();
-		_normals.clear();
-		generatePositions();
-		generateNormals();
-		generateNormalPositions();
-	}
+	void regeneratePositions();
 
 	// Must be called whenever `cells` changes.
-	void regenerateEverything() {
-		// Indices need to be regenerated first, since the
-		// generateNormals() is dependent on them.
-		regenerateIndices();
-		regenerateVertices();
-	}
+	void regenerateEverything();
 };
 
 enum class GraphRegenMode {
@@ -253,12 +102,12 @@ enum class GraphRenderMode : int {
 
 constexpr unsigned int GraphRenderModeCount = 3;
 
-template<Graphable F>
 class Graph {
 private:
 	static constexpr float gridLoft = 0.002f;
 
-	GraphMeshBuilder<F> _builder;
+	Function _function;
+	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
 	bool cellsChanged = false;
@@ -290,146 +139,27 @@ private:
 
 	Entity _wireframe;
 
-	void populateSurfaceEntity(Renderer& renderer) {
-		_surface.addComponent<TransformComponent>(renderer, Transform());
+	void populateSurfaceEntity(Renderer& renderer);
+	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
+	void populateWireframeEntity(Renderer& renderer);
+	void populateNormalEntity(Renderer& renderer);
 
-		_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
-		_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
-		_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
-		_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
-		_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
+	std::vector<Color> makeGridColors();
+	std::vector<Color> makeNormalColors();
 
-		_surface.setLastRender<DynamicIndexBufferComponent>();
-	}
+	void setRegenMode(GraphRegenMode mode);
+	void setUploadMode(GraphUploadMode mode);
 
-	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
-		ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
+	GraphRegenMode defaultRegenMode();
+	GraphUploadMode defaultUploadMode();
 
-		ent.addComponent<RenderModeComponent>(RenderMode::line);
-		ent.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		ent.addComponent<DynamicVertexAttributeComponent<Color>>(_gridColors);
-		ent.addComponent<DynamicIndexBufferComponent>(_gridIndices);
+	void setTemporaryRegenMode(GraphRegenMode mode);
+	void setTemporaryUploadMode(GraphUploadMode mode);
 
-		ent.setLastRender<DynamicIndexBufferComponent>();
-	}
-
-	void populateWireframeEntity(Renderer& renderer) {
-		_wireframe.addComponent<TransformComponent>(renderer, Transform());
-
-		_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
-		_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
-		_wireframe.addComponent<DynamicIndexBufferComponent>(_gridIndices);
-
-		_wireframe.setLastRender<DynamicIndexBufferComponent>();
-	}
-
-	void populateNormalEntity(Renderer& renderer) {
-		_normals.addComponent<TransformComponent>(renderer, Transform());
-
-		_normals.addComponent<RenderModeComponent>(RenderMode::line);
-		_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-		_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_normalColors);
-		_normals.addComponent<DynamicIndexBufferComponent>(_normalIndices);
-
-		_normals.setLastRender<DynamicIndexBufferComponent>();
-	}
-
-	std::vector<Color> makeGridColors() {
-		return { _builder.pointCount(), {0.1f, 0.1f, 0.1f} };
-	}
-
-	std::vector<Color> makeNormalColors() {
-		return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
-	}
-
-	void setRegenMode(GraphRegenMode mode) {
-		if (temporaryRegen) return;
-		_regenMode = mode;
-	}
-
-	void setUploadMode(GraphUploadMode mode) {
-		// Ignore sets if in temporary mode so we don't accidentally
-		// override updates.
-		if (temporaryUploadFrames > 0) return;
-		_uploadMode = mode;
-	}
-
-	GraphRegenMode defaultRegenMode() {
-		if (_builder.func().animated()) {
-			return GraphRegenMode::partial;
-		}
-
-		return GraphRegenMode::none;
-	}
-
-	GraphUploadMode defaultUploadMode() {
-		if (_builder.func().animated()) {
-			return GraphUploadMode::partial;
-		}
-
-		return GraphUploadMode::none;
-	}
-
-	void setTemporaryRegenMode(GraphRegenMode mode) {
-		_regenMode = mode;
-		temporaryRegen = true;
-	}
-
-	void setTemporaryUploadMode(GraphUploadMode mode) {
-		_uploadMode = mode;
-		temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
-	}
-
-	void regen() {
-		if (!doRegen) return;
-
-		_perfTimers->start("regen");
-		switch (_regenMode) {
-			case GraphRegenMode::partial:
-				_builder.regeneratePositions();
-				break;
-			case GraphRegenMode::all:
-				_builder.regenerateEverything();
-				break;
-			default:
-				break;
-		}
-		_perfTimers->stop("regen");
-	}
-
-	void uploadPartial() {
-		_surfacePositions.copyData(_builder.positions());
-		_surfaceNormals.copyData(_builder.normals());
-	}
-
-	void uploadAll() {
-		uploadPartial();
-		_surfaceColors.copyData(_builder.colors());
-		_surfaceIndices.copyData(_builder.triangleIndices());
-		_gridIndices.copyData(_builder.lineIndices());
-		_gridColors.copyData(makeGridColors());
-		_normalIndices.copyData(_builder.normalIndices());
-		_normalColors.copyData(makeNormalColors());
-	}
-
-	void upload() {
-		if (!doUpload) return;
-
-		_perfTimers->start("upload");
-		switch (_uploadMode) {
-			case GraphUploadMode::partial:
-				uploadPartial();
-				break;
-			case GraphUploadMode::all:
-				uploadAll();
-				break;
-			default:
-				break;
-		}
-		_perfTimers->stop("upload");
-	}
+	void regen();
+	void uploadPartial();
+	void uploadAll();
+	void upload();
 public:
 	bool doUpload = true;
 	bool doRegen = true;
@@ -439,12 +169,13 @@ public:
 
 	Graph(
 		Renderer& renderer,
-		F& func,
+		VariableStore& variableStore,
 		unsigned int cells,
 		float range,
 		TimerCollection& perfTimers
 	)
-	: _builder { func, cells, range, perfTimers },
+	: _function { variableStore },
+	  _builder { _function, cells, range, perfTimers },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },
 	  _surfaceNormals { renderer, _builder.normals() },
@@ -464,7 +195,7 @@ public:
 		populateNormalEntity(renderer);
 	}
 
-	auto& func() { return _builder.func(); }
+	auto& func() { return _function; }
 
 	// Allow outside access to the surface material so the UI can
 	// manipulate it.
@@ -476,103 +207,24 @@ public:
 	auto& normals() { return _normals; }
 	auto& wireframe() { return _wireframe; }
 
-	void clampZ(bool b) {
-		_builder.clampZ = b;
-		shouldUpdate = true;
-	}
+	void clampZ(bool b);
+	bool clampZ() const;
 
-	bool clampZ() const {
-		return _builder.clampZ;
-	}
+	void cells(unsigned int cells);
+	unsigned int cells() const;
 
-	void cells(unsigned int cells) {
-		_builder.cells = cells;
-		cellsChanged = true;
-	}
+	void rangeLow(const glm::vec3& range);
+	const glm::vec3& rangeLow() const;
 
-	unsigned int cells() const {
-		return _builder.cells;
-	}
+	void rangeHigh(const glm::vec3& range);
+	const glm::vec3& rangeHigh() const;
 
-	void rangeLow(const glm::vec3& range) {
-		_builder.rangeLow = range;
-		shouldUpdate = true;
-	}
+	glm::vec3 origin() const;
 
-	const glm::vec3& rangeLow() const {
-		return _builder.rangeLow;
-	}
-
-	void rangeHigh(const glm::vec3& range) {
-		_builder.rangeHigh = range;
-		shouldUpdate = true;
-	}
-
-	const glm::vec3& rangeHigh() const {
-		return _builder.rangeHigh;
-	}
-
-	glm::vec3 origin() const {
-		return _builder.origin();
-	}
-
-	void update() {
-		if (_builder.func().updated()) {
-			shouldUpdate = true;
-			_builder.func().resetUpdated();
-		}
-
-		if (shouldUpdate) {
-			if (_builder.func().animated()) {
-				setRegenMode(defaultRegenMode());
-				setUploadMode(defaultUploadMode());
-			} else {
-				setTemporaryRegenMode(GraphRegenMode::partial);
-				setTemporaryUploadMode(GraphUploadMode::partial);
-			}
-			shouldUpdate = false;
-		}
-
-		// Cell update overrides normal update handling
-		if (cellsChanged) {
-			setTemporaryRegenMode(GraphRegenMode::all);
-			setTemporaryUploadMode(GraphUploadMode::all);
-			cellsChanged = false;
-		}
-
-		regen();
-		upload();
-
-		if (temporaryRegen) {
-			temporaryRegen = false;
-			_regenMode = defaultRegenMode();
-		}
-
-		if (temporaryUploadFrames > 0) {
-			temporaryUploadFrames--;
-			if (temporaryUploadFrames == 0) _uploadMode = defaultUploadMode();
-		}
-	}
-
-	void draw() {
-		// TODO This is really dumb but it doesn't look too terrible...
-		// Look into using textures for the grid, maybe.
-		if (renderGrid && renderMode == GraphRenderMode::surface) {
-			_gridTop.draw();
-			_gridBottom.draw();
-		}
-
-		if (renderNormals) {
-			_normals.draw();
-		}
-
-		if (renderMode == GraphRenderMode::wireframe) {
-			_wireframe.draw();
-		}
-
-		if (renderMode == GraphRenderMode::surface) {
-			_surface.draw();
-		}
-	}
+	// TODO: Should really flesh out the entity system so I don't have to
+	// do this.
+	void update();
+	void updateSynchronized();
+	void draw();
 };
 }

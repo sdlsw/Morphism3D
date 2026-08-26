@@ -106,16 +106,16 @@ void Application::update() {
 	// Entity and camera updates.
 	_camController.update();
 	getTransform(_lightObject.entity()).translation = _light.current.position;
-	_f.update();
 	getTransform(_axes.entity()).translation = _graph.origin();
 
+	_graph.update();
 	_figures.update();
 }
 
 void Application::updateSynchronized() {
 	// Objects with dynamic mesh data need to be updated after
 	// beginFrame() to ensure proper synchronization.
-	_graph.update();
+	_graph.updateSynchronized();
 	_figures.updateSynchronized();
 }
 
