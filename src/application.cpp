@@ -106,7 +106,7 @@ void Application::update() {
 	// Entity and camera updates.
 	_camController.update();
 	getTransform(_lightObject.entity()).translation = _light.current.position;
-	getTransform(_axes.entity()).translation = _graph.origin();
+	getTransform(_axes.entity()).translation = _range.origin();
 
 	_graph.update();
 	_figures.update();

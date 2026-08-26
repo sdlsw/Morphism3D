@@ -1,12 +1,6 @@
 #include "graph.h"
 
 namespace g3d {
-glm::vec3 GraphMeshBuilder::toModelSpace(const glm::vec3& funcSpace) const {
-	// Simplified from (funcSpace - (H+L)/2) / ((H - L)/2), that
-	// is, a translation followed by a scale.
-	return (2.0f*funcSpace - rangeHigh - rangeLow) / (rangeHigh - rangeLow);
-}
-
 uint16_t GraphMeshBuilder::idx(unsigned int x, unsigned int y) {
 	// Note: cells+1 here because there's one more point than the
 	// number of cells, for instance:
@@ -27,11 +21,11 @@ void GraphMeshBuilder::generatePositions() {
 	_perfTimers->start("regenPositions");
 	float inc = 1.0f / static_cast<float>(cells);
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		float y = glm::mix(rangeLow.y, rangeHigh.y, inc*ypt);
+		float y = glm::mix(_range->low().y, _range->high().y, inc*ypt);
 
 		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			float x = glm::mix(rangeLow.x, rangeHigh.x, inc*xpt);
-			_positions.push_back(toModelSpace({x, y, _func->eval(x, y)}));
+			float x = glm::mix(_range->low().x, _range->high().x, inc*xpt);
+			_positions.push_back(_range->toModelSpace({x, y, _func->eval(x, y)}));
 
 			if (clampZ) {
 				auto& p = _positions.back().vec;
@@ -147,10 +141,6 @@ void GraphMeshBuilder::regenerateIndices() {
 	generateNormalIndices();
 }
 
-glm::vec3 GraphMeshBuilder::origin() const {
-	return toModelSpace({0, 0, 0});
-}
-
 void GraphMeshBuilder::regeneratePositions() {
 	_positions.clear();
 	_normals.clear();
@@ -164,6 +154,10 @@ void GraphMeshBuilder::regenerateEverything() {
 	// generateNormals() is dependent on them.
 	regenerateIndices();
 	regenerateVertices();
+}
+
+void Graph::_RangeChangedHandler::handle(const RangeChangedEvent& e) {
+	_this->shouldUpdate = true;
 }
 
 void Graph::populateSurfaceEntity(Renderer& renderer) {
@@ -323,28 +317,6 @@ void Graph::cells(unsigned int cells) {
 
 unsigned int Graph::cells() const {
 	return _builder.cells;
-}
-
-void Graph::rangeLow(const glm::vec3& range) {
-	_builder.rangeLow = range;
-	shouldUpdate = true;
-}
-
-const glm::vec3& Graph::rangeLow() const {
-	return _builder.rangeLow;
-}
-
-void Graph::rangeHigh(const glm::vec3& range) {
-	_builder.rangeHigh = range;
-	shouldUpdate = true;
-}
-
-const glm::vec3& Graph::rangeHigh() const {
-	return _builder.rangeHigh;
-}
-
-glm::vec3 Graph::origin() const {
-	return _builder.origin();
 }
 
 void Graph::update() {

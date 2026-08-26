@@ -9,6 +9,7 @@
 #include "primitive.h"
 #include "temporal.h"
 #include "statistics.h"
+#include "range.h"
 #include "ui/all.h"
 #include "vk/renderer.h"
 #include "window.h"
@@ -35,6 +36,7 @@ private:
 	DebugSettings _debugSettings;
 
 	VariableStore _variableStore;
+	Range _range;
 	Graph _graph;
 
 	FigureCollection _figures;
@@ -83,7 +85,8 @@ public:
 		_window
 	},
 	_variableStore { _eventRouter },
-	_graph { _renderer, _variableStore, _initialCells, _initialRange, _perfTimers },
+	_range { _eventRouter, _initialRange },
+	_graph { _eventRouter, _renderer, _variableStore, _initialCells, _range, _perfTimers },
 	_figures { _eventRouter },
 	_axes { buildAxes() },
 	_frame { buildFrame() },
@@ -94,6 +97,7 @@ public:
 		_ui.addWindow<CameraWindow>(_camController);
 		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
 		_ui.addWindow<GraphWindow>(_graph, _window);
+		_ui.addWindow<RangeWindow>(_range);
 		_ui.addWindow<FigureWindow>(_figures, _window, _variableStore);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);

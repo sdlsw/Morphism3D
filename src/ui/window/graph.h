@@ -15,8 +15,6 @@ private:
 	const std::string _title { "Graph" };
 	std::array<char, 255> _expressionBuf;
 
-	glm::vec3 _rangeLow;
-	glm::vec3 _rangeHigh;
 	bool _clampZ;
 
 	Graph* _graph;
@@ -27,8 +25,6 @@ private:
 	void renderModeSlider();
 	void resolutionInput();
 	void renderSettings();
-	void rangeInput(char dim, float& low, float& high);
-	void rangeInputs();
 
 public:
 	const std::string& title() const override { return _title; }
@@ -38,8 +34,6 @@ public:
 	GraphWindow(Graph& graph, Window& window)
 	: _graph { &graph },
 	  _cells { static_cast<int>(graph.cells()) },
-	  _rangeLow { graph.rangeLow() },
-	  _rangeHigh { graph.rangeHigh() },
 	  _clampZ { graph.clampZ() }
 	{
 		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');

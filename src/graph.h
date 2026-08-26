@@ -3,6 +3,7 @@
 #include "container.h"
 #include "function.h"
 #include "primitive.h"
+#include "range.h"
 #include "statistics.h"
 #include "vk/renderer.h"
 
@@ -16,6 +17,7 @@ private:
 
 	Function* _func;
 	TimerCollection* _perfTimers;
+	Range* _range;
 
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
@@ -25,7 +27,6 @@ private:
 	std::vector<uint16_t> _lineIndices;
 	std::vector<uint16_t> _normalIndices;
 
-	glm::vec3 toModelSpace(const glm::vec3& funcSpace) const;
 	uint16_t idx(unsigned int x, unsigned int y);
 	const Position& getPosition(unsigned int x, unsigned int y);
 
@@ -44,20 +45,13 @@ public:
 	// vertices.
 	unsigned int cells;
 
-	// The x, y coordinates of the model vertices always range from
-	// -1.0f to 1.0f. The range determines how those coordinates map to
-	// function input space with a simple relation. See toModelSpace().
-	glm::vec3 rangeHigh;
-	glm::vec3 rangeLow;
-
 	bool clampZ = false;
 
 	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(Function& f, unsigned int cells, float range, TimerCollection& perfTimers)
+	GraphMeshBuilder(Function& f, unsigned int cells, Range& range, TimerCollection& perfTimers)
 	: _func { &f },
 	  cells { cells },
-	  rangeHigh { range, range, range },
-	  rangeLow { -range, -range, -range },
+	  _range { &range },
 	  _perfTimers { &perfTimers }
 	{
 		regenerateEverything();
@@ -71,11 +65,7 @@ public:
 	const auto& normalIndices() const { return _normalIndices; }
 	auto pointCount() const { return (cells + 1) * (cells + 1); }
 
-	// Gets the model space coordinates of the origin of the graph.
-	glm::vec3 origin() const;
-
-	// Must be called whenever _func changes, and whenever `rangeLow` or
-	// `rangeHigh` change.
+	// Must be called whenever `_func` changes, and whenever `_range` changes
 	void regeneratePositions();
 
 	// Must be called whenever `cells` changes.
@@ -139,6 +129,15 @@ private:
 
 	Entity _wireframe;
 
+	class _RangeChangedHandler : public EventHandler<RangeChangedEvent> {
+	public:
+		Graph* _this;
+		void handle(const RangeChangedEvent& e) override;
+		_RangeChangedHandler(Graph* _this) : _this { _this } {}
+	};
+
+	_RangeChangedHandler _rangeChangedHandler { this };
+
 	void populateSurfaceEntity(Renderer& renderer);
 	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
 	void populateWireframeEntity(Renderer& renderer);
@@ -168,10 +167,11 @@ public:
 	GraphRenderMode renderMode = GraphRenderMode::surface;
 
 	Graph(
+		EventRouter& eventRouter,
 		Renderer& renderer,
 		VariableStore& variableStore,
 		unsigned int cells,
-		float range,
+		Range& range,
 		TimerCollection& perfTimers
 	)
 	: _function { variableStore },
@@ -193,6 +193,27 @@ public:
 		populateGridEntity(renderer, _gridBottom, -1.0f);
 		populateWireframeEntity(renderer);
 		populateNormalEntity(renderer);
+
+		eventRouter.addHandler(_rangeChangedHandler);
+	}
+
+	Graph(Graph&& other)
+	: _function { std::move(other._function) },
+	  _builder { std::move(other._builder) },
+	  _surfacePositions { std::move(other._surfacePositions) } ,
+	  _surfaceColors { std::move(other._surfaceColors) },
+	  _surfaceNormals { std::move(other._surfaceNormals) },
+	  _surfaceIndices { std::move(other._surfaceIndices) },
+	  _gridIndices { std::move(other._gridIndices) },
+	  _gridColors { std::move(other._gridColors) },
+	  _normalIndices { std::move(other._normalIndices) },
+	  _normalColors { std::move(other._normalColors) },
+	  _regenMode { other._regenMode },
+	  _uploadMode { other._uploadMode },
+	  _perfTimers { other._perfTimers },
+	  _rangeChangedHandler { std::move(other._rangeChangedHandler) }
+	{
+		_rangeChangedHandler._this = this;
 	}
 
 	auto& func() { return _function; }
@@ -212,14 +233,6 @@ public:
 
 	void cells(unsigned int cells);
 	unsigned int cells() const;
-
-	void rangeLow(const glm::vec3& range);
-	const glm::vec3& rangeLow() const;
-
-	void rangeHigh(const glm::vec3& range);
-	const glm::vec3& rangeHigh() const;
-
-	glm::vec3 origin() const;
 
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
