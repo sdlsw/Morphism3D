@@ -1,6 +1,7 @@
 #pragma once
 
 #include "container.h"
+#include "figure/iface.h"
 #include "function.h"
 #include "primitive.h"
 #include "range.h"
@@ -92,9 +93,11 @@ enum class GraphRenderMode : int {
 
 constexpr unsigned int GraphRenderModeCount = 3;
 
-class Graph {
+class GraphFigure : public MathFigure {
 private:
 	static constexpr float gridLoft = 0.002f;
+
+	unsigned int _id;
 
 	Function _function;
 	GraphMeshBuilder _builder;
@@ -110,12 +113,13 @@ private:
 	GraphRegenMode _regenMode = GraphRegenMode::none;
 	GraphUploadMode _uploadMode = GraphUploadMode::none;
 
+	Material* _surfaceMaterial;
+
 	DynamicVertexAttributes<Position> _surfacePositions;
 
 	DynamicIndexBuffer _surfaceIndices;
 	DynamicVertexAttributes<Color> _surfaceColors;
 	DynamicVertexAttributes<Normal> _surfaceNormals;
-	WithInitial<Material> _surfaceMaterial { defaultMaterial() };
 	Entity _surface;
 
 	DynamicIndexBuffer _gridIndices;
@@ -131,9 +135,9 @@ private:
 
 	class _RangeChangedHandler : public EventHandler<RangeChangedEvent> {
 	public:
-		Graph* _this;
+		GraphFigure* _this;
 		void handle(const RangeChangedEvent& e) override;
-		_RangeChangedHandler(Graph* _this) : _this { _this } {}
+		_RangeChangedHandler(GraphFigure* _this) : _this { _this } {}
 	};
 
 	_RangeChangedHandler _rangeChangedHandler { this };
@@ -166,16 +170,20 @@ public:
 	bool renderNormals = false;
 	GraphRenderMode renderMode = GraphRenderMode::surface;
 
-	Graph(
+	GraphFigure(
+		unsigned int id,
 		EventRouter& eventRouter,
 		Renderer& renderer,
 		VariableStore& variableStore,
 		unsigned int cells,
 		Range& range,
-		TimerCollection& perfTimers
+		TimerCollection& perfTimers,
+		Material& material
 	)
-	: _function { variableStore },
+	: _id { id },
+	  _function { variableStore },
 	  _builder { _function, cells, range, perfTimers },
+	  _surfaceMaterial { &material },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },
 	  _surfaceNormals { renderer, _builder.normals() },
@@ -197,9 +205,11 @@ public:
 		eventRouter.addHandler(_rangeChangedHandler);
 	}
 
-	Graph(Graph&& other)
-	: _function { std::move(other._function) },
+	GraphFigure(GraphFigure&& other)
+	: _id { other._id },
+	  _function { std::move(other._function) },
 	  _builder { std::move(other._builder) },
+	  _surfaceMaterial { other._surfaceMaterial },
 	  _surfacePositions { std::move(other._surfacePositions) } ,
 	  _surfaceColors { std::move(other._surfaceColors) },
 	  _surfaceNormals { std::move(other._surfaceNormals) },
@@ -215,6 +225,8 @@ public:
 	{
 		_rangeChangedHandler._this = this;
 	}
+
+	unsigned int id() const override { return _id; }
 
 	auto& func() { return _function; }
 
@@ -236,8 +248,8 @@ public:
 
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
-	void update();
-	void updateSynchronized();
-	void draw();
+	void update() override;
+	void updateSynchronized() override;
+	void draw() override;
 };
 }

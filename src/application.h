@@ -4,8 +4,8 @@
 #include "container.h"
 #include "expression.h"
 #include "figure/figure.h"
+#include "figure/graph.h"
 #include "function.h"
-#include "graph.h"
 #include "primitive.h"
 #include "temporal.h"
 #include "statistics.h"
@@ -37,7 +37,6 @@ private:
 
 	VariableStore _variableStore;
 	Range _range;
-	Graph _graph;
 
 	FigureCollection _figures;
 
@@ -46,6 +45,10 @@ private:
 		{1.0f, 1.0f, 1.0f}, // color
 		1.0f
 	}};
+
+	// TODO: Move this back into graph, allow each graph to have a unique
+	// material.
+	WithInitial<Material> _material { defaultMaterial() };
 
 	EventPrinter<MousePositionEvent> _posDumper;
 	EventPrinter<KeyEvent> _keyDumper;
@@ -86,7 +89,6 @@ public:
 	},
 	_variableStore { _eventRouter },
 	_range { _eventRouter, _initialRange },
-	_graph { _eventRouter, _renderer, _variableStore, _initialCells, _range, _perfTimers },
 	_figures { _eventRouter },
 	_axes { buildAxes() },
 	_frame { buildFrame() },
@@ -95,10 +97,17 @@ public:
 	{
 		// Set up UI
 		_ui.addWindow<CameraWindow>(_camController);
-		_ui.addWindow<RenderWindow>(_renderSettings, _light, _graph.surfaceMaterial());
-		_ui.addWindow<GraphWindow>(_graph, _window);
+		_ui.addWindow<RenderWindow>(_renderSettings, _light, _material);
 		_ui.addWindow<RangeWindow>(_range);
-		_ui.addWindow<FigureWindow>(_figures, _window, _variableStore);
+		_ui.addWindow<FigureWindow>(
+			_figures,
+			_window,
+			_variableStore,
+			_renderer,
+			_perfTimers,
+			_range,
+			_material
+		);
 		_ui.addWindow<StatsWindow>(_perfTimers);
 		_ui.addWindow<DebugWindow>(_debugSettings);
 		_ui.addWindow<AboutWindow>();

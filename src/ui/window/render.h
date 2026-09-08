@@ -1,7 +1,6 @@
 #pragma once
 
-#include "ui/common.h"
-#include "vk/datatypes.h"
+#include "ui/common_render.h"
 
 #include <string>
 

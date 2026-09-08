@@ -1,5 +1,6 @@
 #pragma once
 #include "ui/common.h"
+#include "ui/common_render.h"
 #include "ui/imgui.h"
 
 // Top level UI class

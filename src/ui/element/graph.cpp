@@ -1,4 +1,4 @@
-#include "ui/window/graph.h"
+#include "ui/element/graph.h"
 
 static const std::string RENDER_MODE_SURFACE_NAME = "Surface";
 static const std::string RENDER_MODE_WIREFRAME_NAME = "Wireframe";
@@ -18,27 +18,31 @@ const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
 	}
 }
 namespace g3d {
-void GraphWindow::expressionInput() {
-	bool changed = ImGui::InputText("Expression", _expressionBuf.data(), _expressionBuf.size());
+void GraphElement::expressionInput() {
+	bool changed = ImGui::InputText(
+		_expressionInputId.c_str(),
+		_expressionBuf.data(),
+		_expressionBuf.size()
+	);
 	if (changed) {
 		_graph->func().updateExpression(_expressionBuf.data());
 	}
 }
 
-void GraphWindow::gridToggle() {
+void GraphElement::gridToggle() {
 	bool disabled = _graph->renderMode != GraphRenderMode::surface;
 	bool forceSetting = _graph->renderMode == GraphRenderMode::wireframe;
 	bool* setting = disabled ? &forceSetting : &_graph->renderGrid;
 
 	ImGui::BeginDisabled(disabled);
-	ImGui::Checkbox("Show Grid", setting);
+	ImGui::Checkbox(_gridToggleId.c_str(), setting);
 	if (disabled) ImGui::SetItemTooltip(SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP);
 	ImGui::EndDisabled();
 }
 
-void GraphWindow::renderModeSlider() {
+void GraphElement::renderModeSlider() {
 	ImGui::SliderInt(
-		"Render Mode",
+		_renderModeId.c_str(),
 		reinterpret_cast<int*>(&_graph->renderMode),
 		0,
 		GraphRenderModeCount-1,
@@ -47,35 +51,35 @@ void GraphWindow::renderModeSlider() {
 	);
 }
 
-void GraphWindow::resolutionInput() {
+void GraphElement::resolutionInput() {
 	// Maximum safe resolution is about 250 due to use of
 	// uint16_t for indices, so always clamp. TODO switch to
 	// uint32_t for even higher max resolution?
-	ImGui::SliderInt("Resolution", &_cells, 10, 250, "%d", ImGuiSliderFlags_AlwaysClamp);
+	ImGui::SliderInt(_resolutionInputId.c_str(), &_cells, 10, 250, "%d", ImGuiSliderFlags_AlwaysClamp);
 	ImGui::SameLine();
-	if (ImGui::Button("Update")) {
+	if (ImGui::Button(_resolutionUpdateId.c_str())) {
 		_graph->cells(static_cast<unsigned int>(_cells));
 	}
 }
 
-void GraphWindow::renderSettings() {
+void GraphElement::renderSettings() {
 	ImGui::SeparatorText("Render Settings");
 	resolutionInput();
 	renderModeSlider();
 	gridToggle();
-	ImGui::Checkbox("Show Normals", &_graph->renderNormals);
-	bool clampChanged = ImGui::Checkbox("Clamp Z", &_clampZ);
+	ImGui::Checkbox(_normalToggleId.c_str(), &_graph->renderNormals);
+	bool clampChanged = ImGui::Checkbox(_clampZToggleId.c_str(), &_clampZ);
 	if (clampChanged) {
 		_graph->clampZ(_clampZ);
 	}
 }
 
-void GraphWindow::drawUi() {
+void GraphElement::show() {
 	expressionInput();
 	renderSettings();
 
 	ImGui::SeparatorText("Debug");
-	ImGui::Checkbox("GPU Upload", &_graph->doUpload);
-	ImGui::Checkbox("Regenerate", &_graph->doRegen);
+	ImGui::Checkbox(_gpuUploadToggleId.c_str(), &_graph->doUpload);
+	ImGui::Checkbox(_regenerateToggleId.c_str(), &_graph->doRegen);
 }
 }

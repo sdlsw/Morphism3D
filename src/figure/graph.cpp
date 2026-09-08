@@ -1,4 +1,4 @@
-#include "graph.h"
+#include "figure/graph.h"
 
 namespace g3d {
 uint16_t GraphMeshBuilder::idx(unsigned int x, unsigned int y) {
@@ -156,11 +156,11 @@ void GraphMeshBuilder::regenerateEverything() {
 	regenerateVertices();
 }
 
-void Graph::_RangeChangedHandler::handle(const RangeChangedEvent& e) {
+void GraphFigure::_RangeChangedHandler::handle(const RangeChangedEvent& e) {
 	_this->shouldUpdate = true;
 }
 
-void Graph::populateSurfaceEntity(Renderer& renderer) {
+void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
 
 	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
@@ -168,12 +168,12 @@ void Graph::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
 	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
 	_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
-	_surface.addComponent<MaterialComponent>(renderer, _surfaceMaterial);
+	_surface.addComponent<MaterialComponent>(renderer, *_surfaceMaterial);
 
 	_surface.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void Graph::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
+void GraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
 	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
 
 	ent.addComponent<RenderModeComponent>(RenderMode::line);
@@ -184,7 +184,7 @@ void Graph::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) 
 	ent.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void Graph::populateWireframeEntity(Renderer& renderer) {
+void GraphFigure::populateWireframeEntity(Renderer& renderer) {
 	_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
 	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
@@ -195,7 +195,7 @@ void Graph::populateWireframeEntity(Renderer& renderer) {
 	_wireframe.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void Graph::populateNormalEntity(Renderer& renderer) {
+void GraphFigure::populateNormalEntity(Renderer& renderer) {
 	_normals.addComponent<TransformComponent>(renderer, Transform());
 
 	_normals.addComponent<RenderModeComponent>(RenderMode::line);
@@ -206,27 +206,27 @@ void Graph::populateNormalEntity(Renderer& renderer) {
 	_normals.setLastRender<DynamicIndexBufferComponent>();
 }
 
-std::vector<Color> Graph::makeGridColors() {
+std::vector<Color> GraphFigure::makeGridColors() {
 	return { _builder.pointCount(), {0.1f, 0.1f, 0.1f} };
 }
 
-std::vector<Color> Graph::makeNormalColors() {
+std::vector<Color> GraphFigure::makeNormalColors() {
 	return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
-void Graph::setRegenMode(GraphRegenMode mode) {
+void GraphFigure::setRegenMode(GraphRegenMode mode) {
 	if (temporaryRegen) return;
 	_regenMode = mode;
 }
 
-void Graph::setUploadMode(GraphUploadMode mode) {
+void GraphFigure::setUploadMode(GraphUploadMode mode) {
 	// Ignore sets if in temporary mode so we don't accidentally
 	// override updates.
 	if (temporaryUploadFrames > 0) return;
 	_uploadMode = mode;
 }
 
-GraphRegenMode Graph::defaultRegenMode() {
+GraphRegenMode GraphFigure::defaultRegenMode() {
 	if (_function.animated()) {
 		return GraphRegenMode::partial;
 	}
@@ -234,7 +234,7 @@ GraphRegenMode Graph::defaultRegenMode() {
 	return GraphRegenMode::none;
 }
 
-GraphUploadMode Graph::defaultUploadMode() {
+GraphUploadMode GraphFigure::defaultUploadMode() {
 	if (_function.animated()) {
 		return GraphUploadMode::partial;
 	}
@@ -242,17 +242,17 @@ GraphUploadMode Graph::defaultUploadMode() {
 	return GraphUploadMode::none;
 }
 
-void Graph::setTemporaryRegenMode(GraphRegenMode mode) {
+void GraphFigure::setTemporaryRegenMode(GraphRegenMode mode) {
 	_regenMode = mode;
 	temporaryRegen = true;
 }
 
-void Graph::setTemporaryUploadMode(GraphUploadMode mode) {
+void GraphFigure::setTemporaryUploadMode(GraphUploadMode mode) {
 	_uploadMode = mode;
 	temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
 }
 
-void Graph::regen() {
+void GraphFigure::regen() {
 	if (!doRegen) return;
 
 	_perfTimers->start("regen");
@@ -269,12 +269,12 @@ void Graph::regen() {
 	_perfTimers->stop("regen");
 }
 
-void Graph::uploadPartial() {
+void GraphFigure::uploadPartial() {
 	_surfacePositions.copyData(_builder.positions());
 	_surfaceNormals.copyData(_builder.normals());
 }
 
-void Graph::uploadAll() {
+void GraphFigure::uploadAll() {
 	uploadPartial();
 	_surfaceColors.copyData(_builder.colors());
 	_surfaceIndices.copyData(_builder.triangleIndices());
@@ -284,7 +284,7 @@ void Graph::uploadAll() {
 	_normalColors.copyData(makeNormalColors());
 }
 
-void Graph::upload() {
+void GraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start("upload");
@@ -301,29 +301,29 @@ void Graph::upload() {
 	_perfTimers->stop("upload");
 }
 
-void Graph::clampZ(bool b) {
+void GraphFigure::clampZ(bool b) {
 	_builder.clampZ = b;
 	shouldUpdate = true;
 }
 
-bool Graph::clampZ() const {
+bool GraphFigure::clampZ() const {
 	return _builder.clampZ;
 }
 
-void Graph::cells(unsigned int cells) {
+void GraphFigure::cells(unsigned int cells) {
 	_builder.cells = cells;
 	cellsChanged = true;
 }
 
-unsigned int Graph::cells() const {
+unsigned int GraphFigure::cells() const {
 	return _builder.cells;
 }
 
-void Graph::update() {
+void GraphFigure::update() {
 	_function.update();
 }
 
-void Graph::updateSynchronized() {
+void GraphFigure::updateSynchronized() {
 	if (_function.updated()) {
 		shouldUpdate = true;
 		_function.resetUpdated();
@@ -361,7 +361,7 @@ void Graph::updateSynchronized() {
 	}
 }
 
-void Graph::draw() {
+void GraphFigure::draw() {
 	// TODO This is really dumb but it doesn't look too terrible...
 	// Look into using textures for the grid, maybe.
 	if (renderGrid && renderMode == GraphRenderMode::surface) {

@@ -74,8 +74,6 @@ SimpleLineObject Application::buildFrame() {
 
 void Application::drawObjects() {
 	// Note: Graph handles its own draw settings
-	_graph.draw();
-
 	if (_renderSettings.renderFrame) {
 		_frame.draw();
 	}
@@ -108,14 +106,12 @@ void Application::update() {
 	getTransform(_lightObject.entity()).translation = _light.current.position;
 	getTransform(_axes.entity()).translation = _range.origin();
 
-	_graph.update();
 	_figures.update();
 }
 
 void Application::updateSynchronized() {
 	// Objects with dynamic mesh data need to be updated after
 	// beginFrame() to ensure proper synchronization.
-	_graph.updateSynchronized();
 	_figures.updateSynchronized();
 }
 
