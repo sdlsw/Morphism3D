@@ -18,7 +18,7 @@ const Position& GraphMeshBuilder::getPosition(unsigned int x, unsigned int y) {
 }
 
 void GraphMeshBuilder::generatePositions() {
-	_perfTimers->start("regenPositions");
+	_perfTimers->start((*_perfIds)["regenPositions"]);
 	float inc = 1.0f / static_cast<float>(cells);
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 		float y = glm::mix(_range->low().y, _range->high().y, inc*ypt);
@@ -33,7 +33,7 @@ void GraphMeshBuilder::generatePositions() {
 			}
 		}
 	}
-	_perfTimers->stop("regenPositions");
+	_perfTimers->stop((*_perfIds)["regenPositions"]);
 }
 
 void GraphMeshBuilder::generateColors() {
@@ -62,13 +62,13 @@ void GraphMeshBuilder::generateColors() {
 }
 
 void GraphMeshBuilder::generateNormals() {
-	_perfTimers->start("regenNormals");
+	_perfTimers->start((*_perfIds)["regenNormals"]);
 	autoGenerateNormals(_normals, _positions, _triangleIndices);
-	_perfTimers->stop("regenNormals");
+	_perfTimers->stop((*_perfIds)["regenNormals"]);
 }
 
 void GraphMeshBuilder::generateNormalPositions() {
-	_perfTimers->start("regenNormalPositions");
+	_perfTimers->start((*_perfIds)["regenNormalPositions"]);
 	auto ptCount = pointCount();
 	for (unsigned int i = 0; i < ptCount; i++) {
 		// Note: The positions for visualizing the normals are
@@ -77,7 +77,7 @@ void GraphMeshBuilder::generateNormalPositions() {
 		// the GPU.
 		_positions.push_back(_positions[i].vec + normLength*_normals[i].vec);
 	}
-	_perfTimers->stop("regenNormalPositions");
+	_perfTimers->stop((*_perfIds)["regenNormalPositions"]);
 }
 
 void GraphMeshBuilder::generateLineIndices() {
@@ -255,7 +255,7 @@ void GraphFigure::setTemporaryUploadMode(GraphUploadMode mode) {
 void GraphFigure::regen() {
 	if (!doRegen) return;
 
-	_perfTimers->start("regen");
+	_perfTimers->start(_perfIds["regen"]);
 	switch (_regenMode) {
 		case GraphRegenMode::partial:
 			_builder.regeneratePositions();
@@ -266,7 +266,7 @@ void GraphFigure::regen() {
 		default:
 			break;
 	}
-	_perfTimers->stop("regen");
+	_perfTimers->stop(_perfIds["regen"]);
 }
 
 void GraphFigure::uploadPartial() {
@@ -287,7 +287,7 @@ void GraphFigure::uploadAll() {
 void GraphFigure::upload() {
 	if (!doUpload) return;
 
-	_perfTimers->start("upload");
+	_perfTimers->start(_perfIds["upload"]);
 	switch (_uploadMode) {
 		case GraphUploadMode::partial:
 			uploadPartial();
@@ -298,7 +298,7 @@ void GraphFigure::upload() {
 		default:
 			break;
 	}
-	_perfTimers->stop("upload");
+	_perfTimers->stop(_perfIds["upload"]);
 }
 
 void GraphFigure::clampZ(bool b) {

@@ -18,6 +18,7 @@ private:
 
 	Function* _func;
 	TimerCollection* _perfTimers;
+	DiscriminatedStringMap* _perfIds;
 	Range* _range;
 
 	std::vector<Position> _positions;
@@ -49,11 +50,18 @@ public:
 	bool clampZ = false;
 
 	GraphMeshBuilder() = delete;
-	GraphMeshBuilder(Function& f, unsigned int cells, Range& range, TimerCollection& perfTimers)
+	GraphMeshBuilder(
+		Function& f,
+		unsigned int cells,
+		Range& range,
+		TimerCollection& perfTimers,
+		DiscriminatedStringMap& perfIds
+	)
 	: _func { &f },
 	  cells { cells },
 	  _range { &range },
-	  _perfTimers { &perfTimers }
+	  _perfTimers { &perfTimers },
+	  _perfIds { &perfIds }
 	{
 		regenerateEverything();
 	}
@@ -100,6 +108,7 @@ private:
 	unsigned int _id;
 
 	Function _function;
+	DiscriminatedStringMap _perfIds;
 	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
@@ -182,7 +191,8 @@ public:
 	)
 	: _id { id },
 	  _function { variableStore },
-	  _builder { _function, cells, range, perfTimers },
+	  _perfIds { std::format("_graph{}", id) },
+	  _builder { _function, cells, range, perfTimers, _perfIds },
 	  _surfaceMaterial { &material },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },
@@ -221,7 +231,8 @@ public:
 	  _regenMode { other._regenMode },
 	  _uploadMode { other._uploadMode },
 	  _perfTimers { other._perfTimers },
-	  _rangeChangedHandler { std::move(other._rangeChangedHandler) }
+	  _rangeChangedHandler { std::move(other._rangeChangedHandler) },
+	  _perfIds { std::move(other._perfIds) }
 	{
 		_rangeChangedHandler._this = this;
 	}
