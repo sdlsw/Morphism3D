@@ -8,4 +8,8 @@ const std::string& DiscriminatedStringMap::operator[](const std::string& key) {
 
 	return _cache.at(key);
 }
+
+const char* DiscriminatedStringMap::c_str(const std::string& key) {
+	return (*this)[key].c_str();
+}
 }

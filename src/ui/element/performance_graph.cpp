@@ -25,6 +25,6 @@ void drawTimer(const std::string& label, g3d::Timer& timer) {
 
 namespace g3d {
 void PerformanceGraphElement::show() {
-	drawTimer(_plotLabel, _timers->getTimer(_timerName));
+	drawTimer(_guiIds["##perfPlot"], _timers->getTimer(_timerName));
 }
 }

@@ -27,15 +27,7 @@ private:
 	void resolutionInput();
 	void renderSettings();
 
-	std::string _expressionInputId;
-	std::string _gridToggleId;
-	std::string _renderModeId;
-	std::string _resolutionInputId;
-	std::string _resolutionUpdateId;
-	std::string _normalToggleId;
-	std::string _clampZToggleId;
-	std::string _gpuUploadToggleId;
-	std::string _regenerateToggleId;
+	DiscriminatedStringMap _guiIds;
 public:
 	const std::string& title() const override { return _title; }
 	unsigned int id() const override { return _graph->id(); }
@@ -46,15 +38,7 @@ public:
 	: _graph { &graph },
 	  _cells { static_cast<int>(graph.cells()) },
 	  _clampZ { graph.clampZ() },
-	  _expressionInputId { std::format("Expression##{}", graph.id()) },
-	  _gridToggleId { std::format("Show Grid##{}", graph.id()) },
-	  _renderModeId { std::format("Render Mode##{}", graph.id()) },
-	  _resolutionInputId { std::format("Resolution##{}", graph.id()) },
-	  _resolutionUpdateId { std::format("Update##{}", graph.id()) },
-	  _normalToggleId { std::format("Show Normals##{}", graph.id()) },
-	  _clampZToggleId { std::format("Clamp Z##{}", graph.id()) },
-	  _gpuUploadToggleId { std::format("GPU Upload##{}", graph.id()) },
-	  _regenerateToggleId { std::format("Regenerate##{}", graph.id()) }
+	  _guiIds { std::format("##{}", graph.id()) }
 	{
 		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	}

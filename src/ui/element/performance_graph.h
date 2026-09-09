@@ -11,7 +11,7 @@ private:
 
 	TimerCollection* _timers;
 
-	std::string _plotLabel;
+	DiscriminatedStringMap _guiIds;
 public:
 	const std::string& title() const override { return _timerName; }
 	unsigned int id() const override { return _id; }
@@ -25,7 +25,7 @@ public:
 	: _timers { &timers },
 	  _timerName { timerName },
 	  _id { id },
-	  _plotLabel { std::format("##{}", id) }
+	  _guiIds { std::format("{}", id) }
 	{}
 };
 }

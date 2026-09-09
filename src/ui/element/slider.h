@@ -11,11 +11,7 @@ private:
 
 	float _value = 0.0f;
 
-	// IDs for each of the ImGui widgets
-	std::string _varEntryId;
-	std::string _valueEntryId;
-	std::string _minEntryId;
-	std::string _maxEntryId;
+	DiscriminatedStringMap _guiIds;
 
 	// Updates the variable store with the slider's current value.
 	void updateStore();
@@ -24,10 +20,7 @@ public:
 		SliderFigure& figure
 	)
 	: _figure { &figure },
-	  _varEntryId { std::format("##{}varEntry", figure.id()) },
-	  _valueEntryId { std::format("##{}valueEntry", figure.id()) },
-	  _minEntryId { std::format("##{}minEntry", figure.id()) },
-	  _maxEntryId { std::format("##{}maxEntry", figure.id()) }
+	  _guiIds { std::format("{}", figure.id()) }
 	{
 		updateStore();
 	}

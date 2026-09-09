@@ -31,8 +31,13 @@ private:
 	std::unordered_map<std::string, std::string> _cache;
 
 public:
-	DiscriminatedStringMap(const std::string& suffix) : _suffix { suffix } {}
+	DiscriminatedStringMap(const std::string& suffix)
+	: _suffix { suffix } {}
+
 	const std::string& operator[](const std::string& key);
+
+	// shortcut function for `map[key].c_str()`, common for ImGui usage
+	const char* c_str(const std::string& key);
 };
 
 struct RenderSettings {
