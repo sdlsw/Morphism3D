@@ -72,5 +72,8 @@ public:
 	void stop(const std::string& key);
 	float getAverage(const std::string& key);
 	Timer& getTimer(const std::string& key);
+	bool hasTimer(const std::string& key);
+
+	const auto& timers() const { return _timers; }
 };
 }

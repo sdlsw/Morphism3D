@@ -1,40 +1,72 @@
 #include "ui/window/stats.h"
 
-float getTimerMeasurement(void* timer_ptr, int i) {
-	g3d::Timer& timer = *reinterpret_cast<g3d::Timer*>(timer_ptr);
-	auto& m = timer.measurements();
-
-	// Display in reverse order so plots move from right to left
-	return m.getMeasurement(m.size() - 1 - i);
-}
-
 namespace g3d {
-void StatsWindow::drawTimer(const std::string& label, Timer& timer) {
-	std::string avgOverlay = std::format("average: {:.4f}ms", timer.measurements().getAverage() * 1000);
-	ImGui::PlotLines(
-		label.c_str(),
-		getTimerMeasurement,
-		&timer,
-		timer.measurements().size(),
-		0,
-		avgOverlay.c_str(),
-		0.0f,
-		FLT_MAX,
-		ImVec2(0, 80.0f)
-	);
+void StatsWindow::addGraph(const std::string& timerName) {
+	if (_elements.contains(timerName)) {
+		_elements.at(timerName).shouldShow = true;
+	} else {
+		_elements.emplace(timerName, PerformanceGraphElement(
+			*_timers,
+			timerName,
+			_nextId
+		));
+		_nextId++;
+	}
+
+	_panel.addFrame(_elements.at(timerName));
 }
 
-void StatsWindow::drawTimerFromCollection(const std::string& timerId) {
-	drawTimer(timerId, _timers->getTimer(timerId));
+void StatsWindow::timerSelection() {
+	for (const auto& [timerName, timer] : _timers->timers()) {
+		bool selected = (
+			_elements.contains(timerName) &&
+			_elements.at(timerName).shouldShow
+		);
+
+		bool clicked = ImGui::Selectable(timerName.c_str(), selected);
+
+		if (clicked) {
+			if (selected) {
+				_panel.removeFrame(_elements.at(timerName));
+			} else {
+				addGraph(timerName);
+			}
+		}
+	}
 }
 
 void StatsWindow::drawUi() {
-	// TODO: Allow the user to select which of these get shown?
-	drawTimerFromCollection("frame");
-	drawTimerFromCollection("regen");
-	drawTimerFromCollection("regenPositions");
-	drawTimerFromCollection("regenNormals");
-	drawTimerFromCollection("regenNormalPositions");
-	drawTimerFromCollection("upload");
+	// Before doing any UI stuff, wipe the elements and frames belonging to
+	// any timer that no longer exists.
+	std::erase_if(_elements, [this](const auto& item) {
+		const auto& [timerName, element] = item;
+
+		if (!_timers->hasTimer(timerName)) {
+			_panel.removeFrame(element);
+			return true;
+		}
+
+		return false;
+	});
+
+	ImGui::SeparatorText("Timer Selection");
+	ImGui::BeginChild(
+		"TimerSelection",
+		ImVec2(ImGui::GetContentRegionAvail().x, 50),
+		ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY,
+		ImGuiWindowFlags_HorizontalScrollbar
+	);
+	timerSelection();
+	ImGui::EndChild();
+
+	ImGui::SeparatorText("Timer Graphs");
+	if (_elements.size() == 0) {
+		ImGui::TextWrapped(
+			"Click some timer names under \"Timer Selection\" "
+			"to show their graphs in this section."
+		);
+	} else {
+		_panel.show();
+	}
 }
 }

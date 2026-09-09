@@ -108,7 +108,7 @@ public:
 			_range,
 			_material
 		);
-		_ui.addWindow<StatsWindow>(_perfTimers);
+		_ui.addWindow<StatsWindow>(_perfTimers, _window);
 		_ui.addWindow<DebugWindow>(_debugSettings);
 		_ui.addWindow<AboutWindow>();
 

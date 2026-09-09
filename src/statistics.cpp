@@ -25,6 +25,10 @@ Timer& TimerCollection::getTimer(const std::string& key) {
 	return _timers.at(key);
 }
 
+bool TimerCollection::hasTimer(const std::string& key) {
+	return _timers.contains(key);
+}
+
 void TimerCollection::start(const std::string& key) {
 	getTimer(key).start();
 }

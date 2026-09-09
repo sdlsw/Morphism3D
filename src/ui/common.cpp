@@ -179,6 +179,10 @@ void RearrangeablePanel::addFrame(UiElement& elem) {
 	_frameOrder.push_back(id);
 }
 
+void RearrangeablePanel::removeFrame(const UiElement& elem) {
+	_frames.at(elem.id()).exists = false;
+}
+
 void RearrangeablePanel::removeAllFrames() {
 	for (auto& [_, frame] : _frames) {
 		frame.exists = false;

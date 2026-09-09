@@ -129,6 +129,7 @@ public:
 	void show();
 
 	void addFrame(UiElement& elem);
+	void removeFrame(const UiElement& elem);
 	void removeAllFrames();
 };
 }
