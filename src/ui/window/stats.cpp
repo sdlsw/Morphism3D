@@ -42,7 +42,7 @@ void StatsWindow::drawUi() {
 		const auto& [timerName, element] = item;
 
 		if (!_timers->hasTimer(timerName)) {
-			_panel.removeFrame(element);
+			if (element.shouldShow) _panel.removeFrame(element);
 			return true;
 		}
 

@@ -18,7 +18,7 @@ void Timer::stop() {
 }
 
 Timer& TimerCollection::getTimer(const std::string& key) {
-	if (!_timers.contains(key)) {
+	if (!hasTimer(key)) {
 		_timers.insert({key, Timer(_defaultTimerSize)});
 	}
 
@@ -27,6 +27,11 @@ Timer& TimerCollection::getTimer(const std::string& key) {
 
 bool TimerCollection::hasTimer(const std::string& key) {
 	return _timers.contains(key);
+}
+
+void TimerCollection::removeTimer(const std::string& key) {
+	if (!hasTimer(key)) return;
+	_timers.erase(key);
 }
 
 void TimerCollection::start(const std::string& key) {

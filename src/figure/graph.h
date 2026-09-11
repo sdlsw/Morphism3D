@@ -151,6 +151,15 @@ private:
 
 	_RangeChangedHandler _rangeChangedHandler { this };
 
+	class _FigureRemovedHandler : public EventHandler<FigureRemovedEvent> {
+	public:
+		GraphFigure* _this;
+		void handle(const FigureRemovedEvent& e) override;
+		_FigureRemovedHandler(GraphFigure* _this) : _this { _this } {}
+	};
+
+	_FigureRemovedHandler _figureRemovedHandler { this };
+
 	void populateSurfaceEntity(Renderer& renderer);
 	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
 	void populateWireframeEntity(Renderer& renderer);
@@ -213,6 +222,7 @@ public:
 		populateNormalEntity(renderer);
 
 		eventRouter.addHandler(_rangeChangedHandler);
+		eventRouter.addHandler(_figureRemovedHandler);
 	}
 
 	GraphFigure(GraphFigure&& other)
@@ -232,9 +242,11 @@ public:
 	  _uploadMode { other._uploadMode },
 	  _perfTimers { other._perfTimers },
 	  _rangeChangedHandler { std::move(other._rangeChangedHandler) },
+	  _figureRemovedHandler { std::move(other._figureRemovedHandler) },
 	  _perfIds { std::move(other._perfIds) }
 	{
 		_rangeChangedHandler._this = this;
+		_figureRemovedHandler._this = this;
 	}
 
 	unsigned int id() const override { return _id; }

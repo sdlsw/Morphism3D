@@ -160,6 +160,14 @@ void GraphFigure::_RangeChangedHandler::handle(const RangeChangedEvent& e) {
 	_this->shouldUpdate = true;
 }
 
+void GraphFigure::_FigureRemovedHandler::handle(const FigureRemovedEvent& e) {
+	if (e.id != _this->_id) return;
+
+	for (const auto& [_, perfId] : _this->_perfIds.cache()) {
+		_this->_perfTimers->removeTimer(perfId);
+	}
+}
+
 void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
 

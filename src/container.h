@@ -38,6 +38,8 @@ public:
 
 	// shortcut function for `map[key].c_str()`, common for ImGui usage
 	const char* c_str(const std::string& key);
+
+	const auto& cache() const { return _cache; }
 };
 
 struct RenderSettings {
