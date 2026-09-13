@@ -3,6 +3,7 @@
 #include "type.h"
 
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <typeindex>
 #include <stdexcept>
@@ -52,6 +53,8 @@ public:
 
 	// FIXME gross gross gross gross
 	Linked(Linked&& other) : _id { other._id }, _linkPoint { other._linkPoint } {
+		if (!isLinked()) return;
+
 		std::cerr << "Linked(Linked&&): moving..." << std::endl;
 		_linkPoint->updateLink(_id, this);
 		other.unlink();
@@ -179,6 +182,66 @@ public:
 
 	EventPrinter(EventRouter& router) {
 		router.addHandler(*this);
+	}
+};
+
+// Helper template for implementing the most common type of event handler.
+// _this should be the `this` pointer of the containing object.
+//
+// WARNING: If the containing type is movable, the _this member must be updated
+// on move.
+//
+// Full usage example:
+//
+// class ContainingType {
+//	void handleMyEvent(const MyEvent& e);
+//	MethodEventHandler<MyEvent, ContainingType> _myEventHandler {
+//		std::mem_fn(handleMyEvent), this
+//	};
+//
+//	ContainingType(EventRouter& router) {
+//		// handler must be added to the router somehow
+//		router.addHandler(_myEventHandler);
+//	}
+//
+//      // Not required if type is not movable.
+//	ContainingType(ContainingType&& other)
+//	: _myEventHandler { std::move(other._myEventHandler) }
+//	{
+//		_myEventHandler._this = this;
+//	}
+// }
+template<typename T, typename E>
+class MethodEventHandler : public EventHandler<E> {
+public:
+	T* _this;
+	std::function<void(T&, const E&)> _func;
+
+	void handle(const E& e) override {
+		_func(*_this, e);
+	}
+
+	MethodEventHandler(T* _this, std::function<void(T&, const E&)> func)
+	: _this { _this }, _func { func } {}
+};
+
+// Heterogenous container that stores many types MethodEventHandler.
+// Helps further reduce the amount of code repetition required to define many
+// event handlers.
+template<typename T, typename... E>
+class CompoundMethodEventHandler {
+public:
+	std::tuple<MethodEventHandler<T, E>...> _handlers;
+
+	CompoundMethodEventHandler(T* _this, std::function<void(T&, const E&)>... _funcs)
+	: _handlers { MethodEventHandler<T, E>(_this, _funcs)... } {}
+
+	void updateThis(T* _this) {
+		std::apply([_this](auto&... args) { ((args._this = _this), ...); }, _handlers);
+	}
+
+	void addToRouter(EventRouter& router) {
+		std::apply([&router](auto&... args) { (router.addHandler(args), ...); }, _handlers);
 	}
 };
 }

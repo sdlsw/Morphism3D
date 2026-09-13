@@ -12,24 +12,18 @@ private:
 
 	std::string _varString;
 
-	class _FigureRemovedHandler : public EventHandler<FigureRemovedEvent> {
-	public:
-		SliderFigure* _this;
+	void handleFigureRemoved(const FigureRemovedEvent& e);
 
-		void handle(const FigureRemovedEvent& e) override {
-			if (e.id != _this->_id) return;
-			_this->_variableStore->set(_this->var(), 0.0f);
-		}
-
-		_FigureRemovedHandler(SliderFigure* figure) : _this { figure } {}
+	CompoundMethodEventHandler<SliderFigure,
+		FigureRemovedEvent
+	> _eventHandlers { this,
+		std::mem_fn(handleFigureRemoved)
 	};
 
 	unsigned int _id;
 
 	float _min = 0.0f;
 	float _max = 3.0f;
-
-	_FigureRemovedHandler _figureRemovedHandler { this };
 public:
 	static bool varValid(char c);
 
@@ -38,16 +32,16 @@ public:
 	  _varString { v, '\0' },
 	  _variableStore { &variableStore }
 	{
-		variableStore.eventRouter().addHandler(_figureRemovedHandler);
+		_eventHandlers.addToRouter(variableStore.eventRouter());
 	}
 
 	SliderFigure(SliderFigure&& other)
 	: _id { other._id },
 	  _varString { std::move(other._varString) },
 	  _variableStore { other._variableStore },
-	  _figureRemovedHandler { std::move(other._figureRemovedHandler) }
+	  _eventHandlers { std::move(other._eventHandlers) }
 	{
-		_figureRemovedHandler._this = this;
+		_eventHandlers.updateThis(this);
 	}
 
 	VariableStore& variableStore() { return *_variableStore; }

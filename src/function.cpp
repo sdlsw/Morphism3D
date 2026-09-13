@@ -1,12 +1,12 @@
 #include "function.h"
 
 namespace g3d {
-void Function::_VariableChangedHandler::handle(const VariableChangedEvent& event) {
+void Function::handleVariableChanged(const VariableChangedEvent& event) {
 	char s[] { '\0', '\0' };
 	s[0] = event.c;
 
-	if (_this->_parsedExpression && _this->_parsedExpression.get()->hasTokenStr(s)) {
-		_this->_updated = true;
+	if (_parsedExpression && _parsedExpression.get()->hasTokenStr(s)) {
+		_updated = true;
 	}
 }
 

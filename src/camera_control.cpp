@@ -1,90 +1,86 @@
 #include "camera_control.h"
 
 namespace g3d {
-void CameraController::_MouseHandler::handle(const MouseButtonEvent& e) {
+void CameraController::handleMouseButtonEvent(const MouseButtonEvent& e) {
 	if (glfwGetWindowAttrib(e.window, GLFW_HOVERED)) {
 		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 }
 
-void CameraController::_KeyHandler::handle(const KeyEvent& e) {
-	Camera& camera = _this->camera();
-
+void CameraController::handleKeyEvent(const KeyEvent& e) {
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode != GLFW_CURSOR_DISABLED) return;
 
 	// Escape cursor capture
 	if (e.key == GLFW_KEY_ESCAPE && e.action == GLFW_PRESS) {
 		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		_this->hasPreviousPos = false;
+		hasPreviousPos = false;
 		return;
 	}
 
 	// Camera reset
 	if (e.key == GLFW_KEY_R && e.action == GLFW_PRESS) {
-		_this->reset();
+		reset();
 		return;
 	}
 
 	// Switch camera mode
 	if (e.key == GLFW_KEY_E && e.action == GLFW_PRESS) {
-		if (_this->mode() == CameraMode::fixedLook) {
-			_this->mode(CameraMode::forward);
+		if (mode() == CameraMode::fixedLook) {
+			mode(CameraMode::forward);
 		} else {
-			_this->mode(CameraMode::fixedLook);
+			mode(CameraMode::fixedLook);
 		}
 	}
 
-	if (_this->directions.contains(e.key)) {
+	if (directions.contains(e.key)) {
 		if (e.action == GLFW_PRESS) {
-			_this->directions[e.key] = true;
+			directions[e.key] = true;
 		}
 
 		if (e.action == GLFW_RELEASE) {
-			_this->directions[e.key] = false;
+			directions[e.key] = false;
 		}
 	}
 }
 
-void CameraController::_PosHandler::handle(const MousePositionEvent& e) {
+void CameraController::handleMousePositionEvent(const MousePositionEvent& e) {
 	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
 	if (inMode == GLFW_CURSOR_DISABLED) {
-		if (_this->hasPreviousPos) {
-			float xoffset = static_cast<float>(e.xpos - _this->lastxpos);
-			float yoffset = static_cast<float>(e.ypos - _this->lastypos);
+		if (hasPreviousPos) {
+			float xoffset = static_cast<float>(e.xpos - lastxpos);
+			float yoffset = static_cast<float>(e.ypos - lastypos);
 
 			// When upside down, need to mirror horizontal angle
 			// increments to keep the apparent rotation direction
 			// consistent. TODO allow this behavior to be toggled?
-			float upsideDownCorrection = _this->_camera.up().z < 0.0f ? -1.0f : 1.0f;
+			float upsideDownCorrection = _camera.up().z < 0.0f ? -1.0f : 1.0f;
 
-			_this->_camera.angles.x += -_this->sensitivity * upsideDownCorrection * xoffset;
-			_this->_camera.angles.y += -_this->sensitivity * yoffset;
+			_camera.angles.x += -sensitivity * upsideDownCorrection * xoffset;
+			_camera.angles.y += -sensitivity * yoffset;
 		}
 
-		_this->lastxpos = e.xpos;
-		_this->lastypos = e.ypos;
-		_this->hasPreviousPos = true;
+		lastxpos = e.xpos;
+		lastypos = e.ypos;
+		hasPreviousPos = true;
 	}
 }
 
-void CameraController::_ScrollHandler::handle(const ScrollEvent& e) {
-	Camera& camera = _this->camera();
-
+void CameraController::handleScrollEvent(const ScrollEvent& e) {
 	// Scroll control only enabled in fixedLook mode
-	if (_this->mode() == CameraMode::forward) return;
+	if (mode() == CameraMode::forward) return;
 
-	glm::vec3 move = camera.forward() * _this->scrollSpeed * static_cast<float>(e.yoffset);
+	glm::vec3 move = _camera.forward() * scrollSpeed * static_cast<float>(e.yoffset);
 
 	if (e.yoffset > 0) {
 		// Make sure we don't overshoot center if moving towards it
 		float dToNew = glm::length(move);
-		float dToCenter = glm::distance(camera.position, camera.lookPosition);
+		float dToCenter = glm::distance(_camera.position, _camera.lookPosition);
 
 		if (dToCenter < dToNew) return;
 	}
 
-	camera.position += move;
+	_camera.position += move;
 }
 
 void CameraController::freeCamUpdate() {

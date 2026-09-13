@@ -22,43 +22,25 @@ private:
 		{GLFW_KEY_SPACE, false}
 	};
 
-	class _MouseHandler : public EventHandler<MouseButtonEvent> {
-		void handle(const MouseButtonEvent& e) override;
-	};
+	void handleMouseButtonEvent(const MouseButtonEvent& e);
+	void handleKeyEvent(const KeyEvent& e);
+	void handleMousePositionEvent(const MousePositionEvent& e);
+	void handleScrollEvent(const ScrollEvent& e);
 
-	class _KeyHandler : public EventHandler<KeyEvent> {
-	private:
-		CameraController* _this;
-
-	public:
-		void handle(const KeyEvent& e) override;
-		_KeyHandler(CameraController* parent) : _this { parent } {}
-	};
-
-	class _PosHandler : public EventHandler<MousePositionEvent> {
-	private:
-		CameraController* _this;
-
-	public:
-		void handle(const MousePositionEvent& e) override;
-		_PosHandler(CameraController* parent) : _this { parent } {}
-	};
-
-	class _ScrollHandler : public EventHandler<ScrollEvent> {
-	private:
-		CameraController* _this;
-
-	public:
-		void handle(const ScrollEvent& e) override;
-		_ScrollHandler(CameraController* parent) : _this { parent} {}
+	CompoundMethodEventHandler<CameraController,
+		MouseButtonEvent,
+		KeyEvent,
+		MousePositionEvent,
+		ScrollEvent
+	> _eventHandlers { this,
+		std::mem_fn(handleMouseButtonEvent),
+		std::mem_fn(handleKeyEvent),
+		std::mem_fn(handleMousePositionEvent),
+		std::mem_fn(handleScrollEvent)
 	};
 
 	Window* _window;
 	Camera _camera;
-	_MouseHandler mouseHandler;
-	_KeyHandler keyHandler { this };
-	_PosHandler posHandler { this };
-	_ScrollHandler scrollHandler { this };
 
 	void freeCamUpdate();
 public:
@@ -84,10 +66,7 @@ public:
 		_camera.lookPosition = center;
 		_camera.lookAt(center);
 
-		window.eventRouter().addHandler(mouseHandler);
-		window.eventRouter().addHandler(keyHandler);
-		window.eventRouter().addHandler(posHandler);
-		window.eventRouter().addHandler(scrollHandler);
+		_eventHandlers.addToRouter(window.eventRouter());
 	}
 
 	Camera& camera() { return _camera; }

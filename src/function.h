@@ -6,12 +6,12 @@
 namespace g3d {
 class Function {
 private:
-	class _VariableChangedHandler : public EventHandler<VariableChangedEvent> {
-	private:
-		Function* _this;
-	public:
-		void handle(const VariableChangedEvent& e) override;
-		_VariableChangedHandler(Function* _this) : _this { _this } {}
+	void handleVariableChanged(const VariableChangedEvent& e);
+
+	CompoundMethodEventHandler<Function,
+		VariableChangedEvent
+	> _eventHandlers { this,
+		std::mem_fn(handleVariableChanged)
 	};
 
 	TokenRegistry _tokenRegistry;
@@ -20,15 +20,22 @@ private:
 	std::unique_ptr<ParseNode> _parsedExpression;
 	bool _animated = false;
 	bool _updated = false;
-
-	_VariableChangedHandler _varChangedHandler { this };
 public:
 	Function(VariableStore& vars)
 	: _vars { &vars },
 	  _tokenRegistry { makeTokenRegistry() },
 	  _startTime { now() }
 	{
-		vars.eventRouter().addHandler(_varChangedHandler);
+		_eventHandlers.addToRouter(vars.eventRouter());
+	}
+
+	Function(Function&& other)
+	: _vars { other._vars },
+	  _tokenRegistry { std::move(other._tokenRegistry) },
+	  _startTime { other._startTime },
+	  _eventHandlers { std::move(other._eventHandlers) }
+	{
+		_eventHandlers.updateThis(this);
 	}
 
 	bool animated() const { return _animated; }

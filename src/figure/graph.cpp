@@ -156,15 +156,15 @@ void GraphMeshBuilder::regenerateEverything() {
 	regenerateVertices();
 }
 
-void GraphFigure::_RangeChangedHandler::handle(const RangeChangedEvent& e) {
-	_this->shouldUpdate = true;
+void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
+	shouldUpdate = true;
 }
 
-void GraphFigure::_FigureRemovedHandler::handle(const FigureRemovedEvent& e) {
-	if (e.id != _this->_id) return;
+void GraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
+	if (e.id != _id) return;
 
-	for (const auto& [_, perfId] : _this->_perfIds.cache()) {
-		_this->_perfTimers->removeTimer(perfId);
+	for (const auto& [_, perfId] : _perfIds.cache()) {
+		_perfTimers->removeTimer(perfId);
 	}
 }
 
