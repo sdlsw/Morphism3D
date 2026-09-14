@@ -18,8 +18,7 @@ private:
 	VariableStore* _vars;
 	TimePoint _startTime;
 	std::unique_ptr<ParseNode> _parsedExpression;
-	bool _animated = false;
-	bool _updated = false;
+	Flag _updated;
 public:
 	Function(VariableStore& vars)
 	: _vars { &vars },
@@ -38,15 +37,11 @@ public:
 		_eventHandlers.updateThis(this);
 	}
 
-	bool animated() const { return _animated; }
-	bool updated() const { return _updated; }
-	void setUpdated() { _updated = true; }
-	void resetUpdated() { _updated = false; }
+	Flag& updated() { return _updated; }
 	auto& vars() { return _vars; }
 
 	float eval(float x, float y);
 	void update();
-	void updateAnimated();
 	void updateExpression(const std::string& expression);
 };
 }

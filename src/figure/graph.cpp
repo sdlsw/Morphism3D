@@ -157,7 +157,7 @@ void GraphMeshBuilder::regenerateEverything() {
 }
 
 void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
-	shouldUpdate = true;
+	shouldUpdate.set();
 }
 
 void GraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
@@ -234,30 +234,30 @@ void GraphFigure::setUploadMode(GraphUploadMode mode) {
 	_uploadMode = mode;
 }
 
-GraphRegenMode GraphFigure::defaultRegenMode() {
-	if (_function.animated()) {
-		return GraphRegenMode::partial;
-	}
-
-	return GraphRegenMode::none;
-}
-
-GraphUploadMode GraphFigure::defaultUploadMode() {
-	if (_function.animated()) {
-		return GraphUploadMode::partial;
-	}
-
-	return GraphUploadMode::none;
-}
-
 void GraphFigure::setTemporaryRegenMode(GraphRegenMode mode) {
-	_regenMode = mode;
 	temporaryRegen = true;
+
+	if (std::to_underlying(mode) > std::to_underlying(_regenMode)) {
+		// By restricting the mode update in this way, we can ensure
+		// repeated invocations of setTemporaryRegenMode resolve
+		// correctly. For instance, if we call
+		// setTemporaryRegenMode(all), and then later
+		// setTemporaryRegenMode(partial), we want "all" to win, since
+		// "all" will cover "partial" anyway.
+		//
+		// Essentially our goal is the smallest common superset of all
+		// requested temporary updates. A similar concept also applies
+		// to setTemporaryUploadMode.
+		_regenMode = mode;
+	}
 }
 
 void GraphFigure::setTemporaryUploadMode(GraphUploadMode mode) {
-	_uploadMode = mode;
 	temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
+
+	if (std::to_underlying(mode) > std::to_underlying(_uploadMode)) {
+		_uploadMode = mode;
+	}
 }
 
 void GraphFigure::regen() {
@@ -320,7 +320,7 @@ bool GraphFigure::clampZ() const {
 
 void GraphFigure::cells(unsigned int cells) {
 	_builder.cells = cells;
-	cellsChanged = true;
+	cellsChanged.set();
 }
 
 unsigned int GraphFigure::cells() const {
@@ -332,27 +332,17 @@ void GraphFigure::update() {
 }
 
 void GraphFigure::updateSynchronized() {
-	if (_function.updated()) {
-		shouldUpdate = true;
-		_function.resetUpdated();
-	}
+	shouldUpdate.setByConsuming(_function.updated());
 
-	if (shouldUpdate) {
-		if (_function.animated()) {
-			setRegenMode(defaultRegenMode());
-			setUploadMode(defaultUploadMode());
-		} else {
-			setTemporaryRegenMode(GraphRegenMode::partial);
-			setTemporaryUploadMode(GraphUploadMode::partial);
-		}
-		shouldUpdate = false;
+	if (shouldUpdate.consume()) {
+		setTemporaryRegenMode(GraphRegenMode::partial);
+		setTemporaryUploadMode(GraphUploadMode::partial);
 	}
 
 	// Cell update overrides normal update handling
-	if (cellsChanged) {
+	if (cellsChanged.consume()) {
 		setTemporaryRegenMode(GraphRegenMode::all);
 		setTemporaryUploadMode(GraphUploadMode::all);
-		cellsChanged = false;
 	}
 
 	regen();
@@ -360,12 +350,12 @@ void GraphFigure::updateSynchronized() {
 
 	if (temporaryRegen) {
 		temporaryRegen = false;
-		_regenMode = defaultRegenMode();
+		_regenMode = GraphRegenMode::none;
 	}
 
 	if (temporaryUploadFrames > 0) {
 		temporaryUploadFrames--;
-		if (temporaryUploadFrames == 0) _uploadMode = defaultUploadMode();
+		if (temporaryUploadFrames == 0) _uploadMode = GraphUploadMode::none;
 	}
 }
 

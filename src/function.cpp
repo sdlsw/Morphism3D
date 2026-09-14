@@ -6,7 +6,7 @@ void Function::handleVariableChanged(const VariableChangedEvent& event) {
 	s[0] = event.c;
 
 	if (_parsedExpression && _parsedExpression.get()->hasTokenStr(s)) {
-		_updated = true;
+		_updated.set();
 	}
 }
 
@@ -28,20 +28,14 @@ void Function::update() {
 	_vars->set('t', secondsSince(_startTime));
 }
 
-void Function::updateAnimated() {
-	_animated = (_parsedExpression && _parsedExpression.get()->hasTokenStr("t"));
-}
-
 void Function::updateExpression(const std::string& expression) {
 	Parser p { _tokenRegistry, *_vars, expression };
 
 	try {
 		_parsedExpression.reset(new ParseNode(p.parse()));
-		updateAnimated();
-		_updated = true;
+		_updated.set();
 
 		std::cerr << "Expression updated: " << expression << std::endl;
-		std::cerr << "Animated: " << _animated << std::endl;
 	} catch (const std::exception& e) {
 		std::cerr << "Failed to parse expression: " << expression << std::endl;
 		std::cerr << e.what() << std::endl;

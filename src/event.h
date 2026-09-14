@@ -225,7 +225,7 @@ public:
 	: _this { _this }, _func { func } {}
 };
 
-// Heterogenous container that stores many types MethodEventHandler.
+// Heterogeneous container that stores many types MethodEventHandler.
 // Helps further reduce the amount of code repetition required to define many
 // event handlers.
 template<typename T, typename... E>
@@ -242,6 +242,35 @@ public:
 
 	void addToRouter(EventRouter& router) {
 		std::apply([&router](auto&... args) { (router.addHandler(args), ...); }, _handlers);
+	}
+};
+
+// Lighter weight alternative to events. Useful for communication between an
+// object and its subobjects, while Events are better for communication between
+// systems.
+class Flag {
+private:
+	bool _set;
+public:
+	Flag() : _set { false } {}
+	Flag(bool set) : _set { set } {}
+
+	void set() { _set = true; }
+	void set(bool s) { _set = s; }
+	void reset() { _set = false; }
+	bool peek() { return _set; }
+
+	// The primary way to "receive" a flag event. Returns the flag's value
+	// and resets it for the next frame. Should be called exactly once per
+	// flag object.
+	bool consume() {
+		bool tmp = _set;
+		_set = false;
+		return tmp;
+	}
+
+	void setByConsuming(Flag& flag) {
+		if (flag.consume()) set();
 	}
 };
 }

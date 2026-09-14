@@ -81,14 +81,14 @@ public:
 	void regenerateEverything();
 };
 
-enum class GraphRegenMode {
-	none,
+enum class GraphRegenMode : int {
+	none = 0,
 	partial,
 	all
 };
 
-enum class GraphUploadMode {
-	none,
+enum class GraphUploadMode : int {
+	none = 0,
 	partial,
 	all
 };
@@ -112,9 +112,9 @@ private:
 	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
-	bool cellsChanged = false;
 	bool temporaryRegen = false;
-	bool shouldUpdate = false;
+	Flag shouldUpdate;
+	Flag cellsChanged;
 
 	// When the cells value changes, the buffers need to be updated for
 	// multiple frames since everything is double buffered.
@@ -164,9 +164,6 @@ private:
 	void setRegenMode(GraphRegenMode mode);
 	void setUploadMode(GraphUploadMode mode);
 
-	GraphRegenMode defaultRegenMode();
-	GraphUploadMode defaultUploadMode();
-
 	void setTemporaryRegenMode(GraphRegenMode mode);
 	void setTemporaryUploadMode(GraphUploadMode mode);
 
@@ -204,8 +201,8 @@ public:
 	  _gridColors { renderer, makeGridColors() },
 	  _normalIndices { renderer, _builder.normalIndices() },
 	  _normalColors { renderer, makeNormalColors() },
-	  _regenMode { defaultRegenMode() },
-	  _uploadMode { defaultUploadMode() },
+	  _regenMode { GraphRegenMode::none },
+	  _uploadMode { GraphUploadMode::none },
 	  _perfTimers { &perfTimers }
 	{
 		populateSurfaceEntity(renderer);
