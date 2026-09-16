@@ -328,6 +328,7 @@ unsigned int GraphFigure::cells() const {
 }
 
 void GraphFigure::updateSynchronized() {
+	_perfTimers->start(_perfIds["updateSynchronized"]);
 	shouldUpdate.setByConsuming(_function.updated());
 
 	if (shouldUpdate.consume()) {
@@ -353,6 +354,7 @@ void GraphFigure::updateSynchronized() {
 		temporaryUploadFrames--;
 		if (temporaryUploadFrames == 0) _uploadMode = GraphUploadMode::none;
 	}
+	_perfTimers->stop(_perfIds["updateSynchronized"]);
 }
 
 void GraphFigure::draw() {
