@@ -4,7 +4,7 @@
 
 #include <concepts>
 #include <deque>
-#include <unordered_map>
+#include <map>
 
 namespace g3d {
 template<std::floating_point T>
@@ -63,7 +63,9 @@ public:
 class TimerCollection {
 private:
 	size_t _defaultTimerSize;
-	std::unordered_map<std::string, Timer> _timers;
+
+	// Ordered map is used on purpose to simplify UI here.
+	std::map<std::string, Timer> _timers;
 
 public:
 	TimerCollection(size_t defaultTimerSize) : _defaultTimerSize { defaultTimerSize } {}
