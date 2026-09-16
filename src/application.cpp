@@ -99,7 +99,9 @@ void Application::update() {
 	imGuiHandleControlExclusivity(_window, _camController);
 
 	// UI updates.
+	_perfTimers.start("ui");
 	_ui.show();
+	_perfTimers.stop("ui");
 
 	// Entity and camera updates.
 	_camController.update();
