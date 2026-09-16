@@ -1,18 +1,23 @@
 #include "ui/window/figure.h"
 
+#include "ui/element/animator.h"
 #include "ui/element/graph.h"
 #include "ui/element/slider.h"
 
 #include <typeinfo>
 
 namespace g3d {
-bool FigureWindow::hasSlider(char c) {
+bool FigureWindow::varTaken(char c) {
 	const auto& sliderType = typeid(SliderFigure);
+	const auto& animatorType = typeid(AnimatorFigure);
 
-	for (const auto& [id, figure] : _figures->figures()) {
+	for (auto& [id, figure] : _figures->figures()) {
 		if (typeid(*figure.get()) == sliderType) {
-			const auto* slider = dynamic_cast<SliderFigure*>(figure.get());
-			if (slider->var() == c) return true;
+			auto* slider = dynamic_cast<SliderFigure*>(figure.get());
+			if (slider->varRange().var() == c) return true;
+		} else if (typeid(*figure.get()) == animatorType) {
+			auto* animator = dynamic_cast<AnimatorFigure*>(figure.get());
+			if (animator->varRange().var() == c) return true;
 		}
 	}
 
@@ -21,17 +26,22 @@ bool FigureWindow::hasSlider(char c) {
 
 char FigureWindow::findFirstAvailableVar() {
 	for (char c = 'a'; c <= 'z'; c++) {
-		// NOTE: This is a bit slow (iterating over all sliders every
+		// NOTE: This is a bit slow (iterating over all figures every
 		// time we check) but in practice it doesn't seem to matter, so
 		// stick with simpler algorithm
-		if (!hasSlider(c) && SliderFigure::varValid(c)) return c;
+		if (!varTaken(c) && VariableRange::varValid(c)) return c;
 	}
 
 	for (char c = 'A'; c <= 'Z'; c++) {
-		if (!hasSlider(c) && SliderFigure::varValid(c)) return c;
+		if (!varTaken(c) && VariableRange::varValid(c)) return c;
 	}
 
 	return '\0';
+}
+
+void FigureWindow::addAnimator(char c) {
+	auto& newAnimator = _figures->addFigure<AnimatorFigure>(*_vars, c);
+	_panel.addFrame(_figures->getUiElement(newAnimator));
 }
 
 void FigureWindow::addSlider(char c) {
@@ -56,6 +66,11 @@ void FigureWindow::addGraph() {
 }
 
 void FigureWindow::drawUi() {
+	if (ImGui::Button("Add Graph")) {
+		addGraph();
+	}
+
+	ImGui::SameLine();
 	if (ImGui::Button("Add Slider")) {
 		char avail = findFirstAvailableVar();
 		if (avail != '\0') {
@@ -64,8 +79,11 @@ void FigureWindow::drawUi() {
 	}
 
 	ImGui::SameLine();
-	if (ImGui::Button("Add Graph")) {
-		addGraph();
+	if (ImGui::Button("Add Animator")) {
+		char avail = findFirstAvailableVar();
+		if (avail != '\0') {
+			addAnimator(avail);
+		}
 	}
 
 	ImGui::SameLine();

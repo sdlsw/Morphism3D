@@ -327,10 +327,6 @@ unsigned int GraphFigure::cells() const {
 	return _builder.cells;
 }
 
-void GraphFigure::update() {
-	_function.update();
-}
-
 void GraphFigure::updateSynchronized() {
 	shouldUpdate.setByConsuming(_function.updated());
 

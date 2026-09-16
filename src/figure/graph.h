@@ -258,7 +258,6 @@ public:
 
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
-	void update() override;
 	void updateSynchronized() override;
 	void draw() override;
 };

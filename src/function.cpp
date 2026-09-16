@@ -24,10 +24,6 @@ float Function::eval(float x, float y) {
 	return _parsedExpression.get()->eval();
 }
 
-void Function::update() {
-	_vars->set('t', secondsSince(_startTime));
-}
-
 void Function::updateExpression(const std::string& expression) {
 	Parser p { _tokenRegistry, *_vars, expression };
 

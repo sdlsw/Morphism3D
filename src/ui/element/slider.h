@@ -2,7 +2,6 @@
 
 #include "figure/figure.h"
 #include "figure/slider.h"
-#include "ui/common.h"
 
 namespace g3d {
 class SliderElement : public UiElement {
@@ -27,7 +26,7 @@ public:
 
 	void show() override;
 	unsigned int id() const override { return _figure->id(); }
-	const std::string& title() const override { return _figure->varString(); }
+	const std::string& title() const override { return _figure->varRange().varString; }
 };
 
 template<>

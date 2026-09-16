@@ -23,19 +23,17 @@ private:
 
 	unsigned int _nextSliderId = 0;
 
-	// Returns true if this panel has a slider with the given character
+	// Returns true if this panel has a slider/animator with the given character
 	// defined.
-	bool hasSlider(char c);
+	bool varTaken(char c);
 
-	// Adds a slider. Sliders are removed in the UI through an X on their
-	// header bar.
+	void addGraph();
 	void addSlider(char c);
+	void addAnimator(char c);
 
 	// Finds an available variable that doesn't already have a slider.
 	// Returns '\0' on failure.
 	char findFirstAvailableVar();
-
-	void addGraph();
 
 public:
 	const std::string& title() const override { return _title; }
