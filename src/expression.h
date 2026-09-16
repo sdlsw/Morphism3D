@@ -41,7 +41,8 @@ private:
 	EventRouter* _eventRouter = nullptr;
 
 public:
-	void set(char c, float val, bool sendEvent=true);
+	void setWithoutNotify(char c, float val);
+	void set(char c, float val);
 	float get(char c);
 
 	EventRouter& eventRouter() { return *_eventRouter; }

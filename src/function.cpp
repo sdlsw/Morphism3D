@@ -19,8 +19,8 @@ float Function::eval(float x, float y) {
 	// TODO find a less hacky way to do this that doesn't involve updating
 	// the variable store on every eval. Other graphs are going to need to
 	// share this.
-	_vars->set('x', x, false);
-	_vars->set('y', y, false);
+	_vars->setWithoutNotify('x', x);
+	_vars->setWithoutNotify('y', y);
 	return _parsedExpression.get()->eval();
 }
 

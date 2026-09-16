@@ -44,10 +44,14 @@ TokenRegistry makeTokenRegistry() {
 	return r;
 }
 
-void VariableStore::set(char c, float val, bool sendEvent) {
+void VariableStore::setWithoutNotify(char c, float val) {
 	_vars[c] = val;
+}
 
-	if (_eventRouter != nullptr && sendEvent) {
+void VariableStore::set(char c, float val) {
+	setWithoutNotify(c, val);
+
+	if (_eventRouter != nullptr) {
 		VariableChangedEvent e { c, val };
 		_eventRouter->routeEvent(e);
 	}
