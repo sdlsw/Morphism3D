@@ -14,14 +14,8 @@ void RenderWindow::lightSection() {
 	resettableLightPanel(*_light);
 }
 
-void RenderWindow::materialSection() {
-	ImGui::SeparatorText("Material");
-	resettableMaterialPanel(*_material);
-}
-
 void RenderWindow::drawUi() {
 	basicSettingsSection();
 	lightSection();
-	materialSection();
 }
 }

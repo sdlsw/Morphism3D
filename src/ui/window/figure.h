@@ -19,7 +19,6 @@ private:
 	Renderer* _renderer;
 	TimerCollection* _perfTimers;
 	Range* _range;
-	Material* _material;
 
 	unsigned int _nextSliderId = 0;
 
@@ -45,16 +44,14 @@ public:
 		VariableStore& vars,
 		Renderer& renderer,
 		TimerCollection& perfTimers,
-		Range& range,
-		Material& material
+		Range& range
 	)
 	: _figures { &figures },
 	  _panel { window },
 	  _vars { &vars },
 	  _renderer { &renderer },
 	  _perfTimers { &perfTimers },
-	  _range { &range },
-	  _material { &material }
+	  _range { &range }
 	{}
 };
 }

@@ -11,11 +11,9 @@ private:
 
 	RenderSettings* _renderSettings;
 	WithInitial<Light>* _light;
-	WithInitial<Material>* _material;
 
 	void basicSettingsSection();
 	void lightSection();
-	void materialSection();
 public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override;
@@ -23,12 +21,10 @@ public:
 	RenderWindow() = delete;
 	RenderWindow(
 		RenderSettings& renderSettings,
-		WithInitial<Light>& light,
-		WithInitial<Material>& material
+		WithInitial<Light>& light
 	)
 	: _renderSettings { &renderSettings },
-	  _light { &light },
-	  _material { &material }
+	  _light { &light }
 	{}
 };
 }

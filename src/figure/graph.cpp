@@ -37,21 +37,11 @@ void GraphMeshBuilder::generatePositions() {
 }
 
 void GraphMeshBuilder::generateColors() {
-	// Colors for extreme points of graph.
-	// nxny - (-range, -range)
-	// pxny - (range, -range)
-	// nxpy - (-range, range)
-	// pxpy - (range, range)
-	glm::vec3 nxny {0.141f, 0.706f, 0.322f}; // green
-	glm::vec3 pxny {0.988f, 0.804f, 0.000f}; // yellow orange
-	glm::vec3 nxpy {0.400f, 0.255f, 0.953f}; // blue violet
-	glm::vec3 pxpy {1.000f, 0.000f, 0.000f}; // red
-
 	float inc = 1.0f / static_cast<float>(cells);
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 		float lerp_a_y = inc*ypt;
-		glm::vec3 colornx = glm::mix(nxny, nxpy, lerp_a_y);
-		glm::vec3 colorpx = glm::mix(pxny, pxpy, lerp_a_y);
+		auto colornx = _appearance->colornx(lerp_a_y);
+		auto colorpx = _appearance->colorpx(lerp_a_y);
 
 		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
 			float lerp_a_x = inc*xpt;
@@ -176,7 +166,7 @@ void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
 	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
 	_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
-	_surface.addComponent<MaterialComponent>(renderer, *_surfaceMaterial);
+	_surface.addComponent<MaterialComponent>(renderer, _appearance.material);
 
 	_surface.setLastRender<DynamicIndexBufferComponent>();
 }

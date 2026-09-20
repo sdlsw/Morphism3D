@@ -72,9 +72,16 @@ void GraphElement::renderSettings() {
 	if (clampChanged) {
 		_graph->clampZ(_clampZ);
 	}
+
+	ImGui::Checkbox(
+		_guiIds.c_str("Show Appearance Settings"),
+		&_appearanceWindow.open
+	);
 }
 
 void GraphElement::show() {
+	_appearanceWindow.show();
+
 	expressionInput();
 	renderSettings();
 

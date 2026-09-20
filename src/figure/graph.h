@@ -12,6 +12,69 @@
 #include <vector>
 
 namespace g3d {
+struct GraphAppearance {
+	// Colors for extreme points of graph.
+	// nxny - (-range, -range)
+	// pxny - (range, -range)
+	// nxpy - (-range, range)
+	// pxpy - (range, range)
+	glm::vec3 nxnyColor;
+	glm::vec3 pxnyColor;
+	glm::vec3 nxpyColor;
+	glm::vec3 pxpyColor;
+
+	WithInitial<Material> material;
+
+	Flag colorChanged;
+
+	GraphAppearance(
+		const glm::vec3& nxny,
+		const glm::vec3& pxny,
+		const glm::vec3& nxpy,
+		const glm::vec3& pxpy,
+		const Material& material
+	)
+	: nxnyColor { nxny },
+	  pxnyColor { pxny },
+	  nxpyColor { nxpy },
+	  pxpyColor { pxpy },
+	  material {{ material }}
+	{}
+
+	GraphAppearance(
+		const glm::vec3& color,
+		const Material& material
+	)
+	: GraphAppearance(color, color, color, color, material) {}
+
+	GraphAppearance(const glm::vec3& color)
+	: GraphAppearance(color, defaultMaterial()) {}
+
+	GraphAppearance()
+	: GraphAppearance(
+		{0.141f, 0.706f, 0.322f}, // green
+		{0.988f, 0.804f, 0.000f}, // yellow orange
+		{0.400f, 0.255f, 0.953f}, // blue violet
+		{1.000f, 0.000f, 0.000f}, // red
+		defaultMaterial()
+	) {}
+
+	glm::vec3 colornx(float lerp_y) const {
+		return glm::mix(nxnyColor, nxpyColor, lerp_y);
+	}
+
+	glm::vec3 colorpx(float lerp_y) const {
+		return glm::mix(pxnyColor, pxpyColor, lerp_y);
+	}
+
+	void setSingleColor(const glm::vec3& color) {
+		nxnyColor = color;
+		pxnyColor = color;
+		nxpyColor = color;
+		pxpyColor = color;
+	}
+};
+
 class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
@@ -20,6 +83,7 @@ private:
 	TimerCollection* _perfTimers;
 	DiscriminatedStringMap* _perfIds;
 	Range* _range;
+	GraphAppearance* _appearance;
 
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
@@ -54,12 +118,14 @@ public:
 		Function& f,
 		unsigned int cells,
 		Range& range,
+		GraphAppearance& appearance,
 		TimerCollection& perfTimers,
 		DiscriminatedStringMap& perfIds
 	)
 	: _func { &f },
 	  cells { cells },
 	  _range { &range },
+	  _appearance { &appearance },
 	  _perfTimers { &perfTimers },
 	  _perfIds { &perfIds }
 	{
@@ -109,6 +175,7 @@ private:
 
 	Function _function;
 	DiscriminatedStringMap _perfIds;
+	GraphAppearance _appearance;
 	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
@@ -121,8 +188,6 @@ private:
 	unsigned int temporaryUploadFrames = 0;
 	GraphRegenMode _regenMode = GraphRegenMode::none;
 	GraphUploadMode _uploadMode = GraphUploadMode::none;
-
-	Material* _surfaceMaterial;
 
 	DynamicVertexAttributes<Position> _surfacePositions;
 
@@ -185,14 +250,12 @@ public:
 		VariableStore& variableStore,
 		unsigned int cells,
 		Range& range,
-		TimerCollection& perfTimers,
-		Material& material
+		TimerCollection& perfTimers
 	)
 	: _id { id },
 	  _function { variableStore },
 	  _perfIds { std::format("_graph{}", id) },
-	  _builder { _function, cells, range, perfTimers, _perfIds },
-	  _surfaceMaterial { &material },
+	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },
 	  _surfaceNormals { renderer, _builder.normals() },
@@ -218,7 +281,7 @@ public:
 	: _id { other._id },
 	  _function { std::move(other._function) },
 	  _builder { std::move(other._builder) },
-	  _surfaceMaterial { other._surfaceMaterial },
+	  _appearance { other._appearance },
 	  _surfacePositions { std::move(other._surfacePositions) } ,
 	  _surfaceColors { std::move(other._surfaceColors) },
 	  _surfaceNormals { std::move(other._surfaceNormals) },
@@ -240,9 +303,7 @@ public:
 
 	auto& func() { return _function; }
 
-	// Allow outside access to the surface material so the UI can
-	// manipulate it.
-	auto& surfaceMaterial() { return _surfaceMaterial; }
+	auto& appearance() { return _appearance; }
 
 	auto& surface() { return _surface; }
 	auto& gridTop() { return _gridTop; }

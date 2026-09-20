@@ -4,6 +4,7 @@
 #include "figure/graph.h"
 #include "figure/figure.h"
 #include "ui/common.h"
+#include "ui/window/graph_appearance.h"
 
 namespace g3d {
 // Unfortunately need to define this in header since it's used in a template.
@@ -28,6 +29,8 @@ private:
 	void renderSettings();
 
 	DiscriminatedStringMap _guiIds;
+
+	GraphAppearanceWindow _appearanceWindow;
 public:
 	const std::string& title() const override { return _title; }
 	unsigned int id() const override { return _graph->id(); }
@@ -38,9 +41,11 @@ public:
 	: _graph { &graph },
 	  _cells { static_cast<int>(graph.cells()) },
 	  _clampZ { graph.clampZ() },
-	  _guiIds { std::format("##{}", graph.id()) }
+	  _guiIds { std::format("##{}", graph.id()) },
+	  _appearanceWindow { graph.id(), graph.appearance() }
 	{
 		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
+		_appearanceWindow.open = false;
 	}
 };
 

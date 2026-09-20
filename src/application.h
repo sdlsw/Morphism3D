@@ -46,10 +46,6 @@ private:
 		1.0f
 	}};
 
-	// TODO: Move this back into graph, allow each graph to have a unique
-	// material.
-	WithInitial<Material> _material { defaultMaterial() };
-
 	EventPrinter<MousePositionEvent> _posDumper;
 	EventPrinter<KeyEvent> _keyDumper;
 	EventPrinter<ScrollEvent> _scrollDumper;
@@ -97,7 +93,7 @@ public:
 	{
 		// Set up UI
 		_ui.addWindow<CameraWindow>(_camController);
-		_ui.addWindow<RenderWindow>(_renderSettings, _light, _material);
+		_ui.addWindow<RenderWindow>(_renderSettings, _light);
 		_ui.addWindow<RangeWindow>(_range);
 		_ui.addWindow<FigureWindow>(
 			_figures,
@@ -105,8 +101,7 @@ public:
 			_variableStore,
 			_renderer,
 			_perfTimers,
-			_range,
-			_material
+			_range
 		);
 		_ui.addWindow<StatsWindow>(_perfTimers, _window);
 		_ui.addWindow<DebugWindow>(_debugSettings);
