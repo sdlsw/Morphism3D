@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bitmask.h"
 #include "vk/renderer.h"
 
 namespace g3d {
@@ -107,34 +108,6 @@ StaticVertexAttributes<Color> solidColor(
 
 // Creates a new default material
 Material defaultMaterial();
-
-template<typename T>
-struct enableBitmaskOps {
-	static constexpr bool value = false;
-};
-
-template<typename T>
-concept BitmaskOpsEnabled = enableBitmaskOps<T>::value;
-
-template<BitmaskOpsEnabled T>
-constexpr T operator|(const T& a, const T& b) {
-	return static_cast<T>(std::to_underlying(a) | std::to_underlying(b));
-}
-
-template<BitmaskOpsEnabled T>
-constexpr T operator&(const T& a, const T& b) {
-	return static_cast<T>(std::to_underlying(a) & std::to_underlying(b));
-}
-
-template<BitmaskOpsEnabled T>
-constexpr T operator~(const T& a) {
-	return static_cast<T>(~std::to_underlying(a));
-}
-
-template<BitmaskOpsEnabled T>
-constexpr bool any(const T& a) {
-	return std::to_underlying(a) != 0;
-}
 
 enum class MeshBuilderMode : uint8_t {
 	none = 0,

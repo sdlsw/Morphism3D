@@ -115,8 +115,15 @@ void GraphMeshBuilder::generateNormalIndices() {
 	}
 }
 
-void GraphMeshBuilder::regenerateVertices() {
-	regeneratePositions();
+void GraphMeshBuilder::regeneratePositions() {
+	_positions.clear();
+	_normals.clear();
+	generatePositions();
+	generateNormals();
+	generateNormalPositions();
+}
+
+void GraphMeshBuilder::regenerateColors() {
 	_colors.clear();
 	generateColors();
 }
@@ -131,19 +138,20 @@ void GraphMeshBuilder::regenerateIndices() {
 	generateNormalIndices();
 }
 
-void GraphMeshBuilder::regeneratePositions() {
-	_positions.clear();
-	_normals.clear();
-	generatePositions();
-	generateNormals();
-	generateNormalPositions();
-}
-
-void GraphMeshBuilder::regenerateEverything() {
+void GraphMeshBuilder::regenerate(const GraphUpdateMode& mode) {
 	// Indices need to be regenerated first, since the
 	// generateNormals() is dependent on them.
-	regenerateIndices();
-	regenerateVertices();
+	if (flagsEnabled(mode, GraphUpdateMode::indices)) {
+		regenerateIndices();
+	}
+
+	if (flagsEnabled(mode, GraphUpdateMode::colors)) {
+		regenerateColors();
+	}
+
+	if (flagsEnabled(mode, GraphUpdateMode::positions)) {
+		regeneratePositions();
+	}
 }
 
 void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
@@ -212,90 +220,63 @@ std::vector<Color> GraphFigure::makeNormalColors() {
 	return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
-void GraphFigure::setRegenMode(GraphRegenMode mode) {
-	if (temporaryRegen) return;
-	_regenMode = mode;
+void GraphFigure::setRegenMode(GraphUpdateMode mode) {
+	inRegen.set();
+	_regenMode |= mode;
 }
 
-void GraphFigure::setUploadMode(GraphUploadMode mode) {
-	// Ignore sets if in temporary mode so we don't accidentally
-	// override updates.
-	if (temporaryUploadFrames > 0) return;
-	_uploadMode = mode;
+void GraphFigure::setUploadMode(GraphUpdateMode mode) {
+	uploadFrames = MAX_FRAMES_IN_FLIGHT;
+	_uploadMode |= mode;
 }
 
-void GraphFigure::setTemporaryRegenMode(GraphRegenMode mode) {
-	temporaryRegen = true;
-
-	if (std::to_underlying(mode) > std::to_underlying(_regenMode)) {
-		// By restricting the mode update in this way, we can ensure
-		// repeated invocations of setTemporaryRegenMode resolve
-		// correctly. For instance, if we call
-		// setTemporaryRegenMode(all), and then later
-		// setTemporaryRegenMode(partial), we want "all" to win, since
-		// "all" will cover "partial" anyway.
-		//
-		// Essentially our goal is the smallest common superset of all
-		// requested temporary updates. A similar concept also applies
-		// to setTemporaryUploadMode.
-		_regenMode = mode;
-	}
-}
-
-void GraphFigure::setTemporaryUploadMode(GraphUploadMode mode) {
-	temporaryUploadFrames = MAX_FRAMES_IN_FLIGHT;
-
-	if (std::to_underlying(mode) > std::to_underlying(_uploadMode)) {
-		_uploadMode = mode;
-	}
+void GraphFigure::setUpdateMode(GraphUpdateMode mode) {
+	setRegenMode(mode);
+	setUploadMode(mode);
 }
 
 void GraphFigure::regen() {
 	if (!doRegen) return;
 
 	_perfTimers->start(_perfIds["regen"]);
-	switch (_regenMode) {
-		case GraphRegenMode::partial:
-			_builder.regeneratePositions();
-			break;
-		case GraphRegenMode::all:
-			_builder.regenerateEverything();
-			break;
-		default:
-			break;
-	}
+	_builder.regenerate(_regenMode);
 	_perfTimers->stop(_perfIds["regen"]);
 }
 
-void GraphFigure::uploadPartial() {
+void GraphFigure::uploadPositions() {
 	_surfacePositions.copyData(_builder.positions());
 	_surfaceNormals.copyData(_builder.normals());
 }
 
-void GraphFigure::uploadAll() {
-	uploadPartial();
+void GraphFigure::uploadColors() {
 	_surfaceColors.copyData(_builder.colors());
+	_gridColors.copyData(makeGridColors());
+	_normalColors.copyData(makeNormalColors());
+}
+
+void GraphFigure::uploadIndices() {
 	_surfaceIndices.copyData(_builder.triangleIndices());
 	_gridIndices.copyData(_builder.lineIndices());
-	_gridColors.copyData(makeGridColors());
 	_normalIndices.copyData(_builder.normalIndices());
-	_normalColors.copyData(makeNormalColors());
 }
 
 void GraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
-	switch (_uploadMode) {
-		case GraphUploadMode::partial:
-			uploadPartial();
-			break;
-		case GraphUploadMode::all:
-			uploadAll();
-			break;
-		default:
-			break;
+
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::positions)) {
+		uploadPositions();
 	}
+
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::colors)) {
+		uploadColors();
+	}
+
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::indices)) {
+		uploadIndices();
+	}
+
 	_perfTimers->stop(_perfIds["upload"]);
 }
 
@@ -322,27 +303,27 @@ void GraphFigure::updateSynchronized() {
 	shouldUpdate.setByConsuming(_function.updated());
 
 	if (shouldUpdate.consume()) {
-		setTemporaryRegenMode(GraphRegenMode::partial);
-		setTemporaryUploadMode(GraphUploadMode::partial);
+		setUpdateMode(GraphUpdateMode::positions);
 	}
 
-	// Cell update overrides normal update handling
+	if (_appearance.colorChanged.consume()) {
+		setUpdateMode(GraphUpdateMode::colors);
+	}
+
 	if (cellsChanged.consume()) {
-		setTemporaryRegenMode(GraphRegenMode::all);
-		setTemporaryUploadMode(GraphUploadMode::all);
+		setUpdateMode(allEnabled<GraphUpdateMode>());
 	}
 
 	regen();
 	upload();
 
-	if (temporaryRegen) {
-		temporaryRegen = false;
-		_regenMode = GraphRegenMode::none;
+	if (inRegen.consume()) {
+		_regenMode = GraphUpdateMode::none;
 	}
 
-	if (temporaryUploadFrames > 0) {
-		temporaryUploadFrames--;
-		if (temporaryUploadFrames == 0) _uploadMode = GraphUploadMode::none;
+	if (uploadFrames > 0) {
+		uploadFrames--;
+		if (uploadFrames == 0) _uploadMode = GraphUpdateMode::none;
 	}
 	_perfTimers->stop(_perfIds["updateSynchronized"]);
 }

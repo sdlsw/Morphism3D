@@ -631,7 +631,7 @@ MeshBuilder& MeshBuilder::rot90Z(RotateDirection dir) {
 }
 
 bool MeshBuilder::modeHas(MeshBuilderMode check) const {
-	return any(_mode & check);
+	return flagsEnabled(_mode, check);
 }
 
 StaticMesh MeshBuilder::lineMesh() {

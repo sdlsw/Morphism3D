@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bitmask.h"
 #include "container.h"
 #include "figure/iface.h"
 #include "function.h"
@@ -75,6 +76,18 @@ struct GraphAppearance {
 	}
 };
 
+enum class GraphUpdateMode : uint8_t {
+	none = 0,
+	positions = 1 << 1,
+	colors = 1 << 2,
+	indices = 1 << 3
+};
+
+template<>
+struct enableBitmaskOps<GraphUpdateMode> {
+	static constexpr bool value = true;
+};
+
 class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
@@ -103,7 +116,8 @@ private:
 	void generateLineIndices();
 	void generateTriangleIndices();
 	void generateNormalIndices();
-	void regenerateVertices();
+	void regeneratePositions();
+	void regenerateColors();
 	void regenerateIndices();
 public:
 	// The number of discrete steps to walk along each input variable.
@@ -129,7 +143,7 @@ public:
 	  _perfTimers { &perfTimers },
 	  _perfIds { &perfIds }
 	{
-		regenerateEverything();
+		regenerate(allEnabled<GraphUpdateMode>());
 	}
 
 	const auto& positions() const { return _positions; }
@@ -140,23 +154,7 @@ public:
 	const auto& normalIndices() const { return _normalIndices; }
 	auto pointCount() const { return (cells + 1) * (cells + 1); }
 
-	// Must be called whenever `_func` changes, and whenever `_range` changes
-	void regeneratePositions();
-
-	// Must be called whenever `cells` changes.
-	void regenerateEverything();
-};
-
-enum class GraphRegenMode : int {
-	none = 0,
-	partial,
-	all
-};
-
-enum class GraphUploadMode : int {
-	none = 0,
-	partial,
-	all
+	void regenerate(const GraphUpdateMode& mode);
 };
 
 enum class GraphRenderMode : int {
@@ -179,15 +177,16 @@ private:
 	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
-	bool temporaryRegen = false;
 	Flag shouldUpdate;
 	Flag cellsChanged;
 
+	Flag inRegen;
+	GraphUpdateMode _regenMode = GraphUpdateMode::none;
+
 	// When the cells value changes, the buffers need to be updated for
 	// multiple frames since everything is double buffered.
-	unsigned int temporaryUploadFrames = 0;
-	GraphRegenMode _regenMode = GraphRegenMode::none;
-	GraphUploadMode _uploadMode = GraphUploadMode::none;
+	unsigned int uploadFrames = 0;
+	GraphUpdateMode _uploadMode = GraphUpdateMode::none;
 
 	DynamicVertexAttributes<Position> _surfacePositions;
 
@@ -226,15 +225,14 @@ private:
 	std::vector<Color> makeGridColors();
 	std::vector<Color> makeNormalColors();
 
-	void setRegenMode(GraphRegenMode mode);
-	void setUploadMode(GraphUploadMode mode);
-
-	void setTemporaryRegenMode(GraphRegenMode mode);
-	void setTemporaryUploadMode(GraphUploadMode mode);
+	void setRegenMode(GraphUpdateMode mode);
+	void setUploadMode(GraphUpdateMode mode);
+	void setUpdateMode(GraphUpdateMode mode);
 
 	void regen();
-	void uploadPartial();
-	void uploadAll();
+	void uploadPositions();
+	void uploadColors();
+	void uploadIndices();
 	void upload();
 public:
 	bool doUpload = true;
@@ -264,8 +262,8 @@ public:
 	  _gridColors { renderer, makeGridColors() },
 	  _normalIndices { renderer, _builder.normalIndices() },
 	  _normalColors { renderer, makeNormalColors() },
-	  _regenMode { GraphRegenMode::none },
-	  _uploadMode { GraphUploadMode::none },
+	  _regenMode { GraphUpdateMode::none },
+	  _uploadMode { GraphUpdateMode::none },
 	  _perfTimers { &perfTimers }
 	{
 		populateSurfaceEntity(renderer);
