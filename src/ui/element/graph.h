@@ -14,7 +14,7 @@ constexpr const char SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP[] {
 
 class GraphElement : public UiElement {
 private:
-	const std::string _title { "Graph" };
+	const std::string _title;
 	std::array<char, 255> _expressionBuf;
 
 	bool _clampZ;
@@ -39,6 +39,7 @@ public:
 	GraphElement() = delete;
 	GraphElement(GraphFigure& graph)
 	: _graph { &graph },
+	  _title { std::format("Graph (figID {})", graph.id()) },
 	  _cells { static_cast<int>(graph.cells()) },
 	  _clampZ { graph.clampZ() },
 	  _guiIds { std::format("##{}", graph.id()) },

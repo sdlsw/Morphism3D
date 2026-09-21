@@ -11,11 +11,16 @@ void SliderElement::updateStore() {
 	}
 }
 
+void SliderElement::updateTitle() {
+	_title = std::format("Slider: {}", _figure->varRange().var());
+}
+
 void SliderElement::show() {
 	auto& range = _figure->varRange();
 
 	// Top row
 	bool varChanged = variableRangePanel(range, _guiIds);
+	if (varChanged) updateTitle();
 
 	// Slider gets dedicated row
 	ImGui::SetNextItemWidth(-FLT_MIN);

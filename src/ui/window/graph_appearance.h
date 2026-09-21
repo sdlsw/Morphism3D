@@ -18,7 +18,7 @@ public:
 		unsigned int id,
 		GraphAppearance& appearance
 	)
-	: _title { std::format("Graph Appearance##{}", id) },
+	: _title { std::format("Graph (figID {}) Appearance", id) },
 	  _appearance { &appearance } {}
 };
 };

@@ -1,10 +1,15 @@
 #include "ui/element/animator.h"
 
 namespace g3d {
+void AnimatorElement::updateTitle() {
+	_title = std::format("Animator: {}", _figure->varRange().var());
+}
+
 void AnimatorElement::show() {
 	auto& range = _figure->varRange();
 
-	variableRangePanel(range, _guiIds);
+	bool varChanged = variableRangePanel(range, _guiIds);
+	if (varChanged) updateTitle();
 
 	ImGui::Text(std::format(
 		"{} = {}",
