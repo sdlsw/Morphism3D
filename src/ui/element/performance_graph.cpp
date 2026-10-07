@@ -26,5 +26,14 @@ void drawTimer(const std::string& label, g3d::Timer& timer) {
 namespace g3d {
 void PerformanceGraphElement::show() {
 	drawTimer(_guiIds["##perfPlot"], _timers->getTimer(_timerName));
+	if (ImGui::BeginPopupContextItem()) {
+		if (ImGui::Selectable("Configure...")) {
+			_configWindow.open = true;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+
+	_configWindow.show();
 }
 }

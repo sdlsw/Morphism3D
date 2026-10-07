@@ -65,6 +65,7 @@ void StatsWindow::drawUi() {
 			"Click some timer names under \"Timer Selection\" "
 			"to show their graphs in this section."
 		);
+		ImGui::TextWrapped("Right click a graph to configure it.");
 	} else {
 		_panel.show();
 	}

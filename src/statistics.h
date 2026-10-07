@@ -15,6 +15,19 @@ private:
 public:
 	MovingAverage(size_t maxSize) : _maxSize {maxSize} {}
 
+	size_t maxSize() const { return _maxSize; }
+
+	void maxSize(size_t newSize) {
+		size_t oldSize = _maxSize;
+
+		newSize = newSize == 0 ? 1 : newSize;
+		_maxSize = newSize;
+
+		if (newSize < oldSize) {
+			_contents.resize(newSize);
+		}
+	}
+
 	void put(T x) {
 		if (_contents.size() == _maxSize) {
 			_contents.pop_back();
