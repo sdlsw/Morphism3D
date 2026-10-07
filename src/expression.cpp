@@ -236,6 +236,10 @@ ParseNode Parser::parse() {
 	return expression();
 }
 
+ParseNode emptyExpression() {
+	return ParseNode(std::make_unique<DummyToken>());
+}
+
 // SPECIAL TOKEN IMPLEMENTATIONS
 
 ParseNode LiteralToken::nud(Parser& parser) {

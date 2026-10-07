@@ -92,7 +92,7 @@ class GraphMeshBuilder {
 private:
 	static constexpr float normLength = 0.1f;
 
-	Function* _func;
+	Function<2, 1>* _func;
 	TimerCollection* _perfTimers;
 	DiscriminatedStringMap* _perfIds;
 	Range* _range;
@@ -129,7 +129,7 @@ public:
 
 	GraphMeshBuilder() = delete;
 	GraphMeshBuilder(
-		Function& f,
+		Function<2, 1>& f,
 		unsigned int cells,
 		Range& range,
 		GraphAppearance& appearance,
@@ -168,10 +168,11 @@ constexpr unsigned int GraphRenderModeCount = 3;
 class GraphFigure : public MathFigure {
 private:
 	static constexpr float gridLoft = 0.002f;
+	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
 
 	unsigned int _id;
 
-	Function _function;
+	Function<2, 1> _function;
 	DiscriminatedStringMap _perfIds;
 	GraphAppearance _appearance;
 	GraphMeshBuilder _builder;
@@ -251,7 +252,7 @@ public:
 		TimerCollection& perfTimers
 	)
 	: _id { id },
-	  _function { variableStore },
+	  _function { variableStore, inputVars },
 	  _perfIds { std::format("_graph{}", id) },
 	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
 	  _surfacePositions { renderer, _builder.positions() },

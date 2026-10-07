@@ -25,7 +25,7 @@ void GraphElement::expressionInput() {
 		_expressionBuf.size()
 	);
 	if (changed) {
-		_graph->func().updateExpression(_expressionBuf.data());
+		_graph->func().updateExpression(0, _expressionBuf.data());
 	}
 }
 

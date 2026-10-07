@@ -20,12 +20,17 @@ const Position& GraphMeshBuilder::getPosition(unsigned int x, unsigned int y) {
 void GraphMeshBuilder::generatePositions() {
 	_perfTimers->start((*_perfIds)["regenPositions"]);
 	float inc = 1.0f / static_cast<float>(cells);
+
+	std::array<float, 2> inputs { 0.0f, 0.0f };
+	float* x = &inputs[0];
+	float* y = &inputs[1];
+
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		float y = glm::mix(_range->low().y, _range->high().y, inc*ypt);
+		*y = glm::mix(_range->low().y, _range->high().y, inc*ypt);
 
 		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			float x = glm::mix(_range->low().x, _range->high().x, inc*xpt);
-			_positions.push_back(_range->toModelSpace({x, y, _func->eval(x, y)}));
+			*x = glm::mix(_range->low().x, _range->high().x, inc*xpt);
+			_positions.push_back(_range->toModelSpace({*x, *y, _func->eval(inputs)[0]}));
 
 			if (clampZ) {
 				auto& p = _positions.back().vec;

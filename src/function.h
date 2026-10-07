@@ -3,10 +3,20 @@
 #include "expression.h"
 #include "temporal.h"
 
+#include <span>
+
 namespace g3d {
+template<size_t IN_DIMS, size_t OUT_DIMS>
 class Function {
 private:
-	void handleVariableChanged(const VariableChangedEvent& e);
+	void handleVariableChanged(const VariableChangedEvent& event) {
+		char s[] { '\0', '\0' };
+		s[0] = event.c;
+
+		for (size_t i = 0; i < OUT_DIMS; i++) {
+			if (_parsedExpressions[i]->hasTokenStr(s)) _updated.set();
+		}
+	}
 
 	CompoundMethodEventHandler<Function,
 		VariableChangedEvent
@@ -16,20 +26,33 @@ private:
 
 	TokenRegistry _tokenRegistry;
 	VariableStore* _vars;
-	std::unique_ptr<ParseNode> _parsedExpression;
+
+	std::array<char, IN_DIMS> _inputVars;
+	std::array<std::unique_ptr<ParseNode>, OUT_DIMS> _parsedExpressions;
+
 	Flag _updated;
 public:
-	Function(VariableStore& vars)
-	: _vars { &vars },
-	  _tokenRegistry { makeTokenRegistry() }
+	Function(VariableStore& vars, std::span<const char, IN_DIMS> inputVars)
+	: _tokenRegistry { makeTokenRegistry() },
+	  _vars { &vars }
 	{
 		_eventHandlers.addToRouter(vars.eventRouter());
+
+		std::ranges::copy(inputVars, _inputVars.begin());
+
+		// Initialize expressions to dummy values that always evaluate
+		// to zero, so that the unique_ptrs are never null.
+		for (auto& expression : _parsedExpressions) {
+			expression.reset(new ParseNode(emptyExpression()));
+		}
 	}
 
 	Function(Function&& other)
-	: _vars { other._vars },
+	: _eventHandlers { std::move(other._eventHandlers) },
 	  _tokenRegistry { std::move(other._tokenRegistry) },
-	  _eventHandlers { std::move(other._eventHandlers) }
+	  _vars { other._vars },
+	  _inputVars { std::move(other._inputVars) },
+	  _parsedExpressions { std::move(other._parsedExpressions) }
 	{
 		_eventHandlers.updateThis(this);
 	}
@@ -37,7 +60,38 @@ public:
 	Flag& updated() { return _updated; }
 	auto& vars() { return _vars; }
 
-	float eval(float x, float y);
-	void updateExpression(const std::string& expression);
+	std::array<float, OUT_DIMS> eval(std::span<const float, IN_DIMS> inputs) {
+		// Don't want to send event for input changes
+		// TODO find a less hacky way to do this that doesn't involve updating
+		// the variable store on every eval. Other graphs are going to need to
+		// share this.
+		for (size_t i = 0; i < IN_DIMS; i++) {
+			_vars->setWithoutNotify(_inputVars[i], inputs[i]);
+		}
+
+		std::array<float, OUT_DIMS> out;
+
+		for (size_t j = 0; j < OUT_DIMS; j++) {
+			out[j] = _parsedExpressions[j]->eval();
+		}
+
+		return out;
+	}
+
+	void updateExpression(size_t n, const std::string& expression) {
+		Parser p { _tokenRegistry, *_vars, expression };
+
+		std::cerr << "Updating expression #" << n << " to \"" << expression << "\"... ";
+
+		try {
+			_parsedExpressions[n].reset(new ParseNode(p.parse()));
+			_updated.set();
+
+			std::cerr << "Success." << std::endl;
+		} catch (const std::exception& e) {
+			std::cerr << "Failed! Reason: " << std::endl;
+			std::cerr << e.what() << std::endl;
+		}
+	}
 };
 }

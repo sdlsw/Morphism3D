@@ -70,6 +70,7 @@ public:
 class TokenRegistry {
 private:
 	std::unordered_map<std::string, std::unique_ptr<AbstractTokenFactory<>>> symbols;
+	std::unordered_map<char, float*> varOverrides;
 
 public:
 	template<typename T>
@@ -81,6 +82,9 @@ public:
 	}
 
 	std::unique_ptr<Token> makeSymbol(const std::string& s);
+
+	bool varOverridden(char v) const;
+	float* getVarOverride(char v) const;
 };
 
 class ParseNode {
@@ -191,6 +195,14 @@ public:
 	void expect(const std::string& c);
 	ParseNode parse();
 };
+
+struct DummyToken : public Token {
+	DummyToken() : Token("{{ DUMMY }}") {}
+	float eval(const std::vector<ParseNode>& children) const override { return 0; }
+};
+
+// Makes a dummy expression that always evaluates to 0.
+ParseNode emptyExpression();
 
 struct EndToken : public Token {
 	EndToken() : Token("{{ END }}") {}
