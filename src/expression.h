@@ -83,8 +83,11 @@ public:
 
 	std::unique_ptr<Token> makeSymbol(const std::string& s);
 
+	// Using these functions, we can instruct the Tokenizer to use
+	// faster tokens for specific variables.
 	bool varOverridden(char v) const;
 	float* getVarOverride(char v) const;
+	void overrideVar(char v, float* ptr);
 };
 
 class ParseNode {
@@ -157,6 +160,8 @@ private:
 	bool _atEnd = false;
 	VariableStore* _vars;
 	TokenRegistry* _registry;
+
+	std::unique_ptr<Token> makeVariableToken(char v);
 public:
 	Tokenizer(
 		TokenRegistry& registry,
@@ -223,6 +228,17 @@ private:
 	VariableStore* _vars;
 public:
 	VarToken(VariableStore& vars, char _c) : Token(_c),  _vars { &vars } { lbp = 0; }
+
+	ParseNode nud(Parser& parser) override;
+	float eval(const std::vector<ParseNode>& children) const override;
+	std::string toString() override;
+};
+
+struct OverriddenVarToken : public Token {
+private:
+	float* _ptr;
+public:
+	OverriddenVarToken(float* ptr, char _c) : Token(_c), _ptr { ptr } { lbp = 0; }
 
 	ParseNode nud(Parser& parser) override;
 	float eval(const std::vector<ParseNode>& children) const override;

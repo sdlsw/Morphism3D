@@ -27,7 +27,7 @@ private:
 	TokenRegistry _tokenRegistry;
 	VariableStore* _vars;
 
-	std::array<char, IN_DIMS> _inputVars;
+	std::array<float, IN_DIMS> _inputVars;
 	std::array<std::unique_ptr<ParseNode>, OUT_DIMS> _parsedExpressions;
 
 	Flag _updated;
@@ -38,7 +38,12 @@ public:
 	{
 		_eventHandlers.addToRouter(vars.eventRouter());
 
-		std::ranges::copy(inputVars, _inputVars.begin());
+		// Use overrideVar to speed up manipulation of the rapidly
+		// changing input variables. This also means that the input
+		// variables won't mangle the variable store.
+		for (size_t i = 0; i < IN_DIMS; i++) {
+			_tokenRegistry.overrideVar(inputVars[i], &_inputVars[i]);
+		}
 
 		// Initialize expressions to dummy values that always evaluate
 		// to zero, so that the unique_ptrs are never null.
@@ -61,16 +66,11 @@ public:
 	auto& vars() { return _vars; }
 
 	std::array<float, OUT_DIMS> eval(std::span<const float, IN_DIMS> inputs) {
-		// Don't want to send event for input changes
-		// TODO find a less hacky way to do this that doesn't involve updating
-		// the variable store on every eval. Other graphs are going to need to
-		// share this.
 		for (size_t i = 0; i < IN_DIMS; i++) {
-			_vars->setWithoutNotify(_inputVars[i], inputs[i]);
+			_inputVars[i] = inputs[i];
 		}
 
 		std::array<float, OUT_DIMS> out;
-
 		for (size_t j = 0; j < OUT_DIMS; j++) {
 			out[j] = _parsedExpressions[j]->eval();
 		}

@@ -69,6 +69,18 @@ std::unique_ptr<Token> TokenRegistry::makeSymbol(const std::string& s) {
 	return symbols.at(s).get()->make();
 }
 
+bool TokenRegistry::varOverridden(char v) const {
+	return varOverrides.contains(v);
+}
+
+float* TokenRegistry::getVarOverride(char v) const {
+	return varOverrides.at(v);
+}
+
+void TokenRegistry::overrideVar(char v, float* ptr) {
+	varOverrides[v] = ptr;
+}
+
 float ParseNode::eval() const {
 	return _token.get()->eval(_children);
 }
@@ -168,6 +180,16 @@ std::string Tokenizer::parseAlphaString() {
 	return s;
 }
 
+std::unique_ptr<Token> Tokenizer::makeVariableToken(char v) {
+	if (_registry->varOverridden(v)) {
+		return std::make_unique<OverriddenVarToken>(
+			_registry->getVarOverride(v), v
+		);
+	} else {
+		return std::make_unique<VarToken>(*_vars, v);
+	}
+}
+
 std::unique_ptr<Token> Tokenizer::next() {
 	// skip whitespace
 	while (_position < _expression.size() && _expression[_position] == ' ') {
@@ -191,7 +213,7 @@ std::unique_ptr<Token> Tokenizer::next() {
 		s = parseAlphaString();
 
 		if (s.size() == 1) {
-			return std::make_unique<VarToken>(*_vars, s[0]);
+			return makeVariableToken(s[0]);
 		}
 	} else {
 		s.push_back(curChar);
@@ -266,6 +288,18 @@ std::string VarToken::toString() {
 	return std::format("VAR:{}", str);
 }
 
+ParseNode OverriddenVarToken::nud(Parser& parser) {
+	return { std::make_unique<OverriddenVarToken>(*this) };
+}
+
+float OverriddenVarToken::eval(const std::vector<ParseNode>& children) const {
+	return *_ptr;
+}
+
+std::string OverriddenVarToken::toString() {
+	return std::format("OVERRIDDEN_VAR:{}", str);
+}
+
 ParseNode StartParenToken::nud(Parser& parser) {
 	ParseNode node = parser.expression();
 	parser.expect({RPAREN});
@@ -297,8 +331,11 @@ void parserTest(const std::string& expression) {
 	Parser p { registry, vars, expression };
 
 	// Populate with some test variables
-	vars.set('x', 1.0f);
-	vars.set('y', -1.0f);
+	float x = 1.0f;
+	float y = -1.0f;
+
+	registry.overrideVar('x', &x);
+	registry.overrideVar('y', &y);
 
 	std::cout << "Parser test: " << expression << std::endl;
 	try {
