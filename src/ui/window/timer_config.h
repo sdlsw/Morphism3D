@@ -16,6 +16,8 @@ public:
 	TimerConfigWindow(Timer& timer, const std::string& name)
 	: _timer { &timer },
 	  _title { std::format("Timer Configuration: {}", name) }
-	{}
+	{
+		open = false;
+	}
 };
 }
