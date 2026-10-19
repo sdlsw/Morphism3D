@@ -19,40 +19,66 @@ const Position& GraphMeshBuilder::getPosition(unsigned int x, unsigned int y) {
 
 void GraphMeshBuilder::generatePositions() {
 	_perfTimers->start((*_perfIds)["regenPositions"]);
+
+	// NOTE: Explicitly giving the dimension like this is temporary.
 	float inc = 1.0f / static_cast<float>(cells);
-
 	std::array<float, 2> inputs { 0.0f, 0.0f };
-	float* x = &inputs[0];
-	float* y = &inputs[1];
+	MultidimensionalCounter<2> counter { cells, [this, &inputs, inc](size_t i, size_t cnt) {
+		inputs[i] = glm::mix(_range->low()[i], _range->high()[i], inc*cnt);
+	}};
 
-	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		*y = glm::mix(_range->low().y, _range->high().y, inc*ypt);
+	while (!counter.atEnd()) {
+		_positions.push_back(_range->toModelSpace({
+			inputs[0], inputs[1], _func->eval(inputs)[0]
+		}));
 
-		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			*x = glm::mix(_range->low().x, _range->high().x, inc*xpt);
-			_positions.push_back(_range->toModelSpace({*x, *y, _func->eval(inputs)[0]}));
-
-			if (clampZ) {
-				auto& p = _positions.back().vec;
-				p.z = glm::clamp(p.z, -1.0f, 1.0f);
-			}
+		if (clampZ) {
+			auto& p = _positions.back().vec;
+			p.z = glm::clamp(p.z, -1.0f, 1.0f);
 		}
+
+		counter.inc();
 	}
+
 	_perfTimers->stop((*_perfIds)["regenPositions"]);
 }
 
 void GraphMeshBuilder::generateColors() {
 	float inc = 1.0f / static_cast<float>(cells);
-	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
-		float lerp_a_y = inc*ypt;
-		auto colornx = _appearance->colornx(lerp_a_y);
-		auto colorpx = _appearance->colorpx(lerp_a_y);
 
-		for (unsigned int xpt = 0; xpt <= cells; xpt++) {
-			float lerp_a_x = inc*xpt;
-			glm::vec3 color = glm::mix(colornx, colorpx, lerp_a_x);
-			_colors.push_back(color);
+	std::span<glm::vec3, 4> colors { &_appearance->nxnyColor, 4 };
+	auto lerpTree = FixedSizeBinaryTree<glm::vec3, 2>::fromSpan(colors);
+	MultidimensionalLerpCursor<glm::vec3, 2> lerpCursor { lerpTree };
+
+	int lerpDim = -1;
+	size_t lerpCnt = 0;
+
+	// Bit of a workaround here. Say we have a MultidimensionalCounter<3>
+	// where cells=10, _array={10, 10, 2} called "counter". On the next
+	// counter.update(), _array[0] will be updated first, then [1], then
+	// [2], and the given lamba here will run in that order.
+	//
+	// Problem is, in MultidimensionalLerpCursor, the order of dependencies
+	// is reversed. [2] must be updated first, *then* [1], in order for [1]
+	// to reset to the correct value. Similarly, [0] is dependent on [1].
+	//
+	// To work around this, we use some tracking variables to only run
+	// lerpCursor.update() on the highest dimension that was updated on
+	// this count, since lerpCursor.update() takes care of the proper lower
+	// dimension resets on its own.
+	MultidimensionalCounter<2> counter { cells, [this, &lerpDim, &lerpCnt](size_t i, size_t cnt) {
+		int i_int = static_cast<int>(i);
+		if (i_int > lerpDim) {
+			lerpDim = i_int;
+			lerpCnt = cnt;
 		}
+	}};
+
+	while (!counter.atEnd()) {
+		_colors.push_back(lerpCursor.value());
+		counter.inc();
+		lerpCursor.update(lerpDim, lerpCnt*inc);
+		lerpDim = -1;
 	}
 }
 

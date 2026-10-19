@@ -4,6 +4,7 @@
 #include "container.h"
 #include "figure/iface.h"
 #include "function.h"
+#include "iteration.h"
 #include "primitive.h"
 #include "range.h"
 #include "statistics.h"
