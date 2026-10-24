@@ -219,6 +219,20 @@ void GraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
 	normalIndices.copyData(builder.normalIndices());
 }
 
+void GraphBuffers::upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode) {
+	if (flagsEnabled(uploadMode, GraphUpdateMode::positions)) {
+		uploadPositions(builder);
+	}
+
+	if (flagsEnabled(uploadMode, GraphUpdateMode::colors)) {
+		uploadColors(builder);
+	}
+
+	if (flagsEnabled(uploadMode, GraphUpdateMode::indices)) {
+		uploadIndices(builder);
+	}
+}
+
 void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
 	shouldUpdate.set();
 }
@@ -304,19 +318,7 @@ void GraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
-
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::positions)) {
-		_buffers.uploadPositions(_builder);
-	}
-
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::colors)) {
-		_buffers.uploadColors(_builder);
-	}
-
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::indices)) {
-		_buffers.uploadIndices(_builder);
-	}
-
+	_buffers.upload(_builder, _uploadMode);
 	_perfTimers->stop(_perfIds["upload"]);
 }
 

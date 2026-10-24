@@ -155,6 +155,9 @@ private:
 	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
 	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
 
+	void uploadPositions(const GraphMeshBuilder& builder);
+	void uploadColors(const GraphMeshBuilder& builder);
+	void uploadIndices(const GraphMeshBuilder& builder);
 public:
 	DynamicVertexAttributes<Position> surfacePositions;
 
@@ -179,9 +182,7 @@ public:
 	  normalColors { renderer, makeNormalColors(builder) }
 	{}
 
-	void uploadPositions(const GraphMeshBuilder& builder);
-	void uploadColors(const GraphMeshBuilder& builder);
-	void uploadIndices(const GraphMeshBuilder& builder);
+	void upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode);
 };
 
 class GraphFigure : public MathFigure {
@@ -295,6 +296,12 @@ public:
 	auto& func() { return _function; }
 
 	auto& appearance() { return _appearance; }
+
+	auto& surface() { return _surface; }
+	auto& gridTop() { return _gridTop; }
+	auto& gridBottom() { return _gridBottom; }
+	auto& normals() { return _normals; }
+	auto& wireframe() { return _wireframe; }
 
 	void clampZ(bool b);
 	bool clampZ() const;
