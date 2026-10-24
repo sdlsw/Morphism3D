@@ -5,6 +5,64 @@ static const std::string RENDER_MODE_WIREFRAME_NAME = "Wireframe";
 static const std::string RENDER_MODE_NONE_NAME = "None";
 static const std::string RENDER_MODE_UNKNOWN_NAME { g3d::UI_UNKNOWN_MODE_NAME };
 
+const std::array<g3d::GraphColorPreset<2>, 7> COLOR_PRESETS {{
+	{
+		.title = "Red",
+		.mode = g3d::GRAPH_COLOR_SINGLE,
+		.singleColor = {1.000f, 0.100f, 0.100f}
+	},
+	{
+		.title = "Green",
+		.mode = g3d::GRAPH_COLOR_SINGLE,
+		.singleColor = {0.100f, 1.000f, 0.100f}
+	},
+	{
+		.title = "Blue",
+		.mode = g3d::GRAPH_COLOR_SINGLE,
+		.singleColor = {0.100f, 0.100f, 1.000f}
+	},
+	{
+		.title = "Color Wheel 1",
+		.mode = g3d::GRAPH_COLOR_MULTI,
+		.multiColor = {{
+			{1.000f, 0.000f, 0.000f},
+			{0.500f, 0.000f, 1.000f},
+			{0.000f, 1.000f, 1.000f},
+			{0.500f, 1.000f, 0.000f}
+		}}
+	},
+	{
+		.title = "Color Wheel 2",
+		.mode = g3d::GRAPH_COLOR_MULTI,
+		.multiColor = {{
+			{1.000f, 0.000f, 0.500f},
+			{0.000f, 0.000f, 1.000f},
+			{0.000f, 1.000f, 0.500f},
+			{1.000f, 1.000f, 0.000f}
+		}}
+	},
+	{
+		.title = "Color Wheel 3",
+		.mode = g3d::GRAPH_COLOR_MULTI,
+		.multiColor = {{
+			{1.000f, 0.000f, 1.000f},
+			{0.000f, 0.500f, 1.000f},
+			{0.000f, 1.000f, 0.000f},
+			{1.000f, 0.500f, 0.000f}
+		}}
+	},
+	{
+		.title = "Classic",
+		.mode = g3d::GRAPH_COLOR_MULTI,
+		.multiColor = {{
+			{0.141f, 0.706f, 0.322f}, // green
+			{0.988f, 0.804f, 0.000f}, // yellow orange
+			{0.400f, 0.255f, 0.953f}, // blue violet
+			{1.000f, 0.000f, 0.000f}  // red
+		}}
+	}
+}};
+
 const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
 	switch (mode) {
 		case g3d::GraphRenderMode::surface:
@@ -17,7 +75,20 @@ const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
 			return RENDER_MODE_UNKNOWN_NAME;
 	}
 }
+
 namespace g3d {
+GraphElement::GraphElement(GraphFigure& graph)
+: _graph { &graph },
+  _title { std::format("Graph (figID {})", graph.id()) },
+  _cells { static_cast<int>(graph.cells()) },
+  _clampZ { graph.clampZ() },
+  _guiIds { std::format("##{}", graph.id()) },
+  _appearanceWindow { graph.id(), graph.appearance(), COLOR_PRESETS }
+{
+	std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
+	_appearanceWindow.open = false;
+}
+
 void GraphElement::expressionInput() {
 	bool changed = ImGui::InputText(
 		_guiIds.c_str("Expression"),

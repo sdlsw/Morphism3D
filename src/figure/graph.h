@@ -14,68 +14,52 @@
 #include <vector>
 
 namespace g3d {
+template<size_t DIMS>
 struct GraphAppearance {
 	// Colors for extreme points of graph.
-	// nxny - (-range, -range)
-	// pxny - (range, -range)
-	// nxpy - (-range, range)
-	// pxpy - (range, range)
-	glm::vec3 nxnyColor;
-	glm::vec3 pxnyColor;
-	glm::vec3 nxpyColor;
-	glm::vec3 pxpyColor;
+	// For example, for DIMS = 2,
+	// left.left - (-range, -range)
+	// left.right - (range, -range)
+	// right.left - (-range, range)
+	// right.right - (range, range)
+	using EndpointType = FixedSizeBinaryTree<glm::vec3, DIMS>;
+	EndpointType gradientEndpoints;
 
 	WithInitial<Material> material;
 
 	Flag colorChanged;
 
 	GraphAppearance(
-		const glm::vec3& nxny,
-		const glm::vec3& pxny,
-		const glm::vec3& nxpy,
-		const glm::vec3& pxpy,
+		const EndpointType& gradientEndpoints,
 		const Material& material
 	)
-	: nxnyColor { nxny },
-	  pxnyColor { pxny },
-	  nxpyColor { nxpy },
-	  pxpyColor { pxpy },
+	: gradientEndpoints { gradientEndpoints },
 	  material {{ material }}
 	{}
+
+	GraphAppearance(
+		const std::span<glm::vec3, EndpointType::spanSize>& gradientEndpoints,
+		const Material& material
+	)
+	: GraphAppearance(EndpointType::fromSpan(gradientEndpoints), material) {}
 
 	GraphAppearance(
 		const glm::vec3& color,
 		const Material& material
 	)
-	: GraphAppearance(color, color, color, color, material) {}
+	: GraphAppearance(EndpointType::fromValue(color), material) {}
 
 	GraphAppearance(const glm::vec3& color)
 	: GraphAppearance(color, defaultMaterial()) {}
 
-	GraphAppearance()
-	: GraphAppearance(
-		{0.141f, 0.706f, 0.322f}, // green
-		{0.988f, 0.804f, 0.000f}, // yellow orange
-		{0.400f, 0.255f, 0.953f}, // blue violet
-		{1.000f, 0.000f, 0.000f}, // red
-		defaultMaterial()
-	) {}
-
-	glm::vec3 colornx(float lerp_y) const {
-		return glm::mix(nxnyColor, nxpyColor, lerp_y);
-	}
-
-	glm::vec3 colorpx(float lerp_y) const {
-		return glm::mix(pxnyColor, pxpyColor, lerp_y);
-	}
+	GraphAppearance() : GraphAppearance({0.0f, 0.0f, 0.0f}) {}
 
 	void setSingleColor(const glm::vec3& color) {
-		nxnyColor = color;
-		pxnyColor = color;
-		nxpyColor = color;
-		pxpyColor = color;
+		gradientEndpoints.fill(color);
 	}
 };
+
+GraphAppearance<2> default2dAppearance();
 
 enum class GraphUpdateMode : uint8_t {
 	none = 0,
@@ -97,7 +81,7 @@ private:
 	TimerCollection* _perfTimers;
 	DiscriminatedStringMap* _perfIds;
 	Range* _range;
-	GraphAppearance* _appearance;
+	GraphAppearance<2>* _appearance;
 
 	std::vector<Position> _positions;
 	std::vector<Color> _colors;
@@ -133,7 +117,7 @@ public:
 		Function<2, 1>& f,
 		unsigned int cells,
 		Range& range,
-		GraphAppearance& appearance,
+		GraphAppearance<2>& appearance,
 		TimerCollection& perfTimers,
 		DiscriminatedStringMap& perfIds
 	)
@@ -175,7 +159,7 @@ private:
 
 	Function<2, 1> _function;
 	DiscriminatedStringMap _perfIds;
-	GraphAppearance _appearance;
+	GraphAppearance<2> _appearance;
 	GraphMeshBuilder _builder;
 	TimerCollection* _perfTimers;
 
@@ -255,6 +239,7 @@ public:
 	: _id { id },
 	  _function { variableStore, inputVars },
 	  _perfIds { std::format("_graph{}", id) },
+	  _appearance { default2dAppearance() },
 	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
 	  _surfacePositions { renderer, _builder.positions() },
 	  _surfaceColors { renderer, _builder.colors() },

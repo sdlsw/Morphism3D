@@ -30,24 +30,14 @@ private:
 
 	DiscriminatedStringMap _guiIds;
 
-	GraphAppearanceWindow _appearanceWindow;
+	GraphAppearanceWindow<2> _appearanceWindow;
 public:
 	const std::string& title() const override { return _title; }
 	unsigned int id() const override { return _graph->id(); }
 	void show() override;
 
 	GraphElement() = delete;
-	GraphElement(GraphFigure& graph)
-	: _graph { &graph },
-	  _title { std::format("Graph (figID {})", graph.id()) },
-	  _cells { static_cast<int>(graph.cells()) },
-	  _clampZ { graph.clampZ() },
-	  _guiIds { std::format("##{}", graph.id()) },
-	  _appearanceWindow { graph.id(), graph.appearance() }
-	{
-		std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
-		_appearanceWindow.open = false;
-	}
+	GraphElement(GraphFigure& graph);
 };
 
 template<>

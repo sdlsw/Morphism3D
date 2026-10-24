@@ -46,9 +46,7 @@ void GraphMeshBuilder::generatePositions() {
 void GraphMeshBuilder::generateColors() {
 	float inc = 1.0f / static_cast<float>(cells);
 
-	std::span<glm::vec3, 4> colors { &_appearance->nxnyColor, 4 };
-	auto lerpTree = FixedSizeBinaryTree<glm::vec3, 2>::fromSpan(colors);
-	MultidimensionalLerpCursor<glm::vec3, 2> lerpCursor { lerpTree };
+	MultidimensionalLerpCursor<glm::vec3, 2> lerpCursor { _appearance->gradientEndpoints };
 
 	int lerpDim = -1;
 	size_t lerpCnt = 0;
@@ -183,6 +181,17 @@ void GraphMeshBuilder::regenerate(const GraphUpdateMode& mode) {
 	if (flagsEnabled(mode, GraphUpdateMode::positions)) {
 		regeneratePositions();
 	}
+}
+
+GraphAppearance<2> default2dAppearance() {
+	glm::vec3 colors[] {
+		{0.141f, 0.706f, 0.322f}, // green
+		{0.988f, 0.804f, 0.000f}, // yellow orange
+		{0.400f, 0.255f, 0.953f}, // blue violet
+		{1.000f, 0.000f, 0.000f}  // red
+	};
+
+	return { GraphAppearance<2>::EndpointType::fromSpan(colors), defaultMaterial() };
 }
 
 void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
