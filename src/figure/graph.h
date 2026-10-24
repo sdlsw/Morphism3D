@@ -150,6 +150,40 @@ enum class GraphRenderMode : int {
 
 constexpr unsigned int GraphRenderModeCount = 3;
 
+struct GraphBuffers {
+private:
+	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
+	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
+
+public:
+	DynamicVertexAttributes<Position> surfacePositions;
+
+	DynamicIndexBuffer surfaceIndices;
+	DynamicVertexAttributes<Color> surfaceColors;
+	DynamicVertexAttributes<Normal> surfaceNormals;
+
+	DynamicIndexBuffer gridIndices;
+	DynamicVertexAttributes<Color> gridColors;
+
+	DynamicIndexBuffer normalIndices;
+	DynamicVertexAttributes<Color> normalColors;
+
+	GraphBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
+	: surfacePositions { renderer, builder.positions() },
+	  surfaceIndices { renderer, builder.triangleIndices() },
+	  surfaceColors { renderer, builder.colors() },
+	  surfaceNormals { renderer, builder.normals() },
+	  gridIndices { renderer, builder.lineIndices() },
+	  gridColors { renderer, makeGridColors(builder) },
+	  normalIndices { renderer, builder.normalIndices() },
+	  normalColors { renderer, makeNormalColors(builder) }
+	{}
+
+	void uploadPositions(const GraphMeshBuilder& builder);
+	void uploadColors(const GraphMeshBuilder& builder);
+	void uploadIndices(const GraphMeshBuilder& builder);
+};
+
 class GraphFigure : public MathFigure {
 private:
 	static constexpr float gridLoft = 0.002f;
@@ -174,22 +208,11 @@ private:
 	unsigned int uploadFrames = 0;
 	GraphUpdateMode _uploadMode = GraphUpdateMode::none;
 
-	DynamicVertexAttributes<Position> _surfacePositions;
-
-	DynamicIndexBuffer _surfaceIndices;
-	DynamicVertexAttributes<Color> _surfaceColors;
-	DynamicVertexAttributes<Normal> _surfaceNormals;
+	GraphBuffers _buffers;
 	Entity _surface;
-
-	DynamicIndexBuffer _gridIndices;
-	DynamicVertexAttributes<Color> _gridColors;
 	Entity _gridTop;
 	Entity _gridBottom;
-
-	DynamicIndexBuffer _normalIndices;
-	DynamicVertexAttributes<Color> _normalColors;
 	Entity _normals;
-
 	Entity _wireframe;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
@@ -207,9 +230,6 @@ private:
 	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
 	void populateWireframeEntity(Renderer& renderer);
 	void populateNormalEntity(Renderer& renderer);
-
-	std::vector<Color> makeGridColors();
-	std::vector<Color> makeNormalColors();
 
 	void setRegenMode(GraphUpdateMode mode);
 	void setUploadMode(GraphUpdateMode mode);
@@ -241,14 +261,7 @@ public:
 	  _perfIds { std::format("_graph{}", id) },
 	  _appearance { default2dAppearance() },
 	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
-	  _surfacePositions { renderer, _builder.positions() },
-	  _surfaceColors { renderer, _builder.colors() },
-	  _surfaceNormals { renderer, _builder.normals() },
-	  _surfaceIndices { renderer, _builder.triangleIndices() },
-	  _gridIndices { renderer, _builder.lineIndices() },
-	  _gridColors { renderer, makeGridColors() },
-	  _normalIndices { renderer, _builder.normalIndices() },
-	  _normalColors { renderer, makeNormalColors() },
+	  _buffers { renderer, _builder },
 	  _regenMode { GraphUpdateMode::none },
 	  _uploadMode { GraphUpdateMode::none },
 	  _perfTimers { &perfTimers }
@@ -267,14 +280,7 @@ public:
 	  _function { std::move(other._function) },
 	  _builder { std::move(other._builder) },
 	  _appearance { other._appearance },
-	  _surfacePositions { std::move(other._surfacePositions) } ,
-	  _surfaceColors { std::move(other._surfaceColors) },
-	  _surfaceNormals { std::move(other._surfaceNormals) },
-	  _surfaceIndices { std::move(other._surfaceIndices) },
-	  _gridIndices { std::move(other._gridIndices) },
-	  _gridColors { std::move(other._gridColors) },
-	  _normalIndices { std::move(other._normalIndices) },
-	  _normalColors { std::move(other._normalColors) },
+	  _buffers { std::move(other._buffers) },
 	  _regenMode { other._regenMode },
 	  _uploadMode { other._uploadMode },
 	  _perfTimers { other._perfTimers },
@@ -289,12 +295,6 @@ public:
 	auto& func() { return _function; }
 
 	auto& appearance() { return _appearance; }
-
-	auto& surface() { return _surface; }
-	auto& gridTop() { return _gridTop; }
-	auto& gridBottom() { return _gridBottom; }
-	auto& normals() { return _normals; }
-	auto& wireframe() { return _wireframe; }
 
 	void clampZ(bool b);
 	bool clampZ() const;

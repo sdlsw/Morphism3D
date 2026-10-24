@@ -194,6 +194,31 @@ GraphAppearance<2> default2dAppearance() {
 	return { GraphAppearance<2>::EndpointType::fromSpan(colors), defaultMaterial() };
 }
 
+std::vector<Color> GraphBuffers::makeGridColors(const GraphMeshBuilder& builder) {
+	return { builder.pointCount(), {0.1f, 0.1f, 0.1f} };
+}
+
+std::vector<Color> GraphBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
+	return { 2*builder.pointCount(), {1.0f, 1.0f, 1.0f} };
+}
+
+void GraphBuffers::uploadPositions(const GraphMeshBuilder& builder) {
+	surfacePositions.copyData(builder.positions());
+	surfaceNormals.copyData(builder.normals());
+}
+
+void GraphBuffers::uploadColors(const GraphMeshBuilder& builder) {
+	surfaceColors.copyData(builder.colors());
+	gridColors.copyData(makeGridColors(builder));
+	normalColors.copyData(makeNormalColors(builder));
+}
+
+void GraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
+	surfaceIndices.copyData(builder.triangleIndices());
+	gridIndices.copyData(builder.lineIndices());
+	normalIndices.copyData(builder.normalIndices());
+}
+
 void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
 	shouldUpdate.set();
 }
@@ -210,10 +235,10 @@ void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
 
 	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
-	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
-	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
-	_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
+	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
+	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.surfaceColors);
+	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_buffers.surfaceNormals);
+	_surface.addComponent<DynamicIndexBufferComponent>(_buffers.surfaceIndices);
 	_surface.addComponent<MaterialComponent>(renderer, _appearance.material);
 
 	_surface.setLastRender<DynamicIndexBufferComponent>();
@@ -223,9 +248,9 @@ void GraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loft
 	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
 
 	ent.addComponent<RenderModeComponent>(RenderMode::line);
-	ent.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-	ent.addComponent<DynamicVertexAttributeComponent<Color>>(_gridColors);
-	ent.addComponent<DynamicIndexBufferComponent>(_gridIndices);
+	ent.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
+	ent.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.gridColors);
+	ent.addComponent<DynamicIndexBufferComponent>(_buffers.gridIndices);
 
 	ent.setLastRender<DynamicIndexBufferComponent>();
 }
@@ -234,9 +259,9 @@ void GraphFigure::populateWireframeEntity(Renderer& renderer) {
 	_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
 	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
-	_wireframe.addComponent<DynamicIndexBufferComponent>(_gridIndices);
+	_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
+	_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.surfaceColors);
+	_wireframe.addComponent<DynamicIndexBufferComponent>(_buffers.gridIndices);
 
 	_wireframe.setLastRender<DynamicIndexBufferComponent>();
 }
@@ -245,19 +270,11 @@ void GraphFigure::populateNormalEntity(Renderer& renderer) {
 	_normals.addComponent<TransformComponent>(renderer, Transform());
 
 	_normals.addComponent<RenderModeComponent>(RenderMode::line);
-	_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
-	_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_normalColors);
-	_normals.addComponent<DynamicIndexBufferComponent>(_normalIndices);
+	_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
+	_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.normalColors);
+	_normals.addComponent<DynamicIndexBufferComponent>(_buffers.normalIndices);
 
 	_normals.setLastRender<DynamicIndexBufferComponent>();
-}
-
-std::vector<Color> GraphFigure::makeGridColors() {
-	return { _builder.pointCount(), {0.1f, 0.1f, 0.1f} };
-}
-
-std::vector<Color> GraphFigure::makeNormalColors() {
-	return { 2*_builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
 void GraphFigure::setRegenMode(GraphUpdateMode mode) {
@@ -283,38 +300,21 @@ void GraphFigure::regen() {
 	_perfTimers->stop(_perfIds["regen"]);
 }
 
-void GraphFigure::uploadPositions() {
-	_surfacePositions.copyData(_builder.positions());
-	_surfaceNormals.copyData(_builder.normals());
-}
-
-void GraphFigure::uploadColors() {
-	_surfaceColors.copyData(_builder.colors());
-	_gridColors.copyData(makeGridColors());
-	_normalColors.copyData(makeNormalColors());
-}
-
-void GraphFigure::uploadIndices() {
-	_surfaceIndices.copyData(_builder.triangleIndices());
-	_gridIndices.copyData(_builder.lineIndices());
-	_normalIndices.copyData(_builder.normalIndices());
-}
-
 void GraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
 
 	if (flagsEnabled(_uploadMode, GraphUpdateMode::positions)) {
-		uploadPositions();
+		_buffers.uploadPositions(_builder);
 	}
 
 	if (flagsEnabled(_uploadMode, GraphUpdateMode::colors)) {
-		uploadColors();
+		_buffers.uploadColors(_builder);
 	}
 
 	if (flagsEnabled(_uploadMode, GraphUpdateMode::indices)) {
-		uploadIndices();
+		_buffers.uploadIndices(_builder);
 	}
 
 	_perfTimers->stop(_perfIds["upload"]);
