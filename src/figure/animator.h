@@ -31,10 +31,12 @@ private:
 public:
 	AnimatorFigure(unsigned int id, VariableStore& variableStore, char v)
 	: _id { id },
-	  _varRange { variableStore, v, 0.0f, glm::pi<float>() },
+	  _varRange { variableStore, v, 0.0f, 2*glm::pi<float>() },
 	  _startTime { now() }
 	{
 		_eventHandlers.addToRouter(variableStore.eventRouter());
+		// Disable looping by default.
+		_varRange.maxLimited = false;
 	}
 
 	AnimatorFigure(AnimatorFigure&& other)
