@@ -1,5 +1,6 @@
 #pragma once
 
+#include "settings.h"
 #include "ui/common_render.h"
 
 #include <string>

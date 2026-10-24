@@ -8,6 +8,7 @@
 #include "function.h"
 #include "primitive.h"
 #include "temporal.h"
+#include "settings.h"
 #include "statistics.h"
 #include "range.h"
 #include "ui/all.h"

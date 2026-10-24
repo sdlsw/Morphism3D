@@ -131,14 +131,4 @@ struct FixedSizeBinaryTree<T, 0> {
 		return s;
 	}
 };
-
-struct RenderSettings {
-	bool renderAxes = true;
-	bool renderFrame = true;
-	bool renderLightObject = false;
-};
-
-struct DebugSettings {
-	bool renderTestObject = false;
-};
 }

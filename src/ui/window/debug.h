@@ -1,5 +1,6 @@
 #pragma once
 
+#include "settings.h"
 #include <ui/common.h>
 
 #include <string>

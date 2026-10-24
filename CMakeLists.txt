@@ -63,6 +63,7 @@ target_sources(main PRIVATE "src/figure/slider.cpp")
 target_sources(main PRIVATE "src/function.cpp")
 target_sources(main PRIVATE "src/primitive.cpp")
 target_sources(main PRIVATE "src/range.cpp")
+target_sources(main PRIVATE "src/settings.cpp")
 target_sources(main PRIVATE "src/statistics.cpp")
 target_sources(main PRIVATE "src/stb_impl.cpp")
 target_sources(main PRIVATE "src/temporal.cpp") # Would prefer "time.h" but that's taken.
