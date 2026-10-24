@@ -1,8 +1,5 @@
 #pragma once
 
-#include "global_defines.h"
-#include <glm/glm.hpp>
-
 #include <format>
 #include <functional>
 #include <unordered_map>
