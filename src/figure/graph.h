@@ -150,7 +150,7 @@ enum class GraphRenderMode : int {
 
 constexpr unsigned int GraphRenderModeCount = 3;
 
-struct GraphBuffers {
+struct SurfaceGraphBuffers {
 private:
 	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
 	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
@@ -171,7 +171,7 @@ public:
 	DynamicIndexBuffer normalIndices;
 	DynamicVertexAttributes<Color> normalColors;
 
-	GraphBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
+	SurfaceGraphBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
 	: surfacePositions { renderer, builder.positions() },
 	  surfaceIndices { renderer, builder.triangleIndices() },
 	  surfaceColors { renderer, builder.colors() },
@@ -185,7 +185,7 @@ public:
 	void upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode);
 };
 
-class GraphFigure : public MathFigure {
+class SurfaceGraphFigure : public MathFigure {
 private:
 	static constexpr float gridLoft = 0.002f;
 	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
@@ -209,7 +209,7 @@ private:
 	unsigned int uploadFrames = 0;
 	GraphUpdateMode _uploadMode = GraphUpdateMode::none;
 
-	GraphBuffers _buffers;
+	SurfaceGraphBuffers _buffers;
 	Entity _surface;
 	Entity _gridTop;
 	Entity _gridBottom;
@@ -219,7 +219,7 @@ private:
 	void handleRangeChanged(const RangeChangedEvent& e);
 	void handleFigureRemoved(const FigureRemovedEvent& e);
 
-	CompoundMethodEventHandler<GraphFigure,
+	CompoundMethodEventHandler<SurfaceGraphFigure,
 		RangeChangedEvent,
 		FigureRemovedEvent
 	> _eventHandlers { this,
@@ -248,7 +248,7 @@ public:
 	bool renderNormals = false;
 	GraphRenderMode renderMode = GraphRenderMode::surface;
 
-	GraphFigure(
+	SurfaceGraphFigure(
 		unsigned int id,
 		EventRouter& eventRouter,
 		Renderer& renderer,
@@ -276,7 +276,7 @@ public:
 		_eventHandlers.addToRouter(eventRouter);
 	}
 
-	GraphFigure(GraphFigure&& other)
+	SurfaceGraphFigure(SurfaceGraphFigure&& other)
 	: _id { other._id },
 	  _function { std::move(other._function) },
 	  _builder { std::move(other._builder) },

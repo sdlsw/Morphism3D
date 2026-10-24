@@ -77,7 +77,7 @@ const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
 }
 
 namespace g3d {
-GraphElement::GraphElement(GraphFigure& graph)
+SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
 : _graph { &graph },
   _title { std::format("Graph (figID {})", graph.id()) },
   _cells { static_cast<int>(graph.cells()) },
@@ -89,7 +89,7 @@ GraphElement::GraphElement(GraphFigure& graph)
 	_appearanceWindow.open = false;
 }
 
-void GraphElement::expressionInput() {
+void SurfaceGraphElement::expressionInput() {
 	bool changed = ImGui::InputText(
 		_guiIds.c_str("Expression"),
 		_expressionBuf.data(),
@@ -100,7 +100,7 @@ void GraphElement::expressionInput() {
 	}
 }
 
-void GraphElement::gridToggle() {
+void SurfaceGraphElement::gridToggle() {
 	bool disabled = _graph->renderMode != GraphRenderMode::surface;
 	bool forceSetting = _graph->renderMode == GraphRenderMode::wireframe;
 	bool* setting = disabled ? &forceSetting : &_graph->renderGrid;
@@ -111,7 +111,7 @@ void GraphElement::gridToggle() {
 	ImGui::EndDisabled();
 }
 
-void GraphElement::renderModeSlider() {
+void SurfaceGraphElement::renderModeSlider() {
 	ImGui::SliderInt(
 		_guiIds.c_str("Render Mode"),
 		reinterpret_cast<int*>(&_graph->renderMode),
@@ -122,7 +122,7 @@ void GraphElement::renderModeSlider() {
 	);
 }
 
-void GraphElement::resolutionInput() {
+void SurfaceGraphElement::resolutionInput() {
 	// Maximum safe resolution is about 250 due to use of
 	// uint16_t for indices, so always clamp. TODO switch to
 	// uint32_t for even higher max resolution?
@@ -133,7 +133,7 @@ void GraphElement::resolutionInput() {
 	}
 }
 
-void GraphElement::renderSettings() {
+void SurfaceGraphElement::renderSettings() {
 	ImGui::SeparatorText("Render Settings");
 	resolutionInput();
 	renderModeSlider();
@@ -150,7 +150,7 @@ void GraphElement::renderSettings() {
 	);
 }
 
-void GraphElement::show() {
+void SurfaceGraphElement::show() {
 	_appearanceWindow.show();
 
 	expressionInput();

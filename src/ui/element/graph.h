@@ -12,14 +12,14 @@ constexpr const char SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP[] {
 	"This setting cannot be changed outside Surface rendering mode."
 };
 
-class GraphElement : public UiElement {
+class SurfaceGraphElement : public UiElement {
 private:
 	const std::string _title;
 	std::array<char, 255> _expressionBuf;
 
 	bool _clampZ;
 
-	GraphFigure* _graph;
+	SurfaceGraphFigure* _graph;
 	int _cells;
 
 	void expressionInput();
@@ -36,12 +36,12 @@ public:
 	unsigned int id() const override { return _graph->id(); }
 	void show() override;
 
-	GraphElement() = delete;
-	GraphElement(GraphFigure& graph);
+	SurfaceGraphElement() = delete;
+	SurfaceGraphElement(SurfaceGraphFigure& graph);
 };
 
 template<>
-struct UiElementForFigure<GraphFigure> {
-	typedef GraphElement value;
+struct UiElementForFigure<SurfaceGraphFigure> {
+	typedef SurfaceGraphElement value;
 };
 }

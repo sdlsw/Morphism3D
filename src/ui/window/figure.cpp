@@ -50,10 +50,10 @@ void FigureWindow::addSlider(char c) {
 }
 
 void FigureWindow::addGraph() {
-	// TODO: There might be a memory leak here, removing a GraphFigure
+	// TODO: There might be a memory leak here, removing a SurfaceGraphFigure
 	// removes both halves of a dynamic buffer while one half is occupied,
 	// causing the free call to fail.
-	auto& newGraph = _figures->addFigure<GraphFigure>(
+	auto& newGraph = _figures->addFigure<SurfaceGraphFigure>(
 		_vars->eventRouter(),
 		*_renderer,
 		*_vars,

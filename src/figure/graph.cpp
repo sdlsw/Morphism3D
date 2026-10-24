@@ -194,32 +194,32 @@ GraphAppearance<2> default2dAppearance() {
 	return { GraphAppearance<2>::EndpointType::fromSpan(colors), defaultMaterial() };
 }
 
-std::vector<Color> GraphBuffers::makeGridColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceGraphBuffers::makeGridColors(const GraphMeshBuilder& builder) {
 	return { builder.pointCount(), {0.1f, 0.1f, 0.1f} };
 }
 
-std::vector<Color> GraphBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceGraphBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
 	return { 2*builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
-void GraphBuffers::uploadPositions(const GraphMeshBuilder& builder) {
+void SurfaceGraphBuffers::uploadPositions(const GraphMeshBuilder& builder) {
 	surfacePositions.copyData(builder.positions());
 	surfaceNormals.copyData(builder.normals());
 }
 
-void GraphBuffers::uploadColors(const GraphMeshBuilder& builder) {
+void SurfaceGraphBuffers::uploadColors(const GraphMeshBuilder& builder) {
 	surfaceColors.copyData(builder.colors());
 	gridColors.copyData(makeGridColors(builder));
 	normalColors.copyData(makeNormalColors(builder));
 }
 
-void GraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
+void SurfaceGraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
 	surfaceIndices.copyData(builder.triangleIndices());
 	gridIndices.copyData(builder.lineIndices());
 	normalIndices.copyData(builder.normalIndices());
 }
 
-void GraphBuffers::upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode) {
+void SurfaceGraphBuffers::upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode) {
 	if (flagsEnabled(uploadMode, GraphUpdateMode::positions)) {
 		uploadPositions(builder);
 	}
@@ -233,11 +233,11 @@ void GraphBuffers::upload(const GraphMeshBuilder& builder, const GraphUpdateMode
 	}
 }
 
-void GraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
+void SurfaceGraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
 	shouldUpdate.set();
 }
 
-void GraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
+void SurfaceGraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
 	if (e.id != _id) return;
 
 	for (const auto& [_, perfId] : _perfIds.cache()) {
@@ -245,7 +245,7 @@ void GraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
 	}
 }
 
-void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
+void SurfaceGraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
 
 	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
@@ -258,7 +258,7 @@ void GraphFigure::populateSurfaceEntity(Renderer& renderer) {
 	_surface.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void GraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
+void SurfaceGraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
 	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
 
 	ent.addComponent<RenderModeComponent>(RenderMode::line);
@@ -269,7 +269,7 @@ void GraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loft
 	ent.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void GraphFigure::populateWireframeEntity(Renderer& renderer) {
+void SurfaceGraphFigure::populateWireframeEntity(Renderer& renderer) {
 	_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
 	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
@@ -280,7 +280,7 @@ void GraphFigure::populateWireframeEntity(Renderer& renderer) {
 	_wireframe.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void GraphFigure::populateNormalEntity(Renderer& renderer) {
+void SurfaceGraphFigure::populateNormalEntity(Renderer& renderer) {
 	_normals.addComponent<TransformComponent>(renderer, Transform());
 
 	_normals.addComponent<RenderModeComponent>(RenderMode::line);
@@ -291,22 +291,22 @@ void GraphFigure::populateNormalEntity(Renderer& renderer) {
 	_normals.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void GraphFigure::setRegenMode(GraphUpdateMode mode) {
+void SurfaceGraphFigure::setRegenMode(GraphUpdateMode mode) {
 	inRegen.set();
 	_regenMode |= mode;
 }
 
-void GraphFigure::setUploadMode(GraphUpdateMode mode) {
+void SurfaceGraphFigure::setUploadMode(GraphUpdateMode mode) {
 	uploadFrames = MAX_FRAMES_IN_FLIGHT;
 	_uploadMode |= mode;
 }
 
-void GraphFigure::setUpdateMode(GraphUpdateMode mode) {
+void SurfaceGraphFigure::setUpdateMode(GraphUpdateMode mode) {
 	setRegenMode(mode);
 	setUploadMode(mode);
 }
 
-void GraphFigure::regen() {
+void SurfaceGraphFigure::regen() {
 	if (!doRegen) return;
 
 	_perfTimers->start(_perfIds["regen"]);
@@ -314,7 +314,7 @@ void GraphFigure::regen() {
 	_perfTimers->stop(_perfIds["regen"]);
 }
 
-void GraphFigure::upload() {
+void SurfaceGraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
@@ -322,25 +322,25 @@ void GraphFigure::upload() {
 	_perfTimers->stop(_perfIds["upload"]);
 }
 
-void GraphFigure::clampZ(bool b) {
+void SurfaceGraphFigure::clampZ(bool b) {
 	_builder.clampZ = b;
 	shouldUpdate = true;
 }
 
-bool GraphFigure::clampZ() const {
+bool SurfaceGraphFigure::clampZ() const {
 	return _builder.clampZ;
 }
 
-void GraphFigure::cells(unsigned int cells) {
+void SurfaceGraphFigure::cells(unsigned int cells) {
 	_builder.cells = cells;
 	cellsChanged.set();
 }
 
-unsigned int GraphFigure::cells() const {
+unsigned int SurfaceGraphFigure::cells() const {
 	return _builder.cells;
 }
 
-void GraphFigure::updateSynchronized() {
+void SurfaceGraphFigure::updateSynchronized() {
 	_perfTimers->start(_perfIds["updateSynchronized"]);
 	shouldUpdate.setByConsuming(_function.updated());
 
@@ -370,7 +370,7 @@ void GraphFigure::updateSynchronized() {
 	_perfTimers->stop(_perfIds["updateSynchronized"]);
 }
 
-void GraphFigure::draw() {
+void SurfaceGraphFigure::draw() {
 	// TODO This is really dumb but it doesn't look too terrible...
 	// Look into using textures for the grid, maybe.
 	if (renderGrid && renderMode == GraphRenderMode::surface) {
