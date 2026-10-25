@@ -17,69 +17,6 @@ const Position& GraphMeshBuilder::getPosition(unsigned int x, unsigned int y) {
 	return _positions[idx(x, y)];
 }
 
-void GraphMeshBuilder::generatePositions() {
-	_perfTimers->start((*_perfIds)["regenPositions"]);
-
-	// NOTE: Explicitly giving the dimension like this is temporary.
-	float inc = 1.0f / static_cast<float>(cells);
-	std::array<float, 2> inputs { 0.0f, 0.0f };
-	MultidimensionalCounter<2> counter { cells, [this, &inputs, inc](size_t i, size_t cnt) {
-		inputs[i] = glm::mix(_range->low()[i], _range->high()[i], inc*cnt);
-	}};
-
-	while (!counter.atEnd()) {
-		_positions.push_back(_range->toModelSpace({
-			inputs[0], inputs[1], _func->eval(inputs)[0]
-		}));
-
-		if (clampZ) {
-			auto& p = _positions.back().vec;
-			p.z = glm::clamp(p.z, -1.0f, 1.0f);
-		}
-
-		counter.inc();
-	}
-
-	_perfTimers->stop((*_perfIds)["regenPositions"]);
-}
-
-void GraphMeshBuilder::generateColors() {
-	float inc = 1.0f / static_cast<float>(cells);
-
-	MultidimensionalLerpCursor<glm::vec3, 2> lerpCursor { _appearance->gradientEndpoints };
-
-	int lerpDim = -1;
-	size_t lerpCnt = 0;
-
-	// Bit of a workaround here. Say we have a MultidimensionalCounter<3>
-	// where cells=10, _array={10, 10, 2} called "counter". On the next
-	// counter.update(), _array[0] will be updated first, then [1], then
-	// [2], and the given lamba here will run in that order.
-	//
-	// Problem is, in MultidimensionalLerpCursor, the order of dependencies
-	// is reversed. [2] must be updated first, *then* [1], in order for [1]
-	// to reset to the correct value. Similarly, [0] is dependent on [1].
-	//
-	// To work around this, we use some tracking variables to only run
-	// lerpCursor.update() on the highest dimension that was updated on
-	// this count, since lerpCursor.update() takes care of the proper lower
-	// dimension resets on its own.
-	MultidimensionalCounter<2> counter { cells, [this, &lerpDim, &lerpCnt](size_t i, size_t cnt) {
-		int i_int = static_cast<int>(i);
-		if (i_int > lerpDim) {
-			lerpDim = i_int;
-			lerpCnt = cnt;
-		}
-	}};
-
-	while (!counter.atEnd()) {
-		_colors.push_back(lerpCursor.value());
-		counter.inc();
-		lerpCursor.update(lerpDim, lerpCnt*inc);
-		lerpDim = -1;
-	}
-}
-
 void GraphMeshBuilder::generateNormals() {
 	_perfTimers->start((*_perfIds)["regenNormals"]);
 	autoGenerateNormals(_normals, _positions, _triangleIndices);
@@ -144,43 +81,22 @@ void GraphMeshBuilder::generateNormalIndices() {
 	}
 }
 
-void GraphMeshBuilder::regeneratePositions() {
+void GraphMeshBuilder::clearPositions() {
 	_positions.clear();
-	_normals.clear();
-	generatePositions();
-	generateNormals();
-	generateNormalPositions();
 }
 
-void GraphMeshBuilder::regenerateColors() {
+void GraphMeshBuilder::clearColors() {
 	_colors.clear();
-	generateColors();
 }
 
-void GraphMeshBuilder::regenerateIndices() {
+void GraphMeshBuilder::clearNormals() {
+	_normals.clear();
+}
+
+void GraphMeshBuilder::clearIndices() {
 	_lineIndices.clear();
 	_triangleIndices.clear();
 	_normalIndices.clear();
-
-	generateLineIndices();
-	generateTriangleIndices();
-	generateNormalIndices();
-}
-
-void GraphMeshBuilder::regenerate(const GraphUpdateMode& mode) {
-	// Indices need to be regenerated first, since the
-	// generateNormals() is dependent on them.
-	if (flagsEnabled(mode, GraphUpdateMode::indices)) {
-		regenerateIndices();
-	}
-
-	if (flagsEnabled(mode, GraphUpdateMode::colors)) {
-		regenerateColors();
-	}
-
-	if (flagsEnabled(mode, GraphUpdateMode::positions)) {
-		regeneratePositions();
-	}
 }
 
 GraphAppearance<2> default2dAppearance() {
@@ -192,6 +108,26 @@ GraphAppearance<2> default2dAppearance() {
 	};
 
 	return { GraphAppearance<2>::EndpointType::fromSpan(colors), defaultMaterial() };
+}
+
+void SurfaceGraphMeshBuilder::regeneratePositions() {
+	_genericBuilder.clearPositions();
+	_genericBuilder.clearNormals();
+	_genericBuilder.generatePositions<2, 1>(*_func);
+	_genericBuilder.generateNormals();
+	_genericBuilder.generateNormalPositions();
+}
+
+void SurfaceGraphMeshBuilder::regenerateColors() {
+	_genericBuilder.clearColors();
+	_genericBuilder.generateColors<2>(*_appearance);
+}
+
+void SurfaceGraphMeshBuilder::regenerateIndices() {
+	_genericBuilder.clearIndices();
+	_genericBuilder.generateLineIndices();
+	_genericBuilder.generateTriangleIndices();
+	_genericBuilder.generateNormalIndices();
 }
 
 std::vector<Color> SurfaceGraphBuffers::makeGridColors(const GraphMeshBuilder& builder) {
@@ -217,20 +153,6 @@ void SurfaceGraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
 	surfaceIndices.copyData(builder.triangleIndices());
 	gridIndices.copyData(builder.lineIndices());
 	normalIndices.copyData(builder.normalIndices());
-}
-
-void SurfaceGraphBuffers::upload(const GraphMeshBuilder& builder, const GraphUpdateMode& uploadMode) {
-	if (flagsEnabled(uploadMode, GraphUpdateMode::positions)) {
-		uploadPositions(builder);
-	}
-
-	if (flagsEnabled(uploadMode, GraphUpdateMode::colors)) {
-		uploadColors(builder);
-	}
-
-	if (flagsEnabled(uploadMode, GraphUpdateMode::indices)) {
-		uploadIndices(builder);
-	}
 }
 
 void SurfaceGraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
@@ -310,7 +232,19 @@ void SurfaceGraphFigure::regen() {
 	if (!doRegen) return;
 
 	_perfTimers->start(_perfIds["regen"]);
-	_builder.regenerate(_regenMode);
+	// Indices need to be regenerated first, since the
+	// generateNormals() is dependent on them.
+	if (flagsEnabled(_regenMode, GraphUpdateMode::indices)) {
+		_builder.regenerateIndices();
+	}
+
+	if (flagsEnabled(_regenMode, GraphUpdateMode::colors)) {
+		_builder.regenerateColors();
+	}
+
+	if (flagsEnabled(_regenMode, GraphUpdateMode::positions)) {
+		_builder.regeneratePositions();
+	}
 	_perfTimers->stop(_perfIds["regen"]);
 }
 
@@ -318,26 +252,36 @@ void SurfaceGraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
-	_buffers.upload(_builder, _uploadMode);
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::positions)) {
+		_buffers.uploadPositions(_builder.genericBuilder());
+	}
+
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::colors)) {
+		_buffers.uploadColors(_builder.genericBuilder());
+	}
+
+	if (flagsEnabled(_uploadMode, GraphUpdateMode::indices)) {
+		_buffers.uploadIndices(_builder.genericBuilder());
+	}
 	_perfTimers->stop(_perfIds["upload"]);
 }
 
 void SurfaceGraphFigure::clampZ(bool b) {
-	_builder.clampZ = b;
+	_builder.genericBuilder().clampZ = b;
 	shouldUpdate = true;
 }
 
 bool SurfaceGraphFigure::clampZ() const {
-	return _builder.clampZ;
+	return _builder.genericBuilder().clampZ;
 }
 
 void SurfaceGraphFigure::cells(unsigned int cells) {
-	_builder.cells = cells;
+	_builder.genericBuilder().cells = cells;
 	cellsChanged.set();
 }
 
 unsigned int SurfaceGraphFigure::cells() const {
-	return _builder.cells;
+	return _builder.genericBuilder().cells;
 }
 
 void SurfaceGraphFigure::updateSynchronized() {
