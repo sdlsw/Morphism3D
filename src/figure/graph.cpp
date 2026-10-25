@@ -155,6 +155,82 @@ void SurfaceGraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
 	normalIndices.copyData(builder.normalIndices());
 }
 
+void SurfaceGraphEntities::populateSurfaceEntity(
+	Renderer& renderer,
+	SurfaceGraphBuffers& buffers,
+	Material& material
+) {
+	_surface.addComponent<TransformComponent>(renderer, Transform());
+
+	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
+	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
+	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.surfaceColors);
+	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(buffers.surfaceNormals);
+	_surface.addComponent<DynamicIndexBufferComponent>(buffers.surfaceIndices);
+	_surface.addComponent<MaterialComponent>(renderer, material);
+
+	_surface.setLastRender<DynamicIndexBufferComponent>();
+}
+
+void SurfaceGraphEntities::populateGridEntity(
+	Renderer& renderer,
+	SurfaceGraphBuffers& buffers,
+	Entity& ent,
+	float loftMult
+) {
+	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
+
+	ent.addComponent<RenderModeComponent>(RenderMode::line);
+	ent.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
+	ent.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.gridColors);
+	ent.addComponent<DynamicIndexBufferComponent>(buffers.gridIndices);
+
+	ent.setLastRender<DynamicIndexBufferComponent>();
+}
+
+void SurfaceGraphEntities::populateWireframeEntity(Renderer& renderer, SurfaceGraphBuffers& buffers) {
+	_wireframe.addComponent<TransformComponent>(renderer, Transform());
+
+	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
+	_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
+	_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.surfaceColors);
+	_wireframe.addComponent<DynamicIndexBufferComponent>(buffers.gridIndices);
+
+	_wireframe.setLastRender<DynamicIndexBufferComponent>();
+}
+
+void SurfaceGraphEntities::populateNormalEntity(Renderer& renderer, SurfaceGraphBuffers& buffers) {
+	_normals.addComponent<TransformComponent>(renderer, Transform());
+
+	_normals.addComponent<RenderModeComponent>(RenderMode::line);
+	_normals.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
+	_normals.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.normalColors);
+	_normals.addComponent<DynamicIndexBufferComponent>(buffers.normalIndices);
+
+	_normals.setLastRender<DynamicIndexBufferComponent>();
+}
+
+void SurfaceGraphEntities::draw() {
+	// TODO This is really dumb but it doesn't look too terrible...
+	// Look into using textures for the grid, maybe.
+	if (settings.renderGrid && settings.renderMode == SurfaceGraphRenderMode::surface) {
+		_gridTop.draw();
+		_gridBottom.draw();
+	}
+
+	if (settings.renderNormals) {
+		_normals.draw();
+	}
+
+	if (settings.renderMode == SurfaceGraphRenderMode::wireframe) {
+		_wireframe.draw();
+	}
+
+	if (settings.renderMode == SurfaceGraphRenderMode::surface) {
+		_surface.draw();
+	}
+}
+
 void SurfaceGraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
 	shouldUpdate.set();
 }
@@ -165,52 +241,6 @@ void SurfaceGraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
 	for (const auto& [_, perfId] : _perfIds.cache()) {
 		_perfTimers->removeTimer(perfId);
 	}
-}
-
-void SurfaceGraphFigure::populateSurfaceEntity(Renderer& renderer) {
-	_surface.addComponent<TransformComponent>(renderer, Transform());
-
-	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
-	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
-	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.surfaceColors);
-	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_buffers.surfaceNormals);
-	_surface.addComponent<DynamicIndexBufferComponent>(_buffers.surfaceIndices);
-	_surface.addComponent<MaterialComponent>(renderer, _appearance.material);
-
-	_surface.setLastRender<DynamicIndexBufferComponent>();
-}
-
-void SurfaceGraphFigure::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
-	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
-
-	ent.addComponent<RenderModeComponent>(RenderMode::line);
-	ent.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
-	ent.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.gridColors);
-	ent.addComponent<DynamicIndexBufferComponent>(_buffers.gridIndices);
-
-	ent.setLastRender<DynamicIndexBufferComponent>();
-}
-
-void SurfaceGraphFigure::populateWireframeEntity(Renderer& renderer) {
-	_wireframe.addComponent<TransformComponent>(renderer, Transform());
-
-	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.surfaceColors);
-	_wireframe.addComponent<DynamicIndexBufferComponent>(_buffers.gridIndices);
-
-	_wireframe.setLastRender<DynamicIndexBufferComponent>();
-}
-
-void SurfaceGraphFigure::populateNormalEntity(Renderer& renderer) {
-	_normals.addComponent<TransformComponent>(renderer, Transform());
-
-	_normals.addComponent<RenderModeComponent>(RenderMode::line);
-	_normals.addComponent<DynamicVertexAttributeComponent<Position>>(_buffers.surfacePositions);
-	_normals.addComponent<DynamicVertexAttributeComponent<Color>>(_buffers.normalColors);
-	_normals.addComponent<DynamicIndexBufferComponent>(_buffers.normalIndices);
-
-	_normals.setLastRender<DynamicIndexBufferComponent>();
 }
 
 void SurfaceGraphFigure::setRegenMode(GraphUpdateMode mode) {
@@ -315,23 +345,6 @@ void SurfaceGraphFigure::updateSynchronized() {
 }
 
 void SurfaceGraphFigure::draw() {
-	// TODO This is really dumb but it doesn't look too terrible...
-	// Look into using textures for the grid, maybe.
-	if (renderGrid && renderMode == GraphRenderMode::surface) {
-		_gridTop.draw();
-		_gridBottom.draw();
-	}
-
-	if (renderNormals) {
-		_normals.draw();
-	}
-
-	if (renderMode == GraphRenderMode::wireframe) {
-		_wireframe.draw();
-	}
-
-	if (renderMode == GraphRenderMode::surface) {
-		_surface.draw();
-	}
+	_entities.draw();
 }
 }

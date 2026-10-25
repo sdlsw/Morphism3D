@@ -63,13 +63,13 @@ const std::array<g3d::GraphColorPreset<2>, 7> COLOR_PRESETS {{
 	}
 }};
 
-const std::string& renderModeName(const g3d::GraphRenderMode& mode) {
+const std::string& renderModeName(const g3d::SurfaceGraphRenderMode& mode) {
 	switch (mode) {
-		case g3d::GraphRenderMode::surface:
+		case g3d::SurfaceGraphRenderMode::surface:
 			return RENDER_MODE_SURFACE_NAME;
-		case g3d::GraphRenderMode::wireframe:
+		case g3d::SurfaceGraphRenderMode::wireframe:
 			return RENDER_MODE_WIREFRAME_NAME;
-		case g3d::GraphRenderMode::none:
+		case g3d::SurfaceGraphRenderMode::none:
 			return RENDER_MODE_NONE_NAME;
 		default:
 			return RENDER_MODE_UNKNOWN_NAME;
@@ -101,9 +101,9 @@ void SurfaceGraphElement::expressionInput() {
 }
 
 void SurfaceGraphElement::gridToggle() {
-	bool disabled = _graph->renderMode != GraphRenderMode::surface;
-	bool forceSetting = _graph->renderMode == GraphRenderMode::wireframe;
-	bool* setting = disabled ? &forceSetting : &_graph->renderGrid;
+	bool disabled = _graph->settings().renderMode != SurfaceGraphRenderMode::surface;
+	bool forceSetting = _graph->settings().renderMode == SurfaceGraphRenderMode::wireframe;
+	bool* setting = disabled ? &forceSetting : &_graph->settings().renderGrid;
 
 	ImGui::BeginDisabled(disabled);
 	ImGui::Checkbox(_guiIds.c_str("Show Grid"), setting);
@@ -114,10 +114,10 @@ void SurfaceGraphElement::gridToggle() {
 void SurfaceGraphElement::renderModeSlider() {
 	ImGui::SliderInt(
 		_guiIds.c_str("Render Mode"),
-		reinterpret_cast<int*>(&_graph->renderMode),
+		reinterpret_cast<int*>(&_graph->settings().renderMode),
 		0,
-		GraphRenderModeCount-1,
-		renderModeName(_graph->renderMode).c_str(),
+		SurfaceGraphRenderModeCount-1,
+		renderModeName(_graph->settings().renderMode).c_str(),
 		ImGuiSliderFlags_NoInput
 	);
 }
@@ -138,7 +138,7 @@ void SurfaceGraphElement::renderSettings() {
 	resolutionInput();
 	renderModeSlider();
 	gridToggle();
-	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->renderNormals);
+	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->settings().renderNormals);
 	bool clampChanged = ImGui::Checkbox(_guiIds.c_str("Clamp Z"), &_clampZ);
 	if (clampChanged) {
 		_graph->clampZ(_clampZ);

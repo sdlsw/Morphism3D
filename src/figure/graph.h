@@ -228,14 +228,6 @@ public:
 	void clearIndices();
 };
 
-enum class GraphRenderMode : int {
-	surface = 0,
-	wireframe,
-	none
-};
-
-constexpr unsigned int GraphRenderModeCount = 3;
-
 // Surface-specific regeneration.
 class SurfaceGraphMeshBuilder {
 private:
@@ -307,18 +299,76 @@ public:
 	void uploadIndices(const GraphMeshBuilder& builder);
 };
 
-class SurfaceGraphFigure : public MathFigure {
+enum class SurfaceGraphRenderMode : int {
+	surface = 0,
+	wireframe,
+	none
+};
+
+constexpr unsigned int SurfaceGraphRenderModeCount = 3;
+
+struct SurfaceGraphSettings {
+	bool renderGrid = true;
+	bool renderNormals = false;
+	SurfaceGraphRenderMode renderMode = SurfaceGraphRenderMode::surface;
+};
+
+class SurfaceGraphEntities {
 private:
 	static constexpr float gridLoft = 0.002f;
+
+	Entity _surface;
+	Entity _gridTop;
+	Entity _gridBottom;
+	Entity _normals;
+	Entity _wireframe;
+
+	void populateSurfaceEntity(
+		Renderer& renderer,
+		SurfaceGraphBuffers& buffers,
+		Material& material
+	);
+	void populateGridEntity(
+		Renderer& renderer,
+		SurfaceGraphBuffers& buffers,
+		Entity& ent,
+		float loftMult
+	);
+	void populateWireframeEntity(Renderer& renderer, SurfaceGraphBuffers& buffers);
+	void populateNormalEntity(Renderer& renderer, SurfaceGraphBuffers& buffers);
+
+public:
+	SurfaceGraphSettings settings;
+
+	SurfaceGraphEntities(
+		Renderer& renderer,
+		SurfaceGraphBuffers& buffers,
+		Material& material
+	) {
+		populateSurfaceEntity(renderer, buffers, material);
+		populateGridEntity(renderer, buffers, _gridTop, 1.0f);
+		populateGridEntity(renderer, buffers, _gridBottom, -1.0f);
+		populateWireframeEntity(renderer, buffers);
+		populateNormalEntity(renderer, buffers);
+	}
+
+	void draw();
+};
+
+class SurfaceGraphFigure : public MathFigure {
+private:
 	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
 
 	unsigned int _id;
 
-	Function<2, 1> _function;
 	DiscriminatedStringMap _perfIds;
+	TimerCollection* _perfTimers;
+
+	Function<2, 1> _function;
 	GraphAppearance<2> _appearance;
 	SurfaceGraphMeshBuilder _builder;
-	TimerCollection* _perfTimers;
+	SurfaceGraphBuffers _buffers;
+	SurfaceGraphEntities _entities;
 
 	Flag shouldUpdate;
 	Flag cellsChanged;
@@ -331,13 +381,6 @@ private:
 	unsigned int uploadFrames = 0;
 	GraphUpdateMode _uploadMode = GraphUpdateMode::none;
 
-	SurfaceGraphBuffers _buffers;
-	Entity _surface;
-	Entity _gridTop;
-	Entity _gridBottom;
-	Entity _normals;
-	Entity _wireframe;
-
 	void handleRangeChanged(const RangeChangedEvent& e);
 	void handleFigureRemoved(const FigureRemovedEvent& e);
 
@@ -349,11 +392,6 @@ private:
 		std::mem_fn(handleFigureRemoved)
 	};
 
-	void populateSurfaceEntity(Renderer& renderer);
-	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
-	void populateWireframeEntity(Renderer& renderer);
-	void populateNormalEntity(Renderer& renderer);
-
 	void setRegenMode(GraphUpdateMode mode);
 	void setUploadMode(GraphUpdateMode mode);
 	void setUpdateMode(GraphUpdateMode mode);
@@ -363,9 +401,6 @@ private:
 public:
 	bool doUpload = true;
 	bool doRegen = true;
-	bool renderGrid = true;
-	bool renderNormals = false;
-	GraphRenderMode renderMode = GraphRenderMode::surface;
 
 	SurfaceGraphFigure(
 		unsigned int id,
@@ -382,16 +417,11 @@ public:
 	  _appearance { default2dAppearance() },
 	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
 	  _buffers { renderer, _builder.genericBuilder() },
+	  _entities { renderer, _buffers, _appearance.material },
 	  _regenMode { GraphUpdateMode::none },
 	  _uploadMode { GraphUpdateMode::none },
 	  _perfTimers { &perfTimers }
 	{
-		populateSurfaceEntity(renderer);
-		populateGridEntity(renderer, _gridTop, 1.0f);
-		populateGridEntity(renderer, _gridBottom, -1.0f);
-		populateWireframeEntity(renderer);
-		populateNormalEntity(renderer);
-
 		_eventHandlers.addToRouter(eventRouter);
 	}
 
@@ -401,6 +431,7 @@ public:
 	  _builder { std::move(other._builder) },
 	  _appearance { other._appearance },
 	  _buffers { std::move(other._buffers) },
+	  _entities { std::move(other._entities) },
 	  _regenMode { other._regenMode },
 	  _uploadMode { other._uploadMode },
 	  _perfTimers { other._perfTimers },
@@ -421,6 +452,8 @@ public:
 
 	void cells(unsigned int cells);
 	unsigned int cells() const;
+
+	auto& settings() { return _entities.settings; }
 
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
