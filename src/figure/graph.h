@@ -132,7 +132,6 @@ public:
 
 		_perfTimers->start((*_perfIds)["regenPositions"]);
 
-		// NOTE: Explicitly giving the dimension like this is temporary.
 		float inc = 1.0f / static_cast<float>(cells);
 		std::array<float, IN_DIMS> inputs { 0.0f, 0.0f };
 		MultidimensionalCounter<IN_DIMS> counter { cells, [this, &inputs, inc](size_t i, size_t cnt) {
