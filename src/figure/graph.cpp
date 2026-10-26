@@ -231,8 +231,41 @@ void SurfaceGraphEntities::draw() {
 	}
 }
 
+void SurfaceGraphState::setRegenMode(GraphUpdateMode mode) {
+	inRegen.set();
+	regenMode |= mode;
+}
+
+void SurfaceGraphState::setUploadMode(GraphUpdateMode mode) {
+	uploadFrames = MAX_FRAMES_IN_FLIGHT;
+	uploadMode |= mode;
+}
+
+void SurfaceGraphState::setUpdateMode(GraphUpdateMode mode) {
+	setRegenMode(mode);
+	setUploadMode(mode);
+}
+
+void SurfaceGraphState::decRegen() {
+	if (inRegen.consume()) {
+		regenMode = GraphUpdateMode::none;
+	}
+}
+
+void SurfaceGraphState::decUpload() {
+	if (uploadFrames > 0) {
+		uploadFrames--;
+		if (uploadFrames == 0) uploadMode = GraphUpdateMode::none;
+	}
+}
+
+void SurfaceGraphState::updateEnd() {
+	decRegen();
+	decUpload();
+}
+
 void SurfaceGraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
-	shouldUpdate.set();
+	_state.shouldRegenPositions.set();
 }
 
 void SurfaceGraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
@@ -243,36 +276,21 @@ void SurfaceGraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
 	}
 }
 
-void SurfaceGraphFigure::setRegenMode(GraphUpdateMode mode) {
-	inRegen.set();
-	_regenMode |= mode;
-}
-
-void SurfaceGraphFigure::setUploadMode(GraphUpdateMode mode) {
-	uploadFrames = MAX_FRAMES_IN_FLIGHT;
-	_uploadMode |= mode;
-}
-
-void SurfaceGraphFigure::setUpdateMode(GraphUpdateMode mode) {
-	setRegenMode(mode);
-	setUploadMode(mode);
-}
-
 void SurfaceGraphFigure::regen() {
 	if (!doRegen) return;
 
 	_perfTimers->start(_perfIds["regen"]);
 	// Indices need to be regenerated first, since the
 	// generateNormals() is dependent on them.
-	if (flagsEnabled(_regenMode, GraphUpdateMode::indices)) {
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::indices)) {
 		_builder.regenerateIndices();
 	}
 
-	if (flagsEnabled(_regenMode, GraphUpdateMode::colors)) {
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::colors)) {
 		_builder.regenerateColors();
 	}
 
-	if (flagsEnabled(_regenMode, GraphUpdateMode::positions)) {
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::positions)) {
 		_builder.regeneratePositions();
 	}
 	_perfTimers->stop(_perfIds["regen"]);
@@ -282,15 +300,15 @@ void SurfaceGraphFigure::upload() {
 	if (!doUpload) return;
 
 	_perfTimers->start(_perfIds["upload"]);
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::positions)) {
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::positions)) {
 		_buffers.uploadPositions(_builder.genericBuilder());
 	}
 
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::colors)) {
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::colors)) {
 		_buffers.uploadColors(_builder.genericBuilder());
 	}
 
-	if (flagsEnabled(_uploadMode, GraphUpdateMode::indices)) {
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::indices)) {
 		_buffers.uploadIndices(_builder.genericBuilder());
 	}
 	_perfTimers->stop(_perfIds["upload"]);
@@ -298,7 +316,7 @@ void SurfaceGraphFigure::upload() {
 
 void SurfaceGraphFigure::clampZ(bool b) {
 	_builder.genericBuilder().clampZ = b;
-	shouldUpdate = true;
+	_state.shouldRegenPositions.set();
 }
 
 bool SurfaceGraphFigure::clampZ() const {
@@ -307,7 +325,7 @@ bool SurfaceGraphFigure::clampZ() const {
 
 void SurfaceGraphFigure::cells(unsigned int cells) {
 	_builder.genericBuilder().cells = cells;
-	cellsChanged.set();
+	_state.cellsChanged.set();
 }
 
 unsigned int SurfaceGraphFigure::cells() const {
@@ -316,31 +334,10 @@ unsigned int SurfaceGraphFigure::cells() const {
 
 void SurfaceGraphFigure::updateSynchronized() {
 	_perfTimers->start(_perfIds["updateSynchronized"]);
-	shouldUpdate.setByConsuming(_function.updated());
-
-	if (shouldUpdate.consume()) {
-		setUpdateMode(GraphUpdateMode::positions);
-	}
-
-	if (_appearance.colorChanged.consume()) {
-		setUpdateMode(GraphUpdateMode::colors);
-	}
-
-	if (cellsChanged.consume()) {
-		setUpdateMode(allEnabled<GraphUpdateMode>());
-	}
-
+	_state.update(_function, _appearance);
 	regen();
 	upload();
-
-	if (inRegen.consume()) {
-		_regenMode = GraphUpdateMode::none;
-	}
-
-	if (uploadFrames > 0) {
-		uploadFrames--;
-		if (uploadFrames == 0) _uploadMode = GraphUpdateMode::none;
-	}
+	_state.updateEnd();
 	_perfTimers->stop(_perfIds["updateSynchronized"]);
 }
 

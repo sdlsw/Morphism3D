@@ -354,6 +354,45 @@ public:
 	void draw();
 };
 
+struct SurfaceGraphState {
+	Flag shouldRegenPositions;
+	Flag cellsChanged;
+
+	Flag inRegen;
+	GraphUpdateMode regenMode = GraphUpdateMode::none;
+
+	// When the cells value changes, the buffers need to be updated for
+	// multiple frames since everything is double buffered.
+	unsigned int uploadFrames = 0;
+	GraphUpdateMode uploadMode = GraphUpdateMode::none;
+
+	void setRegenMode(GraphUpdateMode mode);
+	void setUploadMode(GraphUpdateMode mode);
+	void setUpdateMode(GraphUpdateMode mode);
+
+	void decRegen();
+	void decUpload();
+
+	template<size_t IN_DIMS, size_t OUT_DIMS>
+	void update(Function<IN_DIMS, OUT_DIMS>& func, GraphAppearance<IN_DIMS>& appearance) {
+		shouldRegenPositions.setByConsuming(func.updated());
+
+		if (shouldRegenPositions.consume()) {
+			setUpdateMode(GraphUpdateMode::positions);
+		}
+
+		if (appearance.colorChanged.consume()) {
+			setUpdateMode(GraphUpdateMode::colors);
+		}
+
+		if (cellsChanged.consume()) {
+			setUpdateMode(allEnabled<GraphUpdateMode>());
+		}
+	}
+
+	void updateEnd();
+};
+
 class SurfaceGraphFigure : public MathFigure {
 private:
 	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
@@ -368,17 +407,7 @@ private:
 	SurfaceGraphMeshBuilder _builder;
 	SurfaceGraphBuffers _buffers;
 	SurfaceGraphEntities _entities;
-
-	Flag shouldUpdate;
-	Flag cellsChanged;
-
-	Flag inRegen;
-	GraphUpdateMode _regenMode = GraphUpdateMode::none;
-
-	// When the cells value changes, the buffers need to be updated for
-	// multiple frames since everything is double buffered.
-	unsigned int uploadFrames = 0;
-	GraphUpdateMode _uploadMode = GraphUpdateMode::none;
+	SurfaceGraphState _state;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
 	void handleFigureRemoved(const FigureRemovedEvent& e);
@@ -390,10 +419,6 @@ private:
 		std::mem_fn(handleRangeChanged),
 		std::mem_fn(handleFigureRemoved)
 	};
-
-	void setRegenMode(GraphUpdateMode mode);
-	void setUploadMode(GraphUpdateMode mode);
-	void setUpdateMode(GraphUpdateMode mode);
 
 	void regen();
 	void upload();
@@ -417,8 +442,6 @@ public:
 	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
 	  _buffers { renderer, _builder.genericBuilder() },
 	  _entities { renderer, _buffers, _appearance.material },
-	  _regenMode { GraphUpdateMode::none },
-	  _uploadMode { GraphUpdateMode::none },
 	  _perfTimers { &perfTimers }
 	{
 		_eventHandlers.addToRouter(eventRouter);
@@ -431,8 +454,7 @@ public:
 	  _appearance { other._appearance },
 	  _buffers { std::move(other._buffers) },
 	  _entities { std::move(other._entities) },
-	  _regenMode { other._regenMode },
-	  _uploadMode { other._uploadMode },
+	  _state { std::move(other._state) },
 	  _perfTimers { other._perfTimers },
 	  _eventHandlers { std::move(other._eventHandlers) },
 	  _perfIds { std::move(other._perfIds) }
