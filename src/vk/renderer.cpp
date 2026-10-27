@@ -732,6 +732,24 @@ void populateStaticEntity(
 	entity.addComponent<StaticVertexAttributeComponent<Normal>>(normals);
 }
 
+void populateDynamicLineEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	DynamicVertexAttributes<Position>& positions,
+	DynamicVertexAttributes<Color>& colors,
+	DynamicIndexBuffer& indices
+) {
+	entity.addComponent<TransformComponent>(renderer, transform);
+
+	entity.addComponent<RenderModeComponent>(RenderMode::line);
+	entity.addComponent<DynamicVertexAttributeComponent<Position>>(positions);
+	entity.addComponent<DynamicVertexAttributeComponent<Color>>(colors);
+	entity.addComponent<DynamicIndexBufferComponent>(indices);
+
+	entity.setLastRender<DynamicIndexBufferComponent>();
+}
+
 Transform& getTransform(Entity& entity) {
 	return entity.requireComponent<TransformComponent>().transform;
 }

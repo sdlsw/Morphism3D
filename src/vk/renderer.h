@@ -572,5 +572,14 @@ void populateStaticEntity(
 	StaticVertexAttributes<Normal>& normals
 );
 
+void populateDynamicLineEntity(
+	Renderer& renderer,
+	Entity& entity,
+	const Transform& transform,
+	DynamicVertexAttributes<Position>& positions,
+	DynamicVertexAttributes<Color>& colors,
+	DynamicIndexBuffer& indices
+);
+
 Transform& getTransform(Entity& entity);
 }

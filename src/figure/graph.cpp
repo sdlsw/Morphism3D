@@ -178,36 +178,36 @@ void SurfaceDisplayEntities::populateGridEntity(
 	Entity& ent,
 	float loftMult
 ) {
-	ent.addComponent<TransformComponent>(renderer, Transform({0.0f, 0.0f, loftMult*gridLoft}));
-
-	ent.addComponent<RenderModeComponent>(RenderMode::line);
-	ent.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
-	ent.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.gridColors);
-	ent.addComponent<DynamicIndexBufferComponent>(buffers.gridIndices);
-
-	ent.setLastRender<DynamicIndexBufferComponent>();
+	populateDynamicLineEntity(
+		renderer,
+		ent,
+		Transform({0.0f, 0.0f, loftMult*gridLoft}),
+		buffers.surfacePositions,
+		buffers.gridColors,
+		buffers.gridIndices
+	);
 }
 
 void SurfaceDisplayEntities::populateWireframeEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
-	_wireframe.addComponent<TransformComponent>(renderer, Transform());
-
-	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
-	_wireframe.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.surfaceColors);
-	_wireframe.addComponent<DynamicIndexBufferComponent>(buffers.gridIndices);
-
-	_wireframe.setLastRender<DynamicIndexBufferComponent>();
+	populateDynamicLineEntity(
+		renderer,
+		_wireframe,
+		Transform(),
+		buffers.surfacePositions,
+		buffers.surfaceColors,
+		buffers.gridIndices
+	);
 }
 
 void SurfaceDisplayEntities::populateNormalEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
-	_normals.addComponent<TransformComponent>(renderer, Transform());
-
-	_normals.addComponent<RenderModeComponent>(RenderMode::line);
-	_normals.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
-	_normals.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.normalColors);
-	_normals.addComponent<DynamicIndexBufferComponent>(buffers.normalIndices);
-
-	_normals.setLastRender<DynamicIndexBufferComponent>();
+	populateDynamicLineEntity(
+		renderer,
+		_normals,
+		Transform(),
+		buffers.surfacePositions,
+		buffers.normalColors,
+		buffers.normalIndices
+	);
 }
 
 void SurfaceDisplayEntities::draw() {
