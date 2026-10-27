@@ -229,23 +229,24 @@ public:
 // Surface-specific regeneration.
 class SurfaceGraphMeshBuilder {
 private:
-	Function<2, 1>* _func;
-	GraphAppearance<2>* _appearance;
+	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
+
+	Function<2, 1> _func;
+	GraphAppearance<2> _appearance;
 	GraphMeshBuilder _genericBuilder;
 
 public:
 	SurfaceGraphMeshBuilder() = delete;
 	SurfaceGraphMeshBuilder(
-		Function<2, 1>& f,
+		VariableStore& variableStore,
 		unsigned int cells,
 		Range& range,
-		GraphAppearance<2>& appearance,
 		TimerCollection& perfTimers,
 		DiscriminatedStringMap& perfIds
 	)
-	: _func { &f },
-	  _appearance { &appearance },
-	  _genericBuilder {cells, range, perfTimers, perfIds }
+	: _func { variableStore, inputVars },
+	  _appearance { default2dAppearance() },
+	  _genericBuilder { cells, range, perfTimers, perfIds }
 	{
 		regenerateIndices();
 		regeneratePositions();
@@ -258,6 +259,12 @@ public:
 
 	auto& genericBuilder() { return _genericBuilder; }
 	const auto& genericBuilder() const { return _genericBuilder; }
+
+	auto& appearance() { return _appearance; }
+	const auto& appearance() const { return _appearance; }
+
+	auto& func() { return _func; }
+	const auto& func() const { return _func; }
 };
 
 struct SurfaceGraphBuffers {
@@ -394,15 +401,11 @@ struct SurfaceGraphState {
 
 class SurfaceGraphFigure : public MathFigure {
 private:
-	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
-
 	unsigned int _id;
 
 	DiscriminatedStringMap _perfIds;
 	TimerCollection* _perfTimers;
 
-	Function<2, 1> _function;
-	GraphAppearance<2> _appearance;
 	SurfaceGraphMeshBuilder _builder;
 	SurfaceGraphBuffers _buffers;
 	SurfaceGraphEntities _entities;
@@ -435,12 +438,10 @@ public:
 		TimerCollection& perfTimers
 	)
 	: _id { id },
-	  _function { variableStore, inputVars },
 	  _perfIds { std::format("_graph{}", id) },
-	  _appearance { default2dAppearance() },
-	  _builder { _function, cells, range, _appearance, perfTimers, _perfIds },
+	  _builder { variableStore, cells, range, perfTimers, _perfIds },
 	  _buffers { renderer, _builder.genericBuilder() },
-	  _entities { renderer, _buffers, _appearance.material },
+	  _entities { renderer, _buffers, _builder.appearance().material },
 	  _perfTimers { &perfTimers }
 	{
 		_eventHandlers.addToRouter(eventRouter);
@@ -448,9 +449,7 @@ public:
 
 	SurfaceGraphFigure(SurfaceGraphFigure&& other)
 	: _id { other._id },
-	  _function { std::move(other._function) },
 	  _builder { std::move(other._builder) },
-	  _appearance { other._appearance },
 	  _buffers { std::move(other._buffers) },
 	  _entities { std::move(other._entities) },
 	  _state { std::move(other._state) },
@@ -463,9 +462,9 @@ public:
 
 	unsigned int id() const override { return _id; }
 
-	auto& func() { return _function; }
+	auto& func() { return _builder.func(); }
 
-	auto& appearance() { return _appearance; }
+	auto& appearance() { return _builder.appearance(); }
 
 	void clampOut(bool b);
 	bool clampOut() const;

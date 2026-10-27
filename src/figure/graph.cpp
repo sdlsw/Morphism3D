@@ -113,14 +113,14 @@ GraphAppearance<2> default2dAppearance() {
 void SurfaceGraphMeshBuilder::regeneratePositions() {
 	_genericBuilder.clearPositions();
 	_genericBuilder.clearNormals();
-	_genericBuilder.generatePositions<2, 1>(*_func);
+	_genericBuilder.generatePositions<2, 1>(_func);
 	_genericBuilder.generateNormals();
 	_genericBuilder.generateNormalPositions();
 }
 
 void SurfaceGraphMeshBuilder::regenerateColors() {
 	_genericBuilder.clearColors();
-	_genericBuilder.generateColors<2>(*_appearance);
+	_genericBuilder.generateColors<2>(_appearance);
 }
 
 void SurfaceGraphMeshBuilder::regenerateIndices() {
@@ -334,7 +334,7 @@ unsigned int SurfaceGraphFigure::cells() const {
 
 void SurfaceGraphFigure::updateSynchronized() {
 	_perfTimers->start(_perfIds["updateSynchronized"]);
-	_state.update(_function, _appearance);
+	_state.update(_builder.func(), _builder.appearance());
 	regen();
 	upload();
 	_state.updateEnd();
