@@ -130,87 +130,78 @@ void SurfaceGraphMeshBuilder::regenerateIndices() {
 	_genericBuilder.generateNormalIndices();
 }
 
-std::vector<Color> SurfaceDisplayBuffers::makeGridColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceDisplay::makeGridColors(const GraphMeshBuilder& builder) {
 	return { builder.pointCount(), {0.1f, 0.1f, 0.1f} };
 }
 
-std::vector<Color> SurfaceDisplayBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceDisplay::makeNormalColors(const GraphMeshBuilder& builder) {
 	return { 2*builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
-void SurfaceDisplayBuffers::uploadPositions(const GraphMeshBuilder& builder) {
-	surfacePositions.copyData(builder.positions());
-	surfaceNormals.copyData(builder.normals());
+void SurfaceDisplay::uploadPositions(const GraphMeshBuilder& builder) {
+	_surfacePositions.copyData(builder.positions());
+	_surfaceNormals.copyData(builder.normals());
 }
 
-void SurfaceDisplayBuffers::uploadColors(const GraphMeshBuilder& builder) {
-	surfaceColors.copyData(builder.colors());
-	gridColors.copyData(makeGridColors(builder));
-	normalColors.copyData(makeNormalColors(builder));
+void SurfaceDisplay::uploadColors(const GraphMeshBuilder& builder) {
+	_surfaceColors.copyData(builder.colors());
+	_gridColors.copyData(makeGridColors(builder));
+	_normalColors.copyData(makeNormalColors(builder));
 }
 
-void SurfaceDisplayBuffers::uploadIndices(const GraphMeshBuilder& builder) {
-	surfaceIndices.copyData(builder.triangleIndices());
-	gridIndices.copyData(builder.lineIndices());
-	normalIndices.copyData(builder.normalIndices());
+void SurfaceDisplay::uploadIndices(const GraphMeshBuilder& builder) {
+	_surfaceIndices.copyData(builder.triangleIndices());
+	_gridIndices.copyData(builder.lineIndices());
+	_normalIndices.copyData(builder.normalIndices());
 }
 
-void SurfaceDisplayEntities::populateSurfaceEntity(
-	Renderer& renderer,
-	SurfaceDisplayBuffers& buffers,
-	Material& material
-) {
+void SurfaceDisplay::populateSurfaceEntity(Renderer& renderer) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
 
 	_surface.addComponent<RenderModeComponent>(RenderMode::litTriangle);
-	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(buffers.surfacePositions);
-	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(buffers.surfaceColors);
-	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(buffers.surfaceNormals);
-	_surface.addComponent<DynamicIndexBufferComponent>(buffers.surfaceIndices);
-	_surface.addComponent<MaterialComponent>(renderer, material);
+	_surface.addComponent<DynamicVertexAttributeComponent<Position>>(_surfacePositions);
+	_surface.addComponent<DynamicVertexAttributeComponent<Color>>(_surfaceColors);
+	_surface.addComponent<DynamicVertexAttributeComponent<Normal>>(_surfaceNormals);
+	_surface.addComponent<DynamicIndexBufferComponent>(_surfaceIndices);
+	_surface.addComponent<MaterialComponent>(renderer, settings.material);
 
 	_surface.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void SurfaceDisplayEntities::populateGridEntity(
-	Renderer& renderer,
-	SurfaceDisplayBuffers& buffers,
-	Entity& ent,
-	float loftMult
-) {
+void SurfaceDisplay::populateGridEntity(Renderer& renderer, Entity& ent, float loftMult) {
 	populateDynamicLineEntity(
 		renderer,
 		ent,
 		Transform({0.0f, 0.0f, loftMult*gridLoft}),
-		buffers.surfacePositions,
-		buffers.gridColors,
-		buffers.gridIndices
+		_surfacePositions,
+		_gridColors,
+		_gridIndices
 	);
 }
 
-void SurfaceDisplayEntities::populateWireframeEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
+void SurfaceDisplay::populateWireframeEntity(Renderer& renderer) {
 	populateDynamicLineEntity(
 		renderer,
 		_wireframe,
 		Transform(),
-		buffers.surfacePositions,
-		buffers.surfaceColors,
-		buffers.gridIndices
+		_surfacePositions,
+		_surfaceColors,
+		_gridIndices
 	);
 }
 
-void SurfaceDisplayEntities::populateNormalEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
+void SurfaceDisplay::populateNormalEntity(Renderer& renderer) {
 	populateDynamicLineEntity(
 		renderer,
 		_normals,
 		Transform(),
-		buffers.surfacePositions,
-		buffers.normalColors,
-		buffers.normalIndices
+		_surfacePositions,
+		_normalColors,
+		_normalIndices
 	);
 }
 
-void SurfaceDisplayEntities::draw() {
+void SurfaceDisplay::draw() {
 	// TODO This is really dumb but it doesn't look too terrible...
 	// Look into using textures for the grid, maybe.
 	if (settings.renderGrid && settings.renderMode == SurfaceDisplayMode::surface) {
@@ -301,15 +292,15 @@ void SurfaceGraphFigure::upload() {
 
 	_perfTimers->start(_perfIds["upload"]);
 	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::positions)) {
-		_buffers.uploadPositions(_builder.genericBuilder());
+		_display.uploadPositions(_builder.genericBuilder());
 	}
 
 	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::colors)) {
-		_buffers.uploadColors(_builder.genericBuilder());
+		_display.uploadColors(_builder.genericBuilder());
 	}
 
 	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::indices)) {
-		_buffers.uploadIndices(_builder.genericBuilder());
+		_display.uploadIndices(_builder.genericBuilder());
 	}
 	_perfTimers->stop(_perfIds["upload"]);
 }
@@ -342,6 +333,6 @@ void SurfaceGraphFigure::updateSynchronized() {
 }
 
 void SurfaceGraphFigure::draw() {
-	_entities.draw();
+	_display.draw();
 }
 }

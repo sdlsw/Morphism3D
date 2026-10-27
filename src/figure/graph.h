@@ -220,7 +220,6 @@ private:
 	Function<2, 1> _func;
 	GraphColors<2> _colors;
 	GraphMeshBuilder _genericBuilder;
-
 public:
 	SurfaceGraphMeshBuilder() = delete;
 	SurfaceGraphMeshBuilder(
@@ -253,43 +252,6 @@ public:
 	const auto& func() const { return _func; }
 };
 
-struct SurfaceDisplayBuffers {
-private:
-	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
-	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
-public:
-	DynamicVertexAttributes<Position> surfacePositions;
-
-	DynamicIndexBuffer surfaceIndices;
-	DynamicVertexAttributes<Color> surfaceColors;
-	DynamicVertexAttributes<Normal> surfaceNormals;
-
-	DynamicIndexBuffer gridIndices;
-	DynamicVertexAttributes<Color> gridColors;
-
-	DynamicIndexBuffer normalIndices;
-	DynamicVertexAttributes<Color> normalColors;
-
-	SurfaceDisplayBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
-	: surfacePositions { renderer, builder.positions() },
-	  surfaceIndices { renderer, builder.triangleIndices() },
-	  surfaceColors { renderer, builder.colors() },
-	  surfaceNormals { renderer, builder.normals() },
-	  gridIndices { renderer, builder.lineIndices() },
-	  gridColors { renderer, makeGridColors(builder) },
-	  normalIndices { renderer, builder.normalIndices() },
-	  normalColors { renderer, makeNormalColors(builder) }
-	{
-		uploadPositions(builder);
-		uploadColors(builder);
-		uploadIndices(builder);
-	}
-
-	void uploadPositions(const GraphMeshBuilder& builder);
-	void uploadColors(const GraphMeshBuilder& builder);
-	void uploadIndices(const GraphMeshBuilder& builder);
-};
-
 enum class SurfaceDisplayMode : int {
 	surface = 0,
 	wireframe,
@@ -305,9 +267,21 @@ struct SurfaceDisplaySettings {
 	WithInitial<Material> material = defaultMaterial();
 };
 
-class SurfaceDisplayEntities {
+class SurfaceDisplay {
 private:
 	static constexpr float gridLoft = 0.002f;
+
+	DynamicVertexAttributes<Position> _surfacePositions;
+
+	DynamicIndexBuffer _surfaceIndices;
+	DynamicVertexAttributes<Color> _surfaceColors;
+	DynamicVertexAttributes<Normal> _surfaceNormals;
+
+	DynamicIndexBuffer _gridIndices;
+	DynamicVertexAttributes<Color> _gridColors;
+
+	DynamicIndexBuffer _normalIndices;
+	DynamicVertexAttributes<Color> _normalColors;
 
 	Entity _surface;
 	Entity _gridTop;
@@ -315,33 +289,44 @@ private:
 	Entity _normals;
 	Entity _wireframe;
 
-	void populateSurfaceEntity(
-		Renderer& renderer,
-		SurfaceDisplayBuffers& buffers,
-		Material& material
-	);
-	void populateGridEntity(
-		Renderer& renderer,
-		SurfaceDisplayBuffers& buffers,
-		Entity& ent,
-		float loftMult
-	);
-	void populateWireframeEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers);
-	void populateNormalEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers);
+	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
+	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
+
+	void populateSurfaceEntity(Renderer& renderer);
+	void populateGridEntity(Renderer& renderer, Entity& ent, float loftMult);
+	void populateWireframeEntity(Renderer& renderer);
+	void populateNormalEntity(Renderer& renderer);
 
 public:
 	SurfaceDisplaySettings settings;
 
-	SurfaceDisplayEntities(
+	SurfaceDisplay(
 		Renderer& renderer,
-		SurfaceDisplayBuffers& buffers
-	) {
-		populateSurfaceEntity(renderer, buffers, settings.material);
-		populateGridEntity(renderer, buffers, _gridTop, 1.0f);
-		populateGridEntity(renderer, buffers, _gridBottom, -1.0f);
-		populateWireframeEntity(renderer, buffers);
-		populateNormalEntity(renderer, buffers);
+		const GraphMeshBuilder& builder
+	)
+	: _surfacePositions { renderer, builder.positions() },
+	  _surfaceIndices { renderer, builder.triangleIndices() },
+	  _surfaceColors { renderer, builder.colors() },
+	  _surfaceNormals { renderer, builder.normals() },
+	  _gridIndices { renderer, builder.lineIndices() },
+	  _gridColors { renderer, makeGridColors(builder) },
+	  _normalIndices { renderer, builder.normalIndices() },
+	  _normalColors { renderer, makeNormalColors(builder) }
+	{
+		uploadPositions(builder);
+		uploadColors(builder);
+		uploadIndices(builder);
+
+		populateSurfaceEntity(renderer);
+		populateGridEntity(renderer, _gridTop, 1.0f);
+		populateGridEntity(renderer, _gridBottom, -1.0f);
+		populateWireframeEntity(renderer);
+		populateNormalEntity(renderer);
 	}
+
+	void uploadPositions(const GraphMeshBuilder& builder);
+	void uploadColors(const GraphMeshBuilder& builder);
+	void uploadIndices(const GraphMeshBuilder& builder);
 
 	void draw();
 };
@@ -393,8 +378,7 @@ private:
 	TimerCollection* _perfTimers;
 
 	SurfaceGraphMeshBuilder _builder;
-	SurfaceDisplayBuffers _buffers;
-	SurfaceDisplayEntities _entities;
+	SurfaceDisplay _display;
 	SurfaceGraphState _state;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
@@ -426,8 +410,7 @@ public:
 	: _id { id },
 	  _perfIds { std::format("_graph{}", id) },
 	  _builder { variableStore, cells, range, perfTimers, _perfIds },
-	  _buffers { renderer, _builder.genericBuilder() },
-	  _entities { renderer, _buffers },
+	  _display { renderer, _builder.genericBuilder() },
 	  _perfTimers { &perfTimers }
 	{
 		_eventHandlers.addToRouter(eventRouter);
@@ -436,8 +419,7 @@ public:
 	SurfaceGraphFigure(SurfaceGraphFigure&& other)
 	: _id { other._id },
 	  _builder { std::move(other._builder) },
-	  _buffers { std::move(other._buffers) },
-	  _entities { std::move(other._entities) },
+	  _display { std::move(other._display) },
 	  _state { std::move(other._state) },
 	  _perfTimers { other._perfTimers },
 	  _eventHandlers { std::move(other._eventHandlers) },
@@ -451,7 +433,7 @@ public:
 	auto& func() { return _builder.func(); }
 
 	auto& colors() { return _builder.colors(); }
-	auto& material() { return _entities.settings.material; }
+	auto& material() { return _display.settings.material; }
 
 	void clampOut(bool b);
 	bool clampOut() const;
@@ -459,7 +441,7 @@ public:
 	void cells(unsigned int cells);
 	unsigned int cells() const;
 
-	auto& settings() { return _entities.settings; }
+	auto& settings() { return _display.settings; }
 
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
