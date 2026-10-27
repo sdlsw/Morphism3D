@@ -17,7 +17,7 @@ private:
 	const std::string _title;
 	std::array<char, 255> _expressionBuf;
 
-	bool _clampZ;
+	bool _clampOut;
 
 	SurfaceGraphFigure* _graph;
 	int _cells;

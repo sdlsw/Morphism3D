@@ -97,7 +97,7 @@ public:
 	// vertices.
 	unsigned int cells;
 
-	bool clampZ = false;
+	bool clampOut = false;
 
 	GraphMeshBuilder() = delete;
 	GraphMeshBuilder(
@@ -145,7 +145,7 @@ public:
 					inputs[0], inputs[1], func.eval(inputs)[0]
 				}));
 
-				if (clampZ) {
+				if (clampOut) {
 					auto& p = _positions.back().vec;
 					p.z = glm::clamp(p.z, -1.0f, 1.0f);
 				}
@@ -155,8 +155,7 @@ public:
 					inputs[0], outputs[0], outputs[1]
 				}));
 
-				// TODO: Rename "clampOut".
-				if (clampZ) {
+				if (clampOut) {
 					auto& p = _positions.back().vec;
 					p.y = glm::clamp(p.y, -1.0f, 1.0f);
 					p.z = glm::clamp(p.z, -1.0f, 1.0f);
@@ -468,8 +467,8 @@ public:
 
 	auto& appearance() { return _appearance; }
 
-	void clampZ(bool b);
-	bool clampZ() const;
+	void clampOut(bool b);
+	bool clampOut() const;
 
 	void cells(unsigned int cells);
 	unsigned int cells() const;

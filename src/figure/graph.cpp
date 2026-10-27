@@ -314,13 +314,13 @@ void SurfaceGraphFigure::upload() {
 	_perfTimers->stop(_perfIds["upload"]);
 }
 
-void SurfaceGraphFigure::clampZ(bool b) {
-	_builder.genericBuilder().clampZ = b;
+void SurfaceGraphFigure::clampOut(bool b) {
+	_builder.genericBuilder().clampOut = b;
 	_state.shouldRegenPositions.set();
 }
 
-bool SurfaceGraphFigure::clampZ() const {
-	return _builder.genericBuilder().clampZ;
+bool SurfaceGraphFigure::clampOut() const {
+	return _builder.genericBuilder().clampOut;
 }
 
 void SurfaceGraphFigure::cells(unsigned int cells) {

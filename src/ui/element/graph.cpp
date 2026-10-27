@@ -81,7 +81,7 @@ SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
 : _graph { &graph },
   _title { std::format("Graph (figID {})", graph.id()) },
   _cells { static_cast<int>(graph.cells()) },
-  _clampZ { graph.clampZ() },
+  _clampOut { graph.clampOut() },
   _guiIds { std::format("##{}", graph.id()) },
   _appearanceWindow { graph.id(), graph.appearance(), COLOR_PRESETS }
 {
@@ -139,9 +139,9 @@ void SurfaceGraphElement::renderSettings() {
 	renderModeSlider();
 	gridToggle();
 	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->settings().renderNormals);
-	bool clampChanged = ImGui::Checkbox(_guiIds.c_str("Clamp Z"), &_clampZ);
+	bool clampChanged = ImGui::Checkbox(_guiIds.c_str("Clamp Out"), &_clampOut);
 	if (clampChanged) {
-		_graph->clampZ(_clampZ);
+		_graph->clampOut(_clampOut);
 	}
 
 	ImGui::Checkbox(
