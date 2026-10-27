@@ -83,7 +83,7 @@ SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
   _cells { static_cast<int>(graph.cells()) },
   _clampOut { graph.clampOut() },
   _guiIds { std::format("##{}", graph.id()) },
-  _appearanceWindow { graph.id(), graph.appearance(), COLOR_PRESETS }
+  _appearanceWindow { graph.id(), graph.colors(), graph.material(), COLOR_PRESETS }
 {
 	std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	_appearanceWindow.open = false;

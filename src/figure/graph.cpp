@@ -99,7 +99,7 @@ void GraphMeshBuilder::clearIndices() {
 	_normalIndices.clear();
 }
 
-GraphAppearance<2> default2dAppearance() {
+GraphColors<2> default2dColors() {
 	glm::vec3 colors[] {
 		{0.141f, 0.706f, 0.322f}, // green
 		{0.988f, 0.804f, 0.000f}, // yellow orange
@@ -107,7 +107,7 @@ GraphAppearance<2> default2dAppearance() {
 		{1.000f, 0.000f, 0.000f}  // red
 	};
 
-	return { GraphAppearance<2>::EndpointType::fromSpan(colors), defaultMaterial() };
+	return { colors };
 }
 
 void SurfaceGraphMeshBuilder::regeneratePositions() {
@@ -120,7 +120,7 @@ void SurfaceGraphMeshBuilder::regeneratePositions() {
 
 void SurfaceGraphMeshBuilder::regenerateColors() {
 	_genericBuilder.clearColors();
-	_genericBuilder.generateColors<2>(_appearance);
+	_genericBuilder.generateColors<2>(_colors);
 }
 
 void SurfaceGraphMeshBuilder::regenerateIndices() {
@@ -334,7 +334,7 @@ unsigned int SurfaceGraphFigure::cells() const {
 
 void SurfaceGraphFigure::updateSynchronized() {
 	_perfTimers->start(_perfIds["updateSynchronized"]);
-	_state.update(_builder.func(), _builder.appearance());
+	_state.update(_builder.func(), _builder.colors());
 	regen();
 	upload();
 	_state.updateEnd();

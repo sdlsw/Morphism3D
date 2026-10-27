@@ -15,7 +15,7 @@
 
 namespace g3d {
 template<size_t DIMS>
-struct GraphAppearance {
+struct GraphColors {
 	// Colors for extreme points of graph.
 	// For example, for DIMS = 2,
 	// left.left - (-range, -range)
@@ -25,41 +25,27 @@ struct GraphAppearance {
 	using EndpointType = FixedSizeBinaryTree<glm::vec3, DIMS>;
 	EndpointType gradientEndpoints;
 
-	WithInitial<Material> material;
-
 	Flag colorChanged;
 
-	GraphAppearance(
-		const EndpointType& gradientEndpoints,
-		const Material& material
+	GraphColors(const EndpointType& gradientEndpoints)
+	: gradientEndpoints { gradientEndpoints } {}
+
+	GraphColors(
+		const std::span<glm::vec3, EndpointType::spanSize>& gradientEndpoints
 	)
-	: gradientEndpoints { gradientEndpoints },
-	  material {{ material }}
-	{}
+	: GraphColors(EndpointType::fromSpan(gradientEndpoints)) {}
 
-	GraphAppearance(
-		const std::span<glm::vec3, EndpointType::spanSize>& gradientEndpoints,
-		const Material& material
-	)
-	: GraphAppearance(EndpointType::fromSpan(gradientEndpoints), material) {}
+	GraphColors(const glm::vec3& color)
+	: GraphColors(EndpointType::fromValue(color)) {}
 
-	GraphAppearance(
-		const glm::vec3& color,
-		const Material& material
-	)
-	: GraphAppearance(EndpointType::fromValue(color), material) {}
-
-	GraphAppearance(const glm::vec3& color)
-	: GraphAppearance(color, defaultMaterial()) {}
-
-	GraphAppearance() : GraphAppearance({0.0f, 0.0f, 0.0f}) {}
+	GraphColors() : GraphColors({0.0f, 0.0f, 0.0f}) {}
 
 	void setSingleColor(const glm::vec3& color) {
 		gradientEndpoints.fill(color);
 	}
 };
 
-GraphAppearance<2> default2dAppearance();
+GraphColors<2> default2dColors();
 
 enum class GraphUpdateMode : uint8_t {
 	none = 0,
@@ -172,12 +158,12 @@ public:
 	void clearPositions();
 
 	template<size_t IN_DIMS>
-	void generateColors(const GraphAppearance<IN_DIMS>& appearance) {
+	void generateColors(const GraphColors<IN_DIMS>& colors) {
 		_perfTimers->start((*_perfIds)["regenColors"]);
 		float inc = 1.0f / static_cast<float>(cells);
 
 		MultidimensionalLerpCursor<glm::vec3, IN_DIMS> lerpCursor {
-			appearance.gradientEndpoints
+			colors.gradientEndpoints
 		};
 
 		int lerpDim = -1;
@@ -232,7 +218,7 @@ private:
 	static constexpr std::array<char, 2> inputVars { 'x', 'y' };
 
 	Function<2, 1> _func;
-	GraphAppearance<2> _appearance;
+	GraphColors<2> _colors;
 	GraphMeshBuilder _genericBuilder;
 
 public:
@@ -245,7 +231,7 @@ public:
 		DiscriminatedStringMap& perfIds
 	)
 	: _func { variableStore, inputVars },
-	  _appearance { default2dAppearance() },
+	  _colors { default2dColors() },
 	  _genericBuilder { cells, range, perfTimers, perfIds }
 	{
 		regenerateIndices();
@@ -260,8 +246,8 @@ public:
 	auto& genericBuilder() { return _genericBuilder; }
 	const auto& genericBuilder() const { return _genericBuilder; }
 
-	auto& appearance() { return _appearance; }
-	const auto& appearance() const { return _appearance; }
+	auto& colors() { return _colors; }
+	const auto& colors() const { return _colors; }
 
 	auto& func() { return _func; }
 	const auto& func() const { return _func; }
@@ -316,6 +302,7 @@ struct SurfaceDisplaySettings {
 	bool renderGrid = true;
 	bool renderNormals = false;
 	SurfaceDisplayMode renderMode = SurfaceDisplayMode::surface;
+	WithInitial<Material> material = defaultMaterial();
 };
 
 class SurfaceDisplayEntities {
@@ -347,10 +334,9 @@ public:
 
 	SurfaceDisplayEntities(
 		Renderer& renderer,
-		SurfaceDisplayBuffers& buffers,
-		Material& material
+		SurfaceDisplayBuffers& buffers
 	) {
-		populateSurfaceEntity(renderer, buffers, material);
+		populateSurfaceEntity(renderer, buffers, settings.material);
 		populateGridEntity(renderer, buffers, _gridTop, 1.0f);
 		populateGridEntity(renderer, buffers, _gridBottom, -1.0f);
 		populateWireframeEntity(renderer, buffers);
@@ -380,14 +366,14 @@ struct SurfaceGraphState {
 	void decUpload();
 
 	template<size_t IN_DIMS, size_t OUT_DIMS>
-	void update(Function<IN_DIMS, OUT_DIMS>& func, GraphAppearance<IN_DIMS>& appearance) {
+	void update(Function<IN_DIMS, OUT_DIMS>& func, GraphColors<IN_DIMS>& colors) {
 		shouldRegenPositions.setByConsuming(func.updated());
 
 		if (shouldRegenPositions.consume()) {
 			setUpdateMode(GraphUpdateMode::positions);
 		}
 
-		if (appearance.colorChanged.consume()) {
+		if (colors.colorChanged.consume()) {
 			setUpdateMode(GraphUpdateMode::colors);
 		}
 
@@ -441,7 +427,7 @@ public:
 	  _perfIds { std::format("_graph{}", id) },
 	  _builder { variableStore, cells, range, perfTimers, _perfIds },
 	  _buffers { renderer, _builder.genericBuilder() },
-	  _entities { renderer, _buffers, _builder.appearance().material },
+	  _entities { renderer, _buffers },
 	  _perfTimers { &perfTimers }
 	{
 		_eventHandlers.addToRouter(eventRouter);
@@ -464,7 +450,8 @@ public:
 
 	auto& func() { return _builder.func(); }
 
-	auto& appearance() { return _builder.appearance(); }
+	auto& colors() { return _builder.colors(); }
+	auto& material() { return _entities.settings.material; }
 
 	void clampOut(bool b);
 	bool clampOut() const;
