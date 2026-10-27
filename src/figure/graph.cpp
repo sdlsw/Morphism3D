@@ -130,34 +130,34 @@ void SurfaceGraphMeshBuilder::regenerateIndices() {
 	_genericBuilder.generateNormalIndices();
 }
 
-std::vector<Color> SurfaceGraphBuffers::makeGridColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceDisplayBuffers::makeGridColors(const GraphMeshBuilder& builder) {
 	return { builder.pointCount(), {0.1f, 0.1f, 0.1f} };
 }
 
-std::vector<Color> SurfaceGraphBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
+std::vector<Color> SurfaceDisplayBuffers::makeNormalColors(const GraphMeshBuilder& builder) {
 	return { 2*builder.pointCount(), {1.0f, 1.0f, 1.0f} };
 }
 
-void SurfaceGraphBuffers::uploadPositions(const GraphMeshBuilder& builder) {
+void SurfaceDisplayBuffers::uploadPositions(const GraphMeshBuilder& builder) {
 	surfacePositions.copyData(builder.positions());
 	surfaceNormals.copyData(builder.normals());
 }
 
-void SurfaceGraphBuffers::uploadColors(const GraphMeshBuilder& builder) {
+void SurfaceDisplayBuffers::uploadColors(const GraphMeshBuilder& builder) {
 	surfaceColors.copyData(builder.colors());
 	gridColors.copyData(makeGridColors(builder));
 	normalColors.copyData(makeNormalColors(builder));
 }
 
-void SurfaceGraphBuffers::uploadIndices(const GraphMeshBuilder& builder) {
+void SurfaceDisplayBuffers::uploadIndices(const GraphMeshBuilder& builder) {
 	surfaceIndices.copyData(builder.triangleIndices());
 	gridIndices.copyData(builder.lineIndices());
 	normalIndices.copyData(builder.normalIndices());
 }
 
-void SurfaceGraphEntities::populateSurfaceEntity(
+void SurfaceDisplayEntities::populateSurfaceEntity(
 	Renderer& renderer,
-	SurfaceGraphBuffers& buffers,
+	SurfaceDisplayBuffers& buffers,
 	Material& material
 ) {
 	_surface.addComponent<TransformComponent>(renderer, Transform());
@@ -172,9 +172,9 @@ void SurfaceGraphEntities::populateSurfaceEntity(
 	_surface.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void SurfaceGraphEntities::populateGridEntity(
+void SurfaceDisplayEntities::populateGridEntity(
 	Renderer& renderer,
-	SurfaceGraphBuffers& buffers,
+	SurfaceDisplayBuffers& buffers,
 	Entity& ent,
 	float loftMult
 ) {
@@ -188,7 +188,7 @@ void SurfaceGraphEntities::populateGridEntity(
 	ent.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void SurfaceGraphEntities::populateWireframeEntity(Renderer& renderer, SurfaceGraphBuffers& buffers) {
+void SurfaceDisplayEntities::populateWireframeEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
 	_wireframe.addComponent<TransformComponent>(renderer, Transform());
 
 	_wireframe.addComponent<RenderModeComponent>(RenderMode::line);
@@ -199,7 +199,7 @@ void SurfaceGraphEntities::populateWireframeEntity(Renderer& renderer, SurfaceGr
 	_wireframe.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void SurfaceGraphEntities::populateNormalEntity(Renderer& renderer, SurfaceGraphBuffers& buffers) {
+void SurfaceDisplayEntities::populateNormalEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers) {
 	_normals.addComponent<TransformComponent>(renderer, Transform());
 
 	_normals.addComponent<RenderModeComponent>(RenderMode::line);
@@ -210,10 +210,10 @@ void SurfaceGraphEntities::populateNormalEntity(Renderer& renderer, SurfaceGraph
 	_normals.setLastRender<DynamicIndexBufferComponent>();
 }
 
-void SurfaceGraphEntities::draw() {
+void SurfaceDisplayEntities::draw() {
 	// TODO This is really dumb but it doesn't look too terrible...
 	// Look into using textures for the grid, maybe.
-	if (settings.renderGrid && settings.renderMode == SurfaceGraphRenderMode::surface) {
+	if (settings.renderGrid && settings.renderMode == SurfaceDisplayMode::surface) {
 		_gridTop.draw();
 		_gridBottom.draw();
 	}
@@ -222,11 +222,11 @@ void SurfaceGraphEntities::draw() {
 		_normals.draw();
 	}
 
-	if (settings.renderMode == SurfaceGraphRenderMode::wireframe) {
+	if (settings.renderMode == SurfaceDisplayMode::wireframe) {
 		_wireframe.draw();
 	}
 
-	if (settings.renderMode == SurfaceGraphRenderMode::surface) {
+	if (settings.renderMode == SurfaceDisplayMode::surface) {
 		_surface.draw();
 	}
 }

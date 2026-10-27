@@ -63,13 +63,13 @@ const std::array<g3d::GraphColorPreset<2>, 7> COLOR_PRESETS {{
 	}
 }};
 
-const std::string& renderModeName(const g3d::SurfaceGraphRenderMode& mode) {
+const std::string& renderModeName(const g3d::SurfaceDisplayMode& mode) {
 	switch (mode) {
-		case g3d::SurfaceGraphRenderMode::surface:
+		case g3d::SurfaceDisplayMode::surface:
 			return RENDER_MODE_SURFACE_NAME;
-		case g3d::SurfaceGraphRenderMode::wireframe:
+		case g3d::SurfaceDisplayMode::wireframe:
 			return RENDER_MODE_WIREFRAME_NAME;
-		case g3d::SurfaceGraphRenderMode::none:
+		case g3d::SurfaceDisplayMode::none:
 			return RENDER_MODE_NONE_NAME;
 		default:
 			return RENDER_MODE_UNKNOWN_NAME;
@@ -101,8 +101,8 @@ void SurfaceGraphElement::expressionInput() {
 }
 
 void SurfaceGraphElement::gridToggle() {
-	bool disabled = _graph->settings().renderMode != SurfaceGraphRenderMode::surface;
-	bool forceSetting = _graph->settings().renderMode == SurfaceGraphRenderMode::wireframe;
+	bool disabled = _graph->settings().renderMode != SurfaceDisplayMode::surface;
+	bool forceSetting = _graph->settings().renderMode == SurfaceDisplayMode::wireframe;
 	bool* setting = disabled ? &forceSetting : &_graph->settings().renderGrid;
 
 	ImGui::BeginDisabled(disabled);
@@ -116,7 +116,7 @@ void SurfaceGraphElement::renderModeSlider() {
 		_guiIds.c_str("Render Mode"),
 		reinterpret_cast<int*>(&_graph->settings().renderMode),
 		0,
-		SurfaceGraphRenderModeCount-1,
+		SurfaceDisplayModeCount-1,
 		renderModeName(_graph->settings().renderMode).c_str(),
 		ImGuiSliderFlags_NoInput
 	);

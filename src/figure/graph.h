@@ -267,7 +267,7 @@ public:
 	const auto& func() const { return _func; }
 };
 
-struct SurfaceGraphBuffers {
+struct SurfaceDisplayBuffers {
 private:
 	std::vector<Color> makeGridColors(const GraphMeshBuilder& builder);
 	std::vector<Color> makeNormalColors(const GraphMeshBuilder& builder);
@@ -284,7 +284,7 @@ public:
 	DynamicIndexBuffer normalIndices;
 	DynamicVertexAttributes<Color> normalColors;
 
-	SurfaceGraphBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
+	SurfaceDisplayBuffers(Renderer& renderer, const GraphMeshBuilder& builder)
 	: surfacePositions { renderer, builder.positions() },
 	  surfaceIndices { renderer, builder.triangleIndices() },
 	  surfaceColors { renderer, builder.colors() },
@@ -304,21 +304,21 @@ public:
 	void uploadIndices(const GraphMeshBuilder& builder);
 };
 
-enum class SurfaceGraphRenderMode : int {
+enum class SurfaceDisplayMode : int {
 	surface = 0,
 	wireframe,
 	none
 };
 
-constexpr unsigned int SurfaceGraphRenderModeCount = 3;
+constexpr unsigned int SurfaceDisplayModeCount = 3;
 
-struct SurfaceGraphSettings {
+struct SurfaceDisplaySettings {
 	bool renderGrid = true;
 	bool renderNormals = false;
-	SurfaceGraphRenderMode renderMode = SurfaceGraphRenderMode::surface;
+	SurfaceDisplayMode renderMode = SurfaceDisplayMode::surface;
 };
 
-class SurfaceGraphEntities {
+class SurfaceDisplayEntities {
 private:
 	static constexpr float gridLoft = 0.002f;
 
@@ -330,24 +330,24 @@ private:
 
 	void populateSurfaceEntity(
 		Renderer& renderer,
-		SurfaceGraphBuffers& buffers,
+		SurfaceDisplayBuffers& buffers,
 		Material& material
 	);
 	void populateGridEntity(
 		Renderer& renderer,
-		SurfaceGraphBuffers& buffers,
+		SurfaceDisplayBuffers& buffers,
 		Entity& ent,
 		float loftMult
 	);
-	void populateWireframeEntity(Renderer& renderer, SurfaceGraphBuffers& buffers);
-	void populateNormalEntity(Renderer& renderer, SurfaceGraphBuffers& buffers);
+	void populateWireframeEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers);
+	void populateNormalEntity(Renderer& renderer, SurfaceDisplayBuffers& buffers);
 
 public:
-	SurfaceGraphSettings settings;
+	SurfaceDisplaySettings settings;
 
-	SurfaceGraphEntities(
+	SurfaceDisplayEntities(
 		Renderer& renderer,
-		SurfaceGraphBuffers& buffers,
+		SurfaceDisplayBuffers& buffers,
 		Material& material
 	) {
 		populateSurfaceEntity(renderer, buffers, material);
@@ -407,8 +407,8 @@ private:
 	TimerCollection* _perfTimers;
 
 	SurfaceGraphMeshBuilder _builder;
-	SurfaceGraphBuffers _buffers;
-	SurfaceGraphEntities _entities;
+	SurfaceDisplayBuffers _buffers;
+	SurfaceDisplayEntities _entities;
 	SurfaceGraphState _state;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
