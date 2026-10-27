@@ -245,11 +245,14 @@ public:
 	auto& genericBuilder() { return _genericBuilder; }
 	const auto& genericBuilder() const { return _genericBuilder; }
 
-	auto& colors() { return _colors; }
-	const auto& colors() const { return _colors; }
+	auto& colorsUpdated() { return _colors.colorChanged; }
+	auto& funcUpdated() { return _func.updated(); }
 
 	auto& func() { return _func; }
 	const auto& func() const { return _func; }
+
+	auto& colors() { return _colors; }
+	const auto& colors() const { return _colors ; }
 };
 
 enum class SurfaceDisplayMode : int {
@@ -331,7 +334,7 @@ public:
 	void draw();
 };
 
-struct SurfaceGraphState {
+struct GraphState {
 	Flag shouldRegenPositions;
 	Flag cellsChanged;
 
@@ -350,41 +353,26 @@ struct SurfaceGraphState {
 	void decRegen();
 	void decUpload();
 
-	template<size_t IN_DIMS, size_t OUT_DIMS>
-	void update(Function<IN_DIMS, OUT_DIMS>& func, GraphColors<IN_DIMS>& colors) {
-		shouldRegenPositions.setByConsuming(func.updated());
-
-		if (shouldRegenPositions.consume()) {
-			setUpdateMode(GraphUpdateMode::positions);
-		}
-
-		if (colors.colorChanged.consume()) {
-			setUpdateMode(GraphUpdateMode::colors);
-		}
-
-		if (cellsChanged.consume()) {
-			setUpdateMode(allEnabled<GraphUpdateMode>());
-		}
-	}
-
+	void update(Flag& functionChanged, Flag& colorsChanged);
 	void updateEnd();
 };
 
-class SurfaceGraphFigure : public MathFigure {
+template<typename BUILDER, typename DISPLAY>
+class GraphFigure : public MathFigure {
 private:
 	unsigned int _id;
 
 	DiscriminatedStringMap _perfIds;
 	TimerCollection* _perfTimers;
 
-	SurfaceGraphMeshBuilder _builder;
-	SurfaceDisplay _display;
-	SurfaceGraphState _state;
+	BUILDER _builder;
+	DISPLAY _display;
+	GraphState _state;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
 	void handleFigureRemoved(const FigureRemovedEvent& e);
 
-	CompoundMethodEventHandler<SurfaceGraphFigure,
+	CompoundMethodEventHandler<GraphFigure<BUILDER, DISPLAY>,
 		RangeChangedEvent,
 		FigureRemovedEvent
 	> _eventHandlers { this,
@@ -398,7 +386,7 @@ public:
 	bool doUpload = true;
 	bool doRegen = true;
 
-	SurfaceGraphFigure(
+	GraphFigure(
 		unsigned int id,
 		EventRouter& eventRouter,
 		Renderer& renderer,
@@ -416,7 +404,7 @@ public:
 		_eventHandlers.addToRouter(eventRouter);
 	}
 
-	SurfaceGraphFigure(SurfaceGraphFigure&& other)
+	GraphFigure(GraphFigure<BUILDER, DISPLAY>&& other)
 	: _id { other._id },
 	  _builder { std::move(other._builder) },
 	  _display { std::move(other._display) },
@@ -430,10 +418,8 @@ public:
 
 	unsigned int id() const override { return _id; }
 
-	auto& func() { return _builder.func(); }
-
-	auto& colors() { return _builder.colors(); }
-	auto& material() { return _display.settings.material; }
+	BUILDER& builder() { return _builder; }
+	DISPLAY& display() { return _display; }
 
 	void clampOut(bool b);
 	bool clampOut() const;
@@ -441,11 +427,102 @@ public:
 	void cells(unsigned int cells);
 	unsigned int cells() const;
 
-	auto& settings() { return _display.settings; }
-
 	// TODO: Should really flesh out the entity system so I don't have to
 	// do this.
 	void updateSynchronized() override;
 	void draw() override;
 };
+
+template<typename B, typename D>
+void GraphFigure<B, D>::handleRangeChanged(const RangeChangedEvent& e) {
+	_state.shouldRegenPositions.set();
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::handleFigureRemoved(const FigureRemovedEvent& e) {
+	if (e.id != _id) return;
+
+	for (const auto& [_, perfId] : _perfIds.cache()) {
+		_perfTimers->removeTimer(perfId);
+	}
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::regen() {
+	if (!doRegen) return;
+
+	_perfTimers->start(_perfIds["regen"]);
+	// Indices need to be regenerated first, since the
+	// generateNormals() is dependent on them.
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::indices)) {
+		_builder.regenerateIndices();
+	}
+
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::colors)) {
+		_builder.regenerateColors();
+	}
+
+	if (flagsEnabled(_state.regenMode, GraphUpdateMode::positions)) {
+		_builder.regeneratePositions();
+	}
+	_perfTimers->stop(_perfIds["regen"]);
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::upload() {
+	if (!doUpload) return;
+
+	_perfTimers->start(_perfIds["upload"]);
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::positions)) {
+		_display.uploadPositions(_builder.genericBuilder());
+	}
+
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::colors)) {
+		_display.uploadColors(_builder.genericBuilder());
+	}
+
+	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::indices)) {
+		_display.uploadIndices(_builder.genericBuilder());
+	}
+	_perfTimers->stop(_perfIds["upload"]);
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::clampOut(bool b) {
+	_builder.genericBuilder().clampOut = b;
+	_state.shouldRegenPositions.set();
+}
+
+template<typename B, typename D>
+bool GraphFigure<B, D>::clampOut() const {
+	return _builder.genericBuilder().clampOut;
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::cells(unsigned int cells) {
+	_builder.genericBuilder().cells = cells;
+	_state.cellsChanged.set();
+}
+
+template<typename B, typename D>
+unsigned int GraphFigure<B, D>::cells() const {
+	return _builder.genericBuilder().cells;
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::updateSynchronized() {
+	_perfTimers->start(_perfIds["updateSynchronized"]);
+	_state.update(_builder.funcUpdated(), _builder.colorsUpdated());
+	regen();
+	upload();
+	_state.updateEnd();
+	_perfTimers->stop(_perfIds["updateSynchronized"]);
+}
+
+template<typename B, typename D>
+void GraphFigure<B, D>::draw() {
+	_display.draw();
+}
+
+using SurfaceGraphFigure = GraphFigure<SurfaceGraphMeshBuilder, SurfaceDisplay>;
 }

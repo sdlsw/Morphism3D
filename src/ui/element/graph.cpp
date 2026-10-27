@@ -83,7 +83,7 @@ SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
   _cells { static_cast<int>(graph.cells()) },
   _clampOut { graph.clampOut() },
   _guiIds { std::format("##{}", graph.id()) },
-  _appearanceWindow { graph.id(), graph.colors(), graph.material(), COLOR_PRESETS }
+  _appearanceWindow { graph.id(), graph.builder().colors(), graph.display().settings.material, COLOR_PRESETS }
 {
 	std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	_appearanceWindow.open = false;
@@ -96,14 +96,16 @@ void SurfaceGraphElement::expressionInput() {
 		_expressionBuf.size()
 	);
 	if (changed) {
-		_graph->func().updateExpression(0, _expressionBuf.data());
+		_graph->builder().func().updateExpression(0, _expressionBuf.data());
 	}
 }
 
 void SurfaceGraphElement::gridToggle() {
-	bool disabled = _graph->settings().renderMode != SurfaceDisplayMode::surface;
-	bool forceSetting = _graph->settings().renderMode == SurfaceDisplayMode::wireframe;
-	bool* setting = disabled ? &forceSetting : &_graph->settings().renderGrid;
+	auto& settings = _graph->display().settings;
+
+	bool disabled = settings.renderMode != SurfaceDisplayMode::surface;
+	bool forceSetting = settings.renderMode == SurfaceDisplayMode::wireframe;
+	bool* setting = disabled ? &forceSetting : &settings.renderGrid;
 
 	ImGui::BeginDisabled(disabled);
 	ImGui::Checkbox(_guiIds.c_str("Show Grid"), setting);
@@ -112,12 +114,14 @@ void SurfaceGraphElement::gridToggle() {
 }
 
 void SurfaceGraphElement::renderModeSlider() {
+	auto& settings = _graph->display().settings;
+
 	ImGui::SliderInt(
 		_guiIds.c_str("Render Mode"),
-		reinterpret_cast<int*>(&_graph->settings().renderMode),
+		reinterpret_cast<int*>(&settings.renderMode),
 		0,
 		SurfaceDisplayModeCount-1,
-		renderModeName(_graph->settings().renderMode).c_str(),
+		renderModeName(settings.renderMode).c_str(),
 		ImGuiSliderFlags_NoInput
 	);
 }
@@ -138,7 +142,7 @@ void SurfaceGraphElement::renderSettings() {
 	resolutionInput();
 	renderModeSlider();
 	gridToggle();
-	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->settings().renderNormals);
+	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->display().settings.renderNormals);
 	bool clampChanged = ImGui::Checkbox(_guiIds.c_str("Clamp Out"), &_clampOut);
 	if (clampChanged) {
 		_graph->clampOut(_clampOut);

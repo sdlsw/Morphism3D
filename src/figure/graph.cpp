@@ -222,117 +222,53 @@ void SurfaceDisplay::draw() {
 	}
 }
 
-void SurfaceGraphState::setRegenMode(GraphUpdateMode mode) {
+void GraphState::setRegenMode(GraphUpdateMode mode) {
 	inRegen.set();
 	regenMode |= mode;
 }
 
-void SurfaceGraphState::setUploadMode(GraphUpdateMode mode) {
+void GraphState::setUploadMode(GraphUpdateMode mode) {
 	uploadFrames = MAX_FRAMES_IN_FLIGHT;
 	uploadMode |= mode;
 }
 
-void SurfaceGraphState::setUpdateMode(GraphUpdateMode mode) {
+void GraphState::setUpdateMode(GraphUpdateMode mode) {
 	setRegenMode(mode);
 	setUploadMode(mode);
 }
 
-void SurfaceGraphState::decRegen() {
+void GraphState::decRegen() {
 	if (inRegen.consume()) {
 		regenMode = GraphUpdateMode::none;
 	}
 }
 
-void SurfaceGraphState::decUpload() {
+void GraphState::decUpload() {
 	if (uploadFrames > 0) {
 		uploadFrames--;
 		if (uploadFrames == 0) uploadMode = GraphUpdateMode::none;
 	}
 }
 
-void SurfaceGraphState::updateEnd() {
+void GraphState::update(Flag& functionChanged, Flag& colorsChanged) {
+	shouldRegenPositions.setByConsuming(functionChanged);
+
+	if (shouldRegenPositions.consume()) {
+		setUpdateMode(GraphUpdateMode::positions);
+	}
+
+	if (colorsChanged.consume()) {
+		setUpdateMode(GraphUpdateMode::colors);
+	}
+
+	if (cellsChanged.consume()) {
+		setUpdateMode(allEnabled<GraphUpdateMode>());
+	}
+}
+
+void GraphState::updateEnd() {
 	decRegen();
 	decUpload();
 }
 
-void SurfaceGraphFigure::handleRangeChanged(const RangeChangedEvent& e) {
-	_state.shouldRegenPositions.set();
-}
-
-void SurfaceGraphFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
-	if (e.id != _id) return;
-
-	for (const auto& [_, perfId] : _perfIds.cache()) {
-		_perfTimers->removeTimer(perfId);
-	}
-}
-
-void SurfaceGraphFigure::regen() {
-	if (!doRegen) return;
-
-	_perfTimers->start(_perfIds["regen"]);
-	// Indices need to be regenerated first, since the
-	// generateNormals() is dependent on them.
-	if (flagsEnabled(_state.regenMode, GraphUpdateMode::indices)) {
-		_builder.regenerateIndices();
-	}
-
-	if (flagsEnabled(_state.regenMode, GraphUpdateMode::colors)) {
-		_builder.regenerateColors();
-	}
-
-	if (flagsEnabled(_state.regenMode, GraphUpdateMode::positions)) {
-		_builder.regeneratePositions();
-	}
-	_perfTimers->stop(_perfIds["regen"]);
-}
-
-void SurfaceGraphFigure::upload() {
-	if (!doUpload) return;
-
-	_perfTimers->start(_perfIds["upload"]);
-	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::positions)) {
-		_display.uploadPositions(_builder.genericBuilder());
-	}
-
-	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::colors)) {
-		_display.uploadColors(_builder.genericBuilder());
-	}
-
-	if (flagsEnabled(_state.uploadMode, GraphUpdateMode::indices)) {
-		_display.uploadIndices(_builder.genericBuilder());
-	}
-	_perfTimers->stop(_perfIds["upload"]);
-}
-
-void SurfaceGraphFigure::clampOut(bool b) {
-	_builder.genericBuilder().clampOut = b;
-	_state.shouldRegenPositions.set();
-}
-
-bool SurfaceGraphFigure::clampOut() const {
-	return _builder.genericBuilder().clampOut;
-}
-
-void SurfaceGraphFigure::cells(unsigned int cells) {
-	_builder.genericBuilder().cells = cells;
-	_state.cellsChanged.set();
-}
-
-unsigned int SurfaceGraphFigure::cells() const {
-	return _builder.genericBuilder().cells;
-}
-
-void SurfaceGraphFigure::updateSynchronized() {
-	_perfTimers->start(_perfIds["updateSynchronized"]);
-	_state.update(_builder.func(), _builder.colors());
-	regen();
-	upload();
-	_state.updateEnd();
-	_perfTimers->stop(_perfIds["updateSynchronized"]);
-}
-
-void SurfaceGraphFigure::draw() {
-	_display.draw();
-}
 }
