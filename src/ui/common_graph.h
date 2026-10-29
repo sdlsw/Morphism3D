@@ -201,12 +201,62 @@ void GraphFunctionPanel<I, O>::show() {
 	}
 }
 
-template<typename B, typename D>
-void showGraphDebugSettings(GraphFigure<B, D>& graph, DiscriminatedStringMap& guiIds) {
-	if (graph.debugSettings().showGraphDebug) {
+template<typename T>
+class GraphCommonPanels {
+private:
+	T* _graph;
+	DiscriminatedStringMap* _guiIds;
+
+	bool _clampOut;
+	int _cells;
+	int _maxCells;
+public:
+	GraphCommonPanels(
+		T& graph,
+		DiscriminatedStringMap& guiIds,
+		int maxCells
+	)
+	: _graph { &graph },
+	  _guiIds { &guiIds },
+	  _cells { static_cast<int>(graph.cells()) },
+	  _maxCells { maxCells },
+	  _clampOut { graph.clampOut() }
+	{}
+
+	void showResolutionInput();
+	void showClampOutCheckbox();
+	void showDebugSettings();
+};
+
+template<typename T>
+void GraphCommonPanels<T>::showResolutionInput() {
+	ImGui::SliderInt(
+		_guiIds->c_str("Resolution"),
+		&_cells,
+		10, _maxCells, // min/max
+		"%d",
+		ImGuiSliderFlags_AlwaysClamp
+	);
+	ImGui::SameLine();
+	if (ImGui::Button(_guiIds->c_str("Update"))) {
+		_graph->cells(static_cast<unsigned int>(_cells));
+	}
+}
+
+template<typename T>
+void GraphCommonPanels<T>::showClampOutCheckbox() {
+	bool clampChanged = ImGui::Checkbox(_guiIds->c_str("Clamp Out"), &_clampOut);
+	if (clampChanged) {
+		_graph->clampOut(_clampOut);
+	}
+}
+
+template<typename T>
+void GraphCommonPanels<T>::showDebugSettings() {
+	if (_graph->debugSettings().showGraphDebug) {
 		ImGui::SeparatorText("Debug");
-		ImGui::Checkbox(guiIds.c_str("GPU Upload"), &graph.doUpload);
-		ImGui::Checkbox(guiIds.c_str("Regenerate"), &graph.doRegen);
+		ImGui::Checkbox(_guiIds->c_str("GPU Upload"), &_graph->doUpload);
+		ImGui::Checkbox(_guiIds->c_str("Regenerate"), &_graph->doRegen);
 	}
 }
 }

@@ -238,6 +238,9 @@ struct GraphState {
 
 template<typename BUILDER, typename DISPLAY>
 class GraphFigure : public MathFigure {
+	using BuilderType = BUILDER;
+	using DisplayType = DISPLAY;
+
 private:
 	unsigned int _id;
 
@@ -301,8 +304,8 @@ public:
 
 	unsigned int id() const override { return _id; }
 
-	BUILDER& builder() { return _builder; }
-	DISPLAY& display() { return _display; }
+	auto& builder() { return _builder; }
+	auto& display() { return _display; }
 	auto& debugSettings() { return *_debugSettings; }
 
 	void clampOut(bool b);

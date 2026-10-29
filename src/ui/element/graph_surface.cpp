@@ -91,10 +91,9 @@ void SurfaceGraphAppearanceWindow::drawUi() {
 SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
 : _graph { &graph },
   _title { std::format("Graph (figID {})", graph.id()) },
-  _cells { static_cast<int>(graph.cells()) },
-  _clampOut { graph.clampOut() },
   _guiIds { std::format("##{}", graph.id()) },
   _functionPanel { graph.builder().func(), _guiIds },
+  _commonPanels { graph, _guiIds, 250 },
   _appearanceWindow { graph.id(), graph.builder().colors(), graph.display().settings.material, COLOR_PRESETS }
 {
 	_appearanceWindow.open = false;
@@ -126,27 +125,13 @@ void SurfaceGraphElement::renderModeSlider() {
 	);
 }
 
-void SurfaceGraphElement::resolutionInput() {
-	// Maximum safe resolution is about 250 due to use of
-	// uint16_t for indices, so always clamp. TODO switch to
-	// uint32_t for even higher max resolution?
-	ImGui::SliderInt(_guiIds.c_str("Resolution"), &_cells, 10, 250, "%d", ImGuiSliderFlags_AlwaysClamp);
-	ImGui::SameLine();
-	if (ImGui::Button(_guiIds.c_str("Update"))) {
-		_graph->cells(static_cast<unsigned int>(_cells));
-	}
-}
-
 void SurfaceGraphElement::renderSettings() {
 	ImGui::SeparatorText("Render Settings");
-	resolutionInput();
+	_commonPanels.showResolutionInput();
 	renderModeSlider();
 	gridToggle();
 	ImGui::Checkbox(_guiIds.c_str("Show Normals"), &_graph->display().settings.renderNormals);
-	bool clampChanged = ImGui::Checkbox(_guiIds.c_str("Clamp Out"), &_clampOut);
-	if (clampChanged) {
-		_graph->clampOut(_clampOut);
-	}
+	_commonPanels.showClampOutCheckbox();
 
 	ImGui::Checkbox(
 		_guiIds.c_str("Show Appearance Settings"),
@@ -159,6 +144,6 @@ void SurfaceGraphElement::show() {
 
 	_functionPanel.show();
 	renderSettings();
-	showGraphDebugSettings(*_graph, _guiIds);
+	_commonPanels.showDebugSettings();
 }
 }

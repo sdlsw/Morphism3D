@@ -31,21 +31,16 @@ public:
 class SurfaceGraphElement : public UiElement {
 private:
 	const std::string _title;
-	GraphFunctionPanel<2, 1> _functionPanel;
-
-	bool _clampOut;
-
 	SurfaceGraphFigure* _graph;
-	int _cells;
+	DiscriminatedStringMap _guiIds;
+
+	GraphFunctionPanel<2, 1> _functionPanel;
+	GraphCommonPanels<SurfaceGraphFigure> _commonPanels;
+	SurfaceGraphAppearanceWindow _appearanceWindow;
 
 	void gridToggle();
 	void renderModeSlider();
-	void resolutionInput();
 	void renderSettings();
-
-	DiscriminatedStringMap _guiIds;
-
-	SurfaceGraphAppearanceWindow _appearanceWindow;
 public:
 	const std::string& title() const override { return _title; }
 	unsigned int id() const override { return _graph->id(); }
