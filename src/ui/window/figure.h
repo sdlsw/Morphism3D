@@ -22,8 +22,6 @@ private:
 	Range* _range;
 	DebugSettings* _debugSettings;
 
-	unsigned int _nextSliderId = 0;
-
 	// Returns true if this panel has a slider/animator with the given character
 	// defined.
 	bool varTaken(char c);
