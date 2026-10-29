@@ -5,6 +5,10 @@ static const std::string RENDER_MODE_WIREFRAME_NAME = "Wireframe";
 static const std::string RENDER_MODE_NONE_NAME = "None";
 static const std::string RENDER_MODE_UNKNOWN_NAME { g3d::UI_UNKNOWN_MODE_NAME };
 
+static const std::string SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP {
+	"This setting cannot be changed outside Surface rendering mode."
+};
+
 const std::array<g3d::GraphColorPreset<2>, 7> COLOR_PRESETS {{
 	{
 		.title = "Red",
@@ -116,7 +120,7 @@ void SurfaceGraphElement::gridToggle() {
 
 	ImGui::BeginDisabled(disabled);
 	ImGui::Checkbox(_guiIds.c_str("Show Grid"), setting);
-	if (disabled) ImGui::SetItemTooltip(SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP);
+	if (disabled) ImGui::SetItemTooltip(SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP.c_str());
 	ImGui::EndDisabled();
 }
 

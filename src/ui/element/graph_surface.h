@@ -6,11 +6,6 @@
 #include "ui/common_graph.h"
 
 namespace g3d {
-// Unfortunately need to define this in header since it's used in a template.
-constexpr const char SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP[] {
-	"This setting cannot be changed outside Surface rendering mode."
-};
-
 class SurfaceGraphAppearanceWindow : public UiWindow {
 private:
 	std::string _title;
