@@ -129,4 +129,50 @@ void GraphColorPanel<DIMS>::show() {
 		}
 	}
 }
+
+template<size_t IN_DIMS, size_t OUT_DIMS>
+class GraphFunctionPanel {
+private:
+	std::array<std::array<char, 255>, OUT_DIMS> _expressionBufs;
+	Function<IN_DIMS, OUT_DIMS>* _func;
+
+	DiscriminatedStringMap* _guiIds;
+
+	void expression(size_t n);
+public:
+	GraphFunctionPanel(
+		Function<IN_DIMS, OUT_DIMS>& func,
+		DiscriminatedStringMap& guiIds
+	)
+	: _func { &func },
+	  _guiIds { &guiIds }
+	{
+		for (auto& buf : _expressionBufs) {
+			std::fill(buf.begin(), buf.end(), '\0');
+		}
+	}
+
+	void show();
+};
+
+template<size_t I, size_t O>
+void GraphFunctionPanel<I, O>::expression(size_t n) {
+	bool changed = ImGui::InputText(
+		_guiIds->c_str("Expression"), // TODO Change this according to I/O
+		_expressionBufs[n].data(),
+		_expressionBufs[n].size()
+	);
+
+	if (changed) {
+		_func->updateExpression(0, _expressionBufs[n].data());
+	}
+}
+
+
+template<size_t I, size_t O>
+void GraphFunctionPanel<I, O>::show() {
+	for (size_t i = 0; i < O; i++) {
+		expression(i);
+	}
+}
 }

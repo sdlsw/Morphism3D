@@ -31,14 +31,13 @@ public:
 class SurfaceGraphElement : public UiElement {
 private:
 	const std::string _title;
-	std::array<char, 255> _expressionBuf;
+	GraphFunctionPanel<2, 1> _functionPanel;
 
 	bool _clampOut;
 
 	SurfaceGraphFigure* _graph;
 	int _cells;
 
-	void expressionInput();
 	void gridToggle();
 	void renderModeSlider();
 	void resolutionInput();

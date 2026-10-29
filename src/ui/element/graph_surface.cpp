@@ -94,21 +94,10 @@ SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
   _cells { static_cast<int>(graph.cells()) },
   _clampOut { graph.clampOut() },
   _guiIds { std::format("##{}", graph.id()) },
+  _functionPanel { graph.builder().func(), _guiIds },
   _appearanceWindow { graph.id(), graph.builder().colors(), graph.display().settings.material, COLOR_PRESETS }
 {
-	std::fill(_expressionBuf.begin(), _expressionBuf.end(), '\0');
 	_appearanceWindow.open = false;
-}
-
-void SurfaceGraphElement::expressionInput() {
-	bool changed = ImGui::InputText(
-		_guiIds.c_str("Expression"),
-		_expressionBuf.data(),
-		_expressionBuf.size()
-	);
-	if (changed) {
-		_graph->builder().func().updateExpression(0, _expressionBuf.data());
-	}
 }
 
 void SurfaceGraphElement::gridToggle() {
@@ -168,7 +157,7 @@ void SurfaceGraphElement::renderSettings() {
 void SurfaceGraphElement::show() {
 	_appearanceWindow.show();
 
-	expressionInput();
+	_functionPanel.show();
 	renderSettings();
 
 	ImGui::SeparatorText("Debug");
