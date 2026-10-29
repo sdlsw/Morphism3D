@@ -194,7 +194,6 @@ void GraphFunctionPanel<I, O>::expression(size_t n) {
 	}
 }
 
-
 template<size_t I, size_t O>
 void GraphFunctionPanel<I, O>::show() {
 	for (size_t i = 0; i < O; i++) {
