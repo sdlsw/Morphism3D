@@ -160,8 +160,10 @@ void SurfaceGraphElement::show() {
 	_functionPanel.show();
 	renderSettings();
 
-	ImGui::SeparatorText("Debug");
-	ImGui::Checkbox(_guiIds.c_str("GPU Upload"), &_graph->doUpload);
-	ImGui::Checkbox(_guiIds.c_str("Regenerate"), &_graph->doRegen);
+	if (_graph->debugSettings().showGraphDebug) {
+		ImGui::SeparatorText("Debug");
+		ImGui::Checkbox(_guiIds.c_str("GPU Upload"), &_graph->doUpload);
+		ImGui::Checkbox(_guiIds.c_str("Regenerate"), &_graph->doRegen);
+	}
 }
 }

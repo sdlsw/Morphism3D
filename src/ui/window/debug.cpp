@@ -25,6 +25,7 @@ void DebugWindow::parserTestInput() {
 
 void DebugWindow::drawUi() {
 	ImGui::Checkbox("Show Test Object", &_debugSettings->renderTestObject);
+	ImGui::Checkbox("Show Graph Debug", &_debugSettings->showGraphDebug);
 	tokenizerTestInput();
 	parserTestInput();
 }

@@ -3,6 +3,7 @@
 #include "expression.h"
 #include "figure/figure.h"
 #include "range.h"
+#include "settings.h"
 #include "statistics.h"
 #include "ui/common.h"
 #include "vk/renderer.h"
@@ -19,6 +20,7 @@ private:
 	Renderer* _renderer;
 	TimerCollection* _perfTimers;
 	Range* _range;
+	DebugSettings* _debugSettings;
 
 	unsigned int _nextSliderId = 0;
 
@@ -44,14 +46,16 @@ public:
 		VariableStore& vars,
 		Renderer& renderer,
 		TimerCollection& perfTimers,
-		Range& range
+		Range& range,
+		DebugSettings& debugSettings
 	)
 	: _figures { &figures },
 	  _panel { window },
 	  _vars { &vars },
 	  _renderer { &renderer },
 	  _perfTimers { &perfTimers },
-	  _range { &range }
+	  _range { &range },
+	  _debugSettings { &debugSettings }
 	{}
 };
 }

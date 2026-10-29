@@ -59,7 +59,8 @@ void FigureWindow::addGraph() {
 		*_vars,
 		80, // initial cells
 		*_range,
-		*_perfTimers
+		*_perfTimers,
+		*_debugSettings
 	);
 	_panel.addFrame(_figures->getUiElement(newGraph));
 }

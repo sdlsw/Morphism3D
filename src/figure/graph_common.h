@@ -7,6 +7,7 @@
 #include "iteration.h"
 #include "primitive.h"
 #include "range.h"
+#include "settings.h"
 #include "statistics.h"
 #include "vk/renderer.h"
 
@@ -242,6 +243,7 @@ private:
 
 	DiscriminatedStringMap _perfIds;
 	TimerCollection* _perfTimers;
+	DebugSettings* _debugSettings;
 
 	BUILDER _builder;
 	DISPLAY _display;
@@ -271,13 +273,15 @@ public:
 		VariableStore& variableStore,
 		unsigned int cells,
 		Range& range,
-		TimerCollection& perfTimers
+		TimerCollection& perfTimers,
+		DebugSettings& debugSettings
 	)
 	: _id { id },
 	  _perfIds { std::format("_graph{}", id) },
 	  _builder { variableStore, cells, range, perfTimers, _perfIds },
 	  _display { renderer, _builder.genericBuilder() },
-	  _perfTimers { &perfTimers }
+	  _perfTimers { &perfTimers },
+	  _debugSettings { &debugSettings }
 	{
 		_eventHandlers.addToRouter(eventRouter);
 	}
@@ -289,7 +293,8 @@ public:
 	  _state { std::move(other._state) },
 	  _perfTimers { other._perfTimers },
 	  _eventHandlers { std::move(other._eventHandlers) },
-	  _perfIds { std::move(other._perfIds) }
+	  _perfIds { std::move(other._perfIds) },
+	  _debugSettings { other._debugSettings }
 	{
 		_eventHandlers.updateThis(this);
 	}
@@ -298,6 +303,7 @@ public:
 
 	BUILDER& builder() { return _builder; }
 	DISPLAY& display() { return _display; }
+	auto& debugSettings() { return *_debugSettings; }
 
 	void clampOut(bool b);
 	bool clampOut() const;

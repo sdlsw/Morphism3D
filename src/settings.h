@@ -11,5 +11,6 @@ struct RenderSettings {
 
 struct DebugSettings {
 	bool renderTestObject = false;
+	bool showGraphDebug = false;
 };
 }

@@ -101,7 +101,8 @@ public:
 			_variableStore,
 			_renderer,
 			_perfTimers,
-			_range
+			_range,
+			_debugSettings
 		);
 		_ui.addWindow<StatsWindow>(_perfTimers, _window);
 		_ui.addWindow<DebugWindow>(_debugSettings);
