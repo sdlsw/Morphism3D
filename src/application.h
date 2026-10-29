@@ -4,7 +4,6 @@
 #include "container.h"
 #include "expression.h"
 #include "figure/figure.h"
-#include "figure/graph.h"
 #include "function.h"
 #include "primitive.h"
 #include "temporal.h"

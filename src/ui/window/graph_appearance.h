@@ -1,6 +1,6 @@
 #pragma once
 
-#include "figure/graph.h"
+#include "figure/graph_surface.h"
 #include "ui/common_render.h"
 
 namespace g3d {

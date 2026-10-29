@@ -1,7 +1,7 @@
 #include "ui/window/figure.h"
 
 #include "ui/element/animator.h"
-#include "ui/element/graph.h"
+#include "ui/element/graph_surface.h"
 #include "ui/element/slider.h"
 
 #include <typeinfo>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "expression.h"
-#include "figure/graph.h"
+#include "figure/graph_surface.h"
 #include "figure/figure.h"
 #include "ui/common.h"
 #include "ui/window/graph_appearance.h"
