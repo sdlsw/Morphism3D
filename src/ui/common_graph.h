@@ -1,6 +1,6 @@
 #pragma once
 
-#include "figure/graph_surface.h"
+#include "figure/graph_common.h"
 #include "ui/common_render.h"
 
 namespace g3d {
@@ -36,12 +36,9 @@ std::string createColorLabel(size_t colorIndex) {
 }
 
 template<size_t DIMS>
-class GraphAppearanceWindow : public UiWindow {
+class GraphColorPanel {
 private:
-	std::string _title;
-	
 	GraphColors<DIMS>* _colors;
-	WithInitial<Material>* _material;
 	bool _colorMode { GRAPH_COLOR_MULTI };
 
 	const GraphColorPreset<DIMS>* _presets;
@@ -52,28 +49,23 @@ private:
 	void loadColorPreset(const GraphColorPreset<DIMS>& preset);
 
 public:
-	const std::string& title() const override { return _title; }
-	void drawUi() override;
-
 	// Note: It is acceptable to use a vector to contain the presets, so
 	// long as that vector does not change size once this window is
 	// constructed.
-	GraphAppearanceWindow(
-		unsigned int id,
+	GraphColorPanel(
 		GraphColors<DIMS>& colors,
-		WithInitial<Material>& material,
 		std::span<const GraphColorPreset<DIMS>> presets
 	)
-	: _title { std::format("Graph (figID {}) Appearance", id) },
-	  _colors { &colors },
-	  _material { &material },
+	: _colors { &colors },
 	  _presets { presets.data() },
 	  _numPresets { presets.size() }
 	{}
+
+	void show();
 };
 
 template<size_t DIMS>
-void GraphAppearanceWindow<DIMS>::loadColorPreset(const GraphColorPreset<DIMS>& preset) {
+void GraphColorPanel<DIMS>::loadColorPreset(const GraphColorPreset<DIMS>& preset) {
 	if (preset.mode == GRAPH_COLOR_MULTI) {
 		_colors->gradientEndpoints.copyFromSpan(preset.multiColor);
 	} else {
@@ -85,8 +77,7 @@ void GraphAppearanceWindow<DIMS>::loadColorPreset(const GraphColorPreset<DIMS>& 
 }
 
 template<size_t DIMS>
-void GraphAppearanceWindow<DIMS>::drawUi() {
-	ImGui::SeparatorText("Color");
+void GraphColorPanel<DIMS>::show() {
 	if (ImGui::Button("Load Preset...")) {
 		ImGui::OpenPopup("graph_colors_load_preset_popup");
 	}
@@ -137,9 +128,5 @@ void GraphAppearanceWindow<DIMS>::drawUi() {
 			_colors->colorChanged.set();
 		}
 	}
-
-	ImGui::SeparatorText("Material");
-	resettableMaterialPanel(*_material);
 }
-
-};
+}

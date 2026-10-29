@@ -77,6 +77,13 @@ const std::string& renderModeName(const g3d::SurfaceDisplayMode& mode) {
 }
 
 namespace g3d {
+void SurfaceGraphAppearanceWindow::drawUi() {
+	ImGui::SeparatorText("Color");
+	_colorPanel.show();
+	ImGui::SeparatorText("Material");
+	resettableMaterialPanel(*_material);
+}
+
 SurfaceGraphElement::SurfaceGraphElement(SurfaceGraphFigure& graph)
 : _graph { &graph },
   _title { std::format("Graph (figID {})", graph.id()) },

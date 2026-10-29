@@ -3,13 +3,34 @@
 #include "expression.h"
 #include "figure/graph_surface.h"
 #include "figure/figure.h"
-#include "ui/common.h"
-#include "ui/window/graph_appearance.h"
+#include "ui/common_graph.h"
 
 namespace g3d {
 // Unfortunately need to define this in header since it's used in a template.
 constexpr const char SHOW_GRID_FIXED_NOT_SURFACE_TOOLTIP[] {
 	"This setting cannot be changed outside Surface rendering mode."
+};
+
+class SurfaceGraphAppearanceWindow : public UiWindow {
+private:
+	std::string _title;
+	GraphColorPanel<2> _colorPanel;
+	WithInitial<Material>* _material;
+
+public:
+	const std::string& title() const override { return _title; }
+	void drawUi() override;
+
+	SurfaceGraphAppearanceWindow(
+		unsigned int id,
+		GraphColors<2>& colors,
+		WithInitial<Material>& material,
+		std::span<const GraphColorPreset<2>> presets
+	)
+	: _title { std::format("Graph (figID {}) Appearance", id) },
+	  _colorPanel { colors, presets },
+	  _material { &material }
+	{}
 };
 
 class SurfaceGraphElement : public UiElement {
@@ -30,7 +51,7 @@ private:
 
 	DiscriminatedStringMap _guiIds;
 
-	GraphAppearanceWindow<2> _appearanceWindow;
+	SurfaceGraphAppearanceWindow _appearanceWindow;
 public:
 	const std::string& title() const override { return _title; }
 	unsigned int id() const override { return _graph->id(); }
