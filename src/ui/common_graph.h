@@ -131,12 +131,36 @@ void GraphColorPanel<DIMS>::show() {
 }
 
 template<size_t IN_DIMS, size_t OUT_DIMS>
+std::string createExpressionLabel(size_t n) {
+	// TODO generalize this for more than just x/y/z
+	std::string out;
+
+	char outputStart = 'x' + IN_DIMS;
+	out.push_back(outputStart + static_cast<char>(n));
+
+	out.push_back('(');
+	for (int i = 0; i < IN_DIMS; i++) {
+		out.push_back('x' + static_cast<char>(i));
+		if (i < IN_DIMS-1) out.push_back(',');
+	}
+	out.push_back(')');
+
+	out.push_back(' ');
+	out.push_back('=');
+
+	return out;
+}
+
+template<size_t IN_DIMS, size_t OUT_DIMS>
 class GraphFunctionPanel {
 private:
 	std::array<std::array<char, 255>, OUT_DIMS> _expressionBufs;
 	Function<IN_DIMS, OUT_DIMS>* _func;
 
 	DiscriminatedStringMap* _guiIds;
+	CachedStringFunction<size_t> _expressionLabels {
+		&createExpressionLabel<IN_DIMS, OUT_DIMS>
+	};
 
 	void expression(size_t n);
 public:
@@ -157,8 +181,10 @@ public:
 
 template<size_t I, size_t O>
 void GraphFunctionPanel<I, O>::expression(size_t n) {
+	ImGui::Text(_expressionLabels.c_str(n));
+	ImGui::SameLine();
 	bool changed = ImGui::InputText(
-		_guiIds->c_str("Expression"), // TODO Change this according to I/O
+		_guiIds->c_str(std::format("##expression{}", n)),
 		_expressionBufs[n].data(),
 		_expressionBufs[n].size()
 	);
