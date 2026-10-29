@@ -200,4 +200,13 @@ void GraphFunctionPanel<I, O>::show() {
 		expression(i);
 	}
 }
+
+template<typename B, typename D>
+void showGraphDebugSettings(GraphFigure<B, D>& graph, DiscriminatedStringMap& guiIds) {
+	if (graph.debugSettings().showGraphDebug) {
+		ImGui::SeparatorText("Debug");
+		ImGui::Checkbox(guiIds.c_str("GPU Upload"), &graph.doUpload);
+		ImGui::Checkbox(guiIds.c_str("Regenerate"), &graph.doRegen);
+	}
+}
 }
