@@ -236,10 +236,41 @@ struct GraphState {
 	void updateEnd();
 };
 
-template<typename BUILDER, typename DISPLAY>
+template<typename T>
+concept Builder = requires(
+	T builder,
+	VariableStore variableStore,
+	unsigned int cells,
+	Range range,
+	TimerCollection& perfTimers,
+	DiscriminatedStringMap& perfIds
+) {
+	{ T(variableStore, cells, range, perfTimers, perfIds) } -> std::convertible_to<T>;
+	{ builder.regeneratePositions() };
+	{ builder.regenerateColors() };
+	{ builder.regenerateIndices() };
+	{ builder.genericBuilder() } -> std::convertible_to<GraphMeshBuilder>;
+	{ builder.colorsUpdated() } -> std::convertible_to<Flag>;
+	{ builder.funcUpdated() } -> std::convertible_to<Flag>;
+};
+
+template<typename T>
+concept Display = requires(
+	T display,
+	Renderer renderer,
+	GraphMeshBuilder genericBuilder
+) {
+	{ T(renderer, genericBuilder) } -> std::convertible_to<T>;
+	{ display.uploadPositions(genericBuilder) };
+	{ display.uploadColors(genericBuilder) };
+	{ display.uploadIndices(genericBuilder) };
+	{ display.draw() };
+};
+
+template<Builder B, Display D>
 class GraphFigure : public MathFigure {
-	using BuilderType = BUILDER;
-	using DisplayType = DISPLAY;
+	using BuilderType = B;
+	using DisplayType = D;
 
 private:
 	unsigned int _id;
@@ -248,14 +279,14 @@ private:
 	TimerCollection* _perfTimers;
 	DebugSettings* _debugSettings;
 
-	BUILDER _builder;
-	DISPLAY _display;
+	B _builder;
+	D _display;
 	GraphState _state;
 
 	void handleRangeChanged(const RangeChangedEvent& e);
 	void handleFigureRemoved(const FigureRemovedEvent& e);
 
-	CompoundMethodEventHandler<GraphFigure<BUILDER, DISPLAY>,
+	CompoundMethodEventHandler<GraphFigure<B, D>,
 		RangeChangedEvent,
 		FigureRemovedEvent
 	> _eventHandlers { this,
@@ -289,7 +320,7 @@ public:
 		_eventHandlers.addToRouter(eventRouter);
 	}
 
-	GraphFigure(GraphFigure<BUILDER, DISPLAY>&& other)
+	GraphFigure(GraphFigure<B, D>&& other)
 	: _id { other._id },
 	  _builder { std::move(other._builder) },
 	  _display { std::move(other._display) },
@@ -320,12 +351,12 @@ public:
 	void draw() override;
 };
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::handleRangeChanged(const RangeChangedEvent& e) {
 	_state.shouldRegenPositions.set();
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::handleFigureRemoved(const FigureRemovedEvent& e) {
 	if (e.id != _id) return;
 
@@ -334,7 +365,7 @@ void GraphFigure<B, D>::handleFigureRemoved(const FigureRemovedEvent& e) {
 	}
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::regen() {
 	if (!doRegen) return;
 
@@ -355,7 +386,7 @@ void GraphFigure<B, D>::regen() {
 	_perfTimers->stop(_perfIds["regen"]);
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::upload() {
 	if (!doUpload) return;
 
@@ -374,29 +405,29 @@ void GraphFigure<B, D>::upload() {
 	_perfTimers->stop(_perfIds["upload"]);
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::clampOut(bool b) {
 	_builder.genericBuilder().clampOut = b;
 	_state.shouldRegenPositions.set();
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 bool GraphFigure<B, D>::clampOut() const {
 	return _builder.genericBuilder().clampOut;
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::cells(unsigned int cells) {
 	_builder.genericBuilder().cells = cells;
 	_state.cellsChanged.set();
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 unsigned int GraphFigure<B, D>::cells() const {
 	return _builder.genericBuilder().cells;
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::updateSynchronized() {
 	_perfTimers->start(_perfIds["updateSynchronized"]);
 	_state.update(_builder.funcUpdated(), _builder.colorsUpdated());
@@ -406,7 +437,7 @@ void GraphFigure<B, D>::updateSynchronized() {
 	_perfTimers->stop(_perfIds["updateSynchronized"]);
 }
 
-template<typename B, typename D>
+template<Builder B, Display D>
 void GraphFigure<B, D>::draw() {
 	_display.draw();
 }
