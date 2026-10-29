@@ -190,7 +190,7 @@ void GraphFunctionPanel<I, O>::expression(size_t n) {
 	);
 
 	if (changed) {
-		_func->updateExpression(0, _expressionBufs[n].data());
+		_func->updateExpression(n, _expressionBufs[n].data());
 	}
 }
 

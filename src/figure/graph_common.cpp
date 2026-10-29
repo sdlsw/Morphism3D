@@ -36,7 +36,14 @@ void GraphMeshBuilder::generateNormalPositions() {
 	_perfTimers->stop((*_perfIds)["regenNormalPositions"]);
 }
 
-void GraphMeshBuilder::generateLineIndices() {
+void GraphMeshBuilder::generate1dLineIndices() {
+	for (unsigned int xpt = 0; xpt < cells; xpt++) {
+		_lineIndices.push_back(xpt);
+		_lineIndices.push_back(xpt+1);
+	}
+}
+
+void GraphMeshBuilder::generate2dLineIndices() {
 	// generate horizontal lines
 	for (unsigned int ypt = 0; ypt <= cells; ypt++) {
 		for (unsigned int xpt = 0; xpt < cells; xpt++) {
@@ -97,6 +104,15 @@ void GraphMeshBuilder::clearIndices() {
 	_lineIndices.clear();
 	_triangleIndices.clear();
 	_normalIndices.clear();
+}
+
+GraphColors<1> default1dColors() {
+	glm::vec3 colors[] {
+		{0.141f, 0.706f, 0.322f}, // green
+		{1.000f, 0.000f, 0.000f}  // red
+	};
+
+	return { colors };
 }
 
 GraphColors<2> default2dColors() {

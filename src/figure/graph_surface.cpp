@@ -16,7 +16,7 @@ void SurfaceGraphMeshBuilder::regenerateColors() {
 
 void SurfaceGraphMeshBuilder::regenerateIndices() {
 	_genericBuilder.clearIndices();
-	_genericBuilder.generateLineIndices();
+	_genericBuilder.generate2dLineIndices();
 	_genericBuilder.generateTriangleIndices();
 	_genericBuilder.generateNormalIndices();
 }

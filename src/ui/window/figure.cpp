@@ -1,8 +1,6 @@
 #include "ui/window/figure.h"
 
-#include "ui/element/animator.h"
-#include "ui/element/graph_surface.h"
-#include "ui/element/slider.h"
+#include "ui/element/all.h"
 
 #include <typeinfo>
 
@@ -49,25 +47,14 @@ void FigureWindow::addSlider(char c) {
 	_panel.addFrame(_figures->getUiElement(newSlider));
 }
 
-void FigureWindow::addGraph() {
-	// TODO: There might be a memory leak here, removing a SurfaceGraphFigure
-	// removes both halves of a dynamic buffer while one half is occupied,
-	// causing the free call to fail.
-	auto& newGraph = _figures->addFigure<SurfaceGraphFigure>(
-		_vars->eventRouter(),
-		*_renderer,
-		*_vars,
-		80, // initial cells
-		*_range,
-		*_perfTimers,
-		*_debugSettings
-	);
-	_panel.addFrame(_figures->getUiElement(newGraph));
-}
-
 void FigureWindow::drawUi() {
-	if (ImGui::Button("Add Graph")) {
-		addGraph();
+	if (ImGui::Button("Add Surface Graph")) {
+		addGraph<SurfaceGraphFigure>();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Add Line Graph")) {
+		addGraph<LineGraphFigure>();
 	}
 
 	ImGui::SameLine();

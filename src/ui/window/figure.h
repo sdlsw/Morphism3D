@@ -26,7 +26,9 @@ private:
 	// defined.
 	bool varTaken(char c);
 
+	template<typename T>
 	void addGraph();
+
 	void addSlider(char c);
 	void addAnimator(char c);
 
@@ -56,4 +58,21 @@ public:
 	  _debugSettings { &debugSettings }
 	{}
 };
+
+template<typename T>
+void FigureWindow::addGraph() {
+	// TODO: There might be a memory leak here, removing a GraphFigure
+	// removes both halves of a dynamic buffer while one half is occupied,
+	// causing the free call to fail.
+	auto& newGraph = _figures->addFigure<T>(
+		_vars->eventRouter(),
+		*_renderer,
+		*_vars,
+		80, // initial cells
+		*_range,
+		*_perfTimers,
+		*_debugSettings
+	);
+	_panel.addFrame(_figures->getUiElement(newGraph));
+}
 }

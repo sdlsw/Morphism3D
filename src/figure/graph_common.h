@@ -46,6 +46,7 @@ struct GraphColors {
 	}
 };
 
+GraphColors<1> default1dColors();
 GraphColors<2> default2dColors();
 
 enum class GraphUpdateMode : uint8_t {
@@ -120,7 +121,7 @@ public:
 		_perfTimers->start((*_perfIds)["regenPositions"]);
 
 		float inc = 1.0f / static_cast<float>(cells);
-		std::array<float, IN_DIMS> inputs { 0.0f, 0.0f };
+		std::array<float, IN_DIMS> inputs;
 		MultidimensionalCounter<IN_DIMS> counter { cells, [this, &inputs, inc](size_t i, size_t cnt) {
 			inputs[i] = glm::mix(_range->low()[i], _range->high()[i], inc*cnt);
 		}};
@@ -207,7 +208,8 @@ public:
 	void generateNormals();
 	void clearNormals();
 
-	void generateLineIndices();
+	void generate1dLineIndices();
+	void generate2dLineIndices();
 	void generateTriangleIndices();
 	void generateNormalIndices();
 	void clearIndices();
