@@ -35,6 +35,7 @@ void LineGraphElement::show() {
 	ImGui::SeparatorText("Render Settings");
 	_commonPanels.showResolutionInput();
 	_commonPanels.showClampOutCheckbox();
+	ImGui::Checkbox(_guiIds.c_str("Show Appearance Settings"), &_appearanceWindow.open);
 	_commonPanels.showDebugSettings();
 }
 }
