@@ -5,6 +5,13 @@
 #include <typeinfo>
 
 namespace g3d {
+const AddFigureMenuEntry FigureWindow::addFigureMenu[] {
+	{ "Surface Graph", std::mem_fn(addGraph<SurfaceGraphFigure>) },
+	{ "Line Graph", std::mem_fn(addGraph<LineGraphFigure>) },
+	{ "Slider", std::mem_fn(addVariableFigure<SliderFigure>) },
+	{ "Animator", std::mem_fn(addVariableFigure<AnimatorFigure>) }
+};
+
 bool FigureWindow::varTaken(char c) {
 	const auto& sliderType = typeid(SliderFigure);
 	const auto& animatorType = typeid(AnimatorFigure);
@@ -37,42 +44,29 @@ char FigureWindow::findFirstAvailableVar() {
 	return '\0';
 }
 
-void FigureWindow::addAnimator(char c) {
-	auto& newAnimator = _figures->addFigure<AnimatorFigure>(*_vars, c);
-	_panel.addFrame(_figures->getUiElement(newAnimator));
-}
+void FigureWindow::showAddFigureButton() {
+	if (ImGui::Button("Add Figure...")) {
+		ImGui::OpenPopup("add_figure_popup");
+	}
 
-void FigureWindow::addSlider(char c) {
-	auto& newSlider = _figures->addFigure<SliderFigure>(*_vars, c);
-	_panel.addFrame(_figures->getUiElement(newSlider));
+	int selectedFigure = -1;
+	if (ImGui::BeginPopup("add_figure_popup")) {
+		ImGui::SeparatorText("Figures");
+		for (unsigned int i = 0; i < std::size(addFigureMenu); i++) {
+			if (ImGui::Selectable(addFigureMenu[i].name.c_str())) {
+				selectedFigure = static_cast<int>(i);
+			}
+		}
+		ImGui::EndPopup();
+	}
+
+	if (selectedFigure >= 0) {
+		addFigureMenu[selectedFigure].callback(this);
+	}
 }
 
 void FigureWindow::drawUi() {
-	if (ImGui::Button("Add Surface Graph")) {
-		addGraph<SurfaceGraphFigure>();
-	}
-
-	ImGui::SameLine();
-	if (ImGui::Button("Add Line Graph")) {
-		addGraph<LineGraphFigure>();
-	}
-
-	ImGui::SameLine();
-	if (ImGui::Button("Add Slider")) {
-		char avail = findFirstAvailableVar();
-		if (avail != '\0') {
-			addSlider(avail);
-		}
-	}
-
-	ImGui::SameLine();
-	if (ImGui::Button("Add Animator")) {
-		char avail = findFirstAvailableVar();
-		if (avail != '\0') {
-			addAnimator(avail);
-		}
-	}
-
+	showAddFigureButton();
 	ImGui::SameLine();
 	if (ImGui::Button("Remove All")) {
 		_panel.removeAllFrames();

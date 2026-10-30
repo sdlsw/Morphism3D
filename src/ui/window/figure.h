@@ -10,9 +10,14 @@
 #include "window.h"
 
 namespace g3d {
+struct AddFigureMenuEntry;
+
 class FigureWindow : public UiWindow {
 private:
+	static const AddFigureMenuEntry addFigureMenu[];
+
 	const std::string _title { "Figures" };
+
 	RearrangeablePanel _panel;
 
 	FigureCollection* _figures;
@@ -29,13 +34,14 @@ private:
 	template<typename T>
 	void addGraph();
 
-	void addSlider(char c);
-	void addAnimator(char c);
+	template<typename T>
+	void addVariableFigure();
 
 	// Finds an available variable that doesn't already have a slider.
 	// Returns '\0' on failure.
 	char findFirstAvailableVar();
 
+	void showAddFigureButton();
 public:
 	const std::string& title() const override { return _title; }
 	void drawUi() override;
@@ -58,6 +64,20 @@ public:
 	  _debugSettings { &debugSettings }
 	{}
 };
+
+struct AddFigureMenuEntry {
+	std::string name;
+	std::function<void(g3d::FigureWindow*)> callback;
+};
+
+template<typename T>
+void FigureWindow::addVariableFigure() {
+	char avail = findFirstAvailableVar();
+	if (avail != '\0') {
+		auto& newFigure = _figures->addFigure<T>(*_vars, avail);
+		_panel.addFrame(_figures->getUiElement(newFigure));
+	}
+}
 
 template<typename T>
 void FigureWindow::addGraph() {
