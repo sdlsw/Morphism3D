@@ -47,10 +47,10 @@ VkTop::VkTop(const vk::ApplicationInfo& appInfo)
   _instance { createInstance() },
   _physicalDevices { _instance }
 {
-	size_t dev_count = _physicalDevices.size();
+	size_t devCount = _physicalDevices.size();
 
-	if (dev_count != 0) {
-		_logger.info("Enumerated {} device(s) with Vulkan support", dev_count);
+	if (devCount != 0) {
+		_logger.info("Enumerated {} device(s) with Vulkan support", devCount);
 	} else {
 		throw std::runtime_error("failed to find a device with Vulkan support!");
 	}
