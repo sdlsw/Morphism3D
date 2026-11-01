@@ -19,11 +19,14 @@ else()
     message(STATUS "Current build mode: Single Config, ${CMAKE_BUILD_TYPE}")
 endif()
 
+message(STATUS "Building for ${CMAKE_SYSTEM_NAME}")
+
 # Compiler options
 add_library(compiler-flags INTERFACE)
 target_compile_features(compiler-flags INTERFACE cxx_std_23)
 set(is_msvc "$<COMPILE_LANG_AND_ID:CXX,MSVC>")
 set(is_gcc "$<COMPILE_LANG_AND_ID:CXX,GNU>")
+set(is_windows "$<PLATFORM_ID:CYGWIN,MSYS,Windows>")
 target_compile_options(
     compiler-flags
     INTERFACE
@@ -34,7 +37,7 @@ target_compile_options(
 target_link_options(
     compiler-flags
     INTERFACE
-    $<${is_gcc}:-static-libgcc -static-libstdc++>
+    $<${is_gcc}:$<${is_windows}:-static> -static-libgcc -static-libstdc++>
 )
 target_compile_definitions(compiler-flags INTERFACE "$<${is_debug}:DEBUG>")
 
