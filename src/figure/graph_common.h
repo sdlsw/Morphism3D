@@ -292,8 +292,8 @@ private:
 		RangeChangedEvent,
 		FigureRemovedEvent
 	> _eventHandlers { this,
-		std::mem_fn(handleRangeChanged),
-		std::mem_fn(handleFigureRemoved)
+		std::mem_fn(&GraphFigure<B,D>::handleRangeChanged),
+		std::mem_fn(&GraphFigure<B,D>::handleFigureRemoved)
 	};
 
 	void regen();

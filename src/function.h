@@ -21,7 +21,7 @@ private:
 	CompoundMethodEventHandler<Function,
 		VariableChangedEvent
 	> _eventHandlers { this,
-		std::mem_fn(handleVariableChanged)
+		std::mem_fn(&Function::handleVariableChanged)
 	};
 
 	TokenRegistry _tokenRegistry;

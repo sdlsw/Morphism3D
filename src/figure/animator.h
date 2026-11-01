@@ -24,7 +24,7 @@ private:
 	CompoundMethodEventHandler<AnimatorFigure,
 		FigureRemovedEvent
 	> _eventHandlers { this,
-		std::mem_fn(handleFigureRemoved)
+		std::mem_fn(&AnimatorFigure::handleFigureRemoved)
 	};
 
 	unsigned int _id;

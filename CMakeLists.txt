@@ -34,7 +34,7 @@ target_compile_options(
 target_link_options(
     compiler-flags
     INTERFACE
-    $<${is_gcc}:-static -static-libgcc -static-libstdc++>
+    $<${is_gcc}:-static-libgcc -static-libstdc++>
 )
 target_compile_definitions(compiler-flags INTERFACE "$<${is_debug}:DEBUG>")
 

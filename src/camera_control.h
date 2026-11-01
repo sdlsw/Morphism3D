@@ -33,10 +33,10 @@ private:
 		MousePositionEvent,
 		ScrollEvent
 	> _eventHandlers { this,
-		std::mem_fn(handleMouseButtonEvent),
-		std::mem_fn(handleKeyEvent),
-		std::mem_fn(handleMousePositionEvent),
-		std::mem_fn(handleScrollEvent)
+		std::mem_fn(&CameraController::handleMouseButtonEvent),
+		std::mem_fn(&CameraController::handleKeyEvent),
+		std::mem_fn(&CameraController::handleMousePositionEvent),
+		std::mem_fn(&CameraController::handleScrollEvent)
 	};
 
 	Window* _window;

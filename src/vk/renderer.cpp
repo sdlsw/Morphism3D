@@ -42,14 +42,14 @@ vk::SurfaceFormatKHR WindowResources::chooseSwapFormat(const std::vector<vk::Sur
 
 vk::PresentModeKHR WindowResources::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availPresentModes) {
 	for (const auto& availPresentMode : availPresentModes) {
-		if (availPresentMode == vk::PresentModeKHR::eMailbox) {
+		if (availPresentMode == vk::PresentModeKHR::eFifo) {
 			return availPresentMode;
 		}
 	}
 
-	std::cerr << "preferred swap present mode unavailable, choosing alternative..." << std::endl;
-
-	return vk::PresentModeKHR::eFifo;
+	// eFifo is required by the Vulkan spec, so if it's missing there's
+	// something wrong with the implementation.
+	throw std::runtime_error("vk::PresentModeKHR::eFifo unsupported!");
 }
 
 vk::Extent2D WindowResources::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities) const {
@@ -78,10 +78,25 @@ vk::Extent2D WindowResources::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR&
 }
 
 vk::raii::SwapchainKHR WindowResources::createSwapchain() const {
-	uint32_t imageCount = _swapchainSupport.capabilities.minImageCount + 1;
+	uint32_t minImageCount = _swapchainSupport.capabilities.minImageCount;
+	uint32_t maxImageCount = _swapchainSupport.capabilities.maxImageCount;
 
-	if (_swapchainSupport.capabilities.maxImageCount > 0 && imageCount > _swapchainSupport.capabilities.maxImageCount) {
-		imageCount = _swapchainSupport.capabilities.maxImageCount;
+	std::cerr << "Swapchain minImageCount = " << minImageCount << std::endl;
+	std::cerr << "Swapchain maxImageCount = " << maxImageCount << std::endl;
+
+	uint32_t imageCount = 2;
+	std::cerr << "Requesting " << imageCount << " swapchain images" << std::endl;
+
+	// Oddly, linux gives a minImageCount of 3, but 2 works fine.
+#ifndef __linux__
+	if (imageCount < minImageCount) {
+		imageCount = minImageCount + 1;
+	}
+#endif
+
+	// Note: maxImageCount == 0 indicates no max image count
+	if (maxImageCount > 0 && imageCount > maxImageCount) {
+		imageCount = maxImageCount;
 	}
 
 	vk::SwapchainCreateInfoKHR createInfo {
@@ -108,7 +123,10 @@ vk::raii::SwapchainKHR WindowResources::createSwapchain() const {
 		createInfo.pQueueFamilyIndices = families.data();
 	}
 
-	return vk::raii::SwapchainKHR(_graphDevice->logicalDevice(), createInfo);
+	auto swapchain = vk::raii::SwapchainKHR(_graphDevice->logicalDevice(), createInfo);
+	std::cout << "Created swapchain of size " << swapchain.getImages().size() << std::endl;
+
+	return swapchain;
 }
 
 vk::raii::ImageView WindowResources::createSwapImageView(const vk::Image& image) const {

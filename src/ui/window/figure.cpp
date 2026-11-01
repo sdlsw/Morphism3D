@@ -6,10 +6,10 @@
 
 namespace g3d {
 const AddFigureMenuEntry FigureWindow::addFigureMenu[] {
-	{ "Surface Graph", std::mem_fn(addGraph<SurfaceGraphFigure>) },
-	{ "Line Graph", std::mem_fn(addGraph<LineGraphFigure>) },
-	{ "Slider", std::mem_fn(addVariableFigure<SliderFigure>) },
-	{ "Animator", std::mem_fn(addVariableFigure<AnimatorFigure>) }
+	{ "Surface Graph", std::mem_fn(&FigureWindow::addGraph<SurfaceGraphFigure>) },
+	{ "Line Graph", std::mem_fn(&FigureWindow::addGraph<LineGraphFigure>) },
+	{ "Slider", std::mem_fn(&FigureWindow::addVariableFigure<SliderFigure>) },
+	{ "Animator", std::mem_fn(&FigureWindow::addVariableFigure<AnimatorFigure>) }
 };
 
 bool FigureWindow::varTaken(char c) {
