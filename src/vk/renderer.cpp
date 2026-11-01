@@ -1,8 +1,12 @@
 #include "vk/renderer.h"
 
+#include "logging.h"
+
 #include <algorithm>
 #include <iostream>
 #include <limits>
+
+static g3d::Logger _logger { "vk.renderer" };
 
 namespace g3d {
 std::ostream& operator<<(std::ostream& o, const glm::vec3& v) {
@@ -35,7 +39,7 @@ vk::SurfaceFormatKHR WindowResources::chooseSwapFormat(const std::vector<vk::Sur
 		}
 	}
 
-	std::cerr << "preferred swap surface format unavailable, choosing alternative..." << std::endl;
+	_logger.warning("preferred swap surface format unavailable, choosing alternative...");
 
 	return availFormats[0];
 }
@@ -59,7 +63,7 @@ vk::Extent2D WindowResources::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR&
 
 	// Maxed out dimension means we'll need to determine what to use
 	// ourselves.
-	std::cerr << "window manager does not specify extent..." << std::endl;
+	_logger.warning("Window manager does not specify extent...");
 	auto windowSize = _graphDevice->window().size();
 	vk::Extent2D actualExtent { windowSize.width, windowSize.height };
 
@@ -81,11 +85,13 @@ vk::raii::SwapchainKHR WindowResources::createSwapchain() const {
 	uint32_t minImageCount = _swapchainSupport.capabilities.minImageCount;
 	uint32_t maxImageCount = _swapchainSupport.capabilities.maxImageCount;
 
-	std::cerr << "Swapchain minImageCount = " << minImageCount << std::endl;
-	std::cerr << "Swapchain maxImageCount = " << maxImageCount << std::endl;
+	_logger.info(
+		"createSwapchain: minImageCount={} maxImageCount={}",
+		minImageCount, maxImageCount
+	);
 
 	uint32_t imageCount = 2;
-	std::cerr << "Requesting " << imageCount << " swapchain images" << std::endl;
+	_logger.info("createSwapchain: Requesting {} images", imageCount);
 
 	// Oddly, linux gives a minImageCount of 3, but 2 works fine.
 #ifndef __linux__
@@ -124,7 +130,7 @@ vk::raii::SwapchainKHR WindowResources::createSwapchain() const {
 	}
 
 	auto swapchain = vk::raii::SwapchainKHR(_graphDevice->logicalDevice(), createInfo);
-	std::cout << "Created swapchain of size " << swapchain.getImages().size() << std::endl;
+	_logger.info("createSwapchain: Success, size {}", swapchain.getImages().size());
 
 	return swapchain;
 }
@@ -530,7 +536,7 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 
 	auto waitResult = device.waitForFences(*frameResources.inFlightFence(), vk::True, UINT64_MAX);
 	if (waitResult != vk::Result::eSuccess) {
-		std::cerr << "[RENDERER] beginFrame: Failed while waiting for inFlightFence" << std::endl;
+		_logger.warning("beginFrame: Failed while waiting for inFlightFences");
 		return;
 	}
 
@@ -539,7 +545,7 @@ void Renderer::beginFrame(const Camera& camera, const Light& light) {
 	);
 
 	if (result == vk::Result::eErrorOutOfDateKHR) {
-		std::cerr << "[RENDERER] beginFrame: Got eErrorOutOfDateKHR, resizing..." << std::endl;
+		_logger.info("beginFrame: Got eErrorOutOfDateKHR, resizing...");
 		recreateWindowResources();
 		return;
 	}
@@ -661,7 +667,7 @@ void Renderer::endFrame() {
 	);
 
 	if (needWindowResize) {
-		std::cerr << "[RENDERER] endFrame: window resized" << std::endl;
+		_logger.warning("endFrame: Need window resize");
 		_graphDevice->window().clearResized();
 		recreateWindowResources();
 	}

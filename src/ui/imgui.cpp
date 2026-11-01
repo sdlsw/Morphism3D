@@ -3,22 +3,24 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+static g3d::Logger _logger { "imgui" };
+
 static void checkVkResult(VkResult error) {
 	if (error == VK_SUCCESS) {
 		return;
 	}
 
-	std::cerr << "[g3d][ImGui][Vulkan] Error: VkResult = " << error << std::endl;
+	_logger.error("Vulkan Error: VkResult = {}", std::to_underlying(error));
 }
 
 static void init(g3d::GraphDevice& device, g3d::Renderer& renderer) {
-	g3d::imGuiInfo("Creating context...");
+	_logger.info("Creating context...");
 	ImGui::CreateContext();
 
-	g3d::imGuiInfo("Init Glfw backend...");
+	_logger.info("Init Glfw backend...");
 	ImGui_ImplGlfw_InitForVulkan(device.window().internalWindow(), true);
 
-	g3d::imGuiInfo("Init Vulkan backend...");
+	_logger.info("Init Vulkan backend...");
 	ImGui_ImplVulkan_InitInfo initInfo {};
 	initInfo.Instance = *device.vkTop().instance();
 	initInfo.PhysicalDevice = *device.physicalDevice();
@@ -37,11 +39,11 @@ static void init(g3d::GraphDevice& device, g3d::Renderer& renderer) {
 }
 
 static void shutdown() {
-	g3d::imGuiInfo("Shutting down ImplVulkan...");
+	_logger.info("Shutting down ImplVulkan...");
 	ImGui_ImplVulkan_Shutdown();
-	g3d::imGuiInfo("Shutting down ImplGlfw...");
+	_logger.info("Shutting down ImplGlfw...");
 	ImGui_ImplGlfw_Shutdown();
-	g3d::imGuiInfo("Destroying context...");
+	_logger.info("Destroying context...");
 	ImGui::DestroyContext();
 }
 
@@ -52,10 +54,6 @@ ImGuiWrapper::ImGuiWrapper(GraphDevice& device, Renderer& renderer) {
 
 ImGuiWrapper::~ImGuiWrapper() {
 	shutdown();
-}
-
-void imGuiInfo(const std::string& message) {
-	std::cerr << "[g3d][ImGui] " << message << std::endl;
 }
 
 void imGuiNewFrame() {

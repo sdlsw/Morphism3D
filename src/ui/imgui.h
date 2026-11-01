@@ -21,7 +21,6 @@ public:
 	~ImGuiWrapper();
 };
 
-void imGuiInfo(const std::string& message);
 void imGuiNewFrame();
 void imGuiRecord(Renderer& renderer);
 void imGuiHandleControlExclusivity(Window& window, CameraController& camController);

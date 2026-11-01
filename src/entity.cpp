@@ -1,6 +1,12 @@
 #include "entity.h"
 
+static g3d::Logger _logger { "entity" };
+
 namespace g3d {
+namespace entity::detail {
+Logger& logger() { return _logger; }
+}
+
 void Component::setOwner(Entity& entity) {
 	_owner = &entity;
 }

@@ -6,6 +6,10 @@
 #include <span>
 
 namespace g3d {
+namespace function::detail {
+Logger& logger();
+}
+
 template<size_t IN_DIMS, size_t OUT_DIMS>
 class Function {
 private:
@@ -81,16 +85,17 @@ public:
 	void updateExpression(size_t n, const std::string& expression) {
 		Parser p { _tokenRegistry, *_vars, expression };
 
-		std::cerr << "Updating expression #" << n << " to \"" << expression << "\"... ";
+		auto& logger = function::detail::logger();
+
+		logger.info("Updating expression #{} to \"{}\"...", n, expression);
 
 		try {
 			_parsedExpressions[n].reset(new ParseNode(p.parse()));
 			_updated.set();
 
-			std::cerr << "Success." << std::endl;
+			logger.info("Success.");
 		} catch (const std::exception& e) {
-			std::cerr << "Failed! Reason: " << std::endl;
-			std::cerr << e.what() << std::endl;
+			logger.warning("Failed! Reason: {}", e.what());
 		}
 	}
 };

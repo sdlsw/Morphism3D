@@ -1,5 +1,7 @@
 #include "figure/figure.h"
 
+static g3d::Logger _logger { "figure.core" };
+
 namespace g3d {
 unsigned int FigureCollection::nextId() {
 	return _nextId++;
@@ -21,7 +23,7 @@ void FigureCollection::update() {
 	std::erase_if(_uiElements, [this](const auto& item) {
 		const auto& [id, elem] = item;
 		if (!elem.get()->shouldShow) {
-			std::cerr << "FigureCollection: Removing " << id << std::endl;
+			_logger.info("FigureCollection: Removing {}", id);
 
 			// TODO: Would a simpler onRemove() callback be better
 			// here?

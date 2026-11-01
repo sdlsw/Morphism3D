@@ -4,9 +4,11 @@
 
 #include <iostream>
 
+static g3d::Logger _logger { "window" };
+
 namespace g3d {
 void Window::initWindowingSystem() {
-	std::cerr << "initializing GLFW..." << std::endl;
+	_logger.info("initializing GLFW...");
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -49,7 +51,7 @@ Window::Window(
 		if (image.pixels != nullptr) {
 			images.push_back(image);
 		} else {
-			std::cerr << "[WINDOW][Warn] Could not load icon: " << iconPath << std::endl;
+			_logger.warning("Could not load icon: {}", iconPath);
 		}
 	}
 	glfwSetWindowIcon(_glfwWindow, images.size(), images.data());
@@ -63,7 +65,7 @@ Window::Window(
 	glfwSetScrollCallback(_glfwWindow, scrollCallback);
 	_glfwWindowCount++;
 
-	std::cerr << "successfully created GLFW window at 0x" << this << std::endl;
+	_logger.info("successfully created GLFW window at {}", reinterpret_cast<void*>(this));
 }
 
 Window::~Window() {
@@ -72,7 +74,7 @@ Window::~Window() {
 		_glfwWindowCount--;
 
 		if (_glfwWindowCount == 0) {
-			std::cerr << "last window destroyed, terminating GLFW" << std::endl;
+			_logger.info("last window destroyed, terminating GLFW");
 			glfwTerminate();
 			_glfwInitialized = false;
 		}
@@ -153,7 +155,10 @@ vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance& instance) {
 	VkResult result = glfwCreateWindowSurface(*instance, _glfwWindow, nullptr, &surface);
 
 	if (result != VK_SUCCESS) {
-		std::cerr << "glfwCreateWindowSurface returned status code " << result << std::endl;
+		_logger.error(
+			"glfwCreateWindowSurface returned status code {}",
+			std::to_underlying(result)
+		);
 		throw std::runtime_error("failed to create window surface!");
 	}
 

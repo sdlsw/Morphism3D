@@ -1,5 +1,6 @@
 #pragma once
 
+#include "logging.h"
 #include "type.h"
 
 #include <cstdint>
@@ -10,6 +11,10 @@
 #include <unordered_map>
 
 namespace g3d {
+namespace event::detail {
+Logger& logger();
+}
+
 constexpr uint64_t LINKED_NO_ID = 0;
 
 template<typename T>
@@ -40,11 +45,11 @@ private:
 public:
 	virtual ~Linked() {
 		if (isLinked()) {
-			std::cerr << "~Linked(): id " << _id << std::endl;
+			event::detail::logger().debug("~Linked(): id {}", _id);
 			_linkPoint->deleteLink(_id);
 			unlink();
 		} else {
-			std::cerr << "~Linked() called on unlinked" << std::endl;
+			event::detail::logger().debug("~Linked() called on unlinked");
 		}
 	}
 
@@ -55,7 +60,7 @@ public:
 	Linked(Linked&& other) : _id { other._id }, _linkPoint { other._linkPoint } {
 		if (!isLinked()) return;
 
-		std::cerr << "Linked(Linked&&): moving..." << std::endl;
+		event::detail::logger().debug("Linked(Linked&&): moving...");
 		_linkPoint->updateLink(_id, this);
 		other.unlink();
 	}
@@ -121,11 +126,12 @@ public:
 		_idmap.emplace(_nextId, std::move(p));
 		_nextId++;
 
-		std::cerr <<
-			"Added EventHandler of type " << prettyType<E>() <<
-			" id " << _nextId-1 <<
-			" addr " << &handler <<
-			std::endl;
+		event::detail::logger().info(
+			"addHandler: type={} id={} addr={}",
+			prettyType<E>(),
+			_nextId-1,
+			reinterpret_cast<void*>(&handler)
+		);
 	}
 
 	// Note: This operation will be performed automatically if the handler
@@ -140,11 +146,12 @@ public:
 			throw std::runtime_error("Cannot remove handler linked to another router");
 		}
 
-		std::cerr <<
-			"Removed EventHandler of type " << prettyType<E>() <<
-			" id " << handler._id <<
-			" addr " << &handler <<
-			std::endl;
+		event::detail::logger().info(
+			"removeHandler: type={} id={} addr={}",
+			prettyType<E>(),
+			handler._id,
+			reinterpret_cast<void*>(&handler)
+		);
 
 		deleteLink(handler._id);
 		handler.unlink();

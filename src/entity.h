@@ -1,5 +1,7 @@
 #pragma once
 
+#include "logging.h"
+
 #include <concepts>
 #include <iostream>
 #include <memory>
@@ -9,6 +11,10 @@
 #include <unordered_map>
 
 namespace g3d {
+namespace entity::detail {
+Logger& logger();
+}
+
 class Entity;
 
 class Component {
@@ -92,7 +98,7 @@ public:
 	void setLastRender() {
 		auto* ptr = getComponent<C>();
 		if (ptr == nullptr) {
-			std::cerr << "warning: Attempt to setLastRender() on nonexistent component" << std::endl;
+			entity::detail::logger().warning("Attempt to setLastRender() on nonexistent component");
 		}
 
 		_lastRender = ptr;

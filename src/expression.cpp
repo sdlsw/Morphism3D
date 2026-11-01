@@ -11,7 +11,13 @@ unsigned int toDigit(char c) {
 	return static_cast<unsigned int>(c - '0');
 }
 
+static g3d::Logger _logger { "expression" };
+
 namespace g3d {
+namespace expression::detail {
+Logger& logger() { return _logger; }
+}
+
 bool isAlpha(char c) {
 	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
@@ -317,7 +323,7 @@ void tokenizerTest(const std::string& expression) {
 	try {
 		while (!t.atEnd()) {
 			auto tok = t.next();
-			std::cerr << tok.get()->toString() << std::endl;
+			std::cout << tok.get()->toString() << std::endl;
 		}
 	} catch (const std::exception& e) {
 		std::cerr << "Tokenize failure. Reason:" << std::endl;

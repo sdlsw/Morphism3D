@@ -3,6 +3,8 @@
 #include <set>
 #include <string>
 
+static g3d::Logger _logger { "vk.device" };
+
 #ifndef NDEBUG
 static const bool ENABLE_VALIDATION_LAYERS = false;
 #else
@@ -28,7 +30,7 @@ static bool pdevHasRequiredExtensions(const vk::raii::PhysicalDevice& device) {
 
 	if (!hasRequired) {
 		for (const auto& extName : extSet) {
-			std::cerr << "missing required extension \"" << extName << "\"" << std::endl;
+			_logger.error("Missing required extension \"{}\"", extName);
 		}
 	}
 
@@ -48,7 +50,7 @@ VkTop::VkTop(const vk::ApplicationInfo& appInfo)
 	size_t dev_count = _physicalDevices.size();
 
 	if (dev_count != 0) {
-		std::cerr << "enumerated " << dev_count << " device(s) with Vulkan support" << std::endl;
+		_logger.info("Enumerated {} device(s) with Vulkan support", dev_count);
 	} else {
 		throw std::runtime_error("failed to find a device with Vulkan support!");
 	}
@@ -59,12 +61,12 @@ vk::raii::Instance VkTop::createInstance() {
 	const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	if (glfwExtensionCount != 0) {
-		std::cerr << "glfwExtensions:" << std::endl;
+		_logger.info("glfwExtensions:");
 		for (uint32_t i = 0; i < glfwExtensionCount; ++i) {
-			std::cerr << '\t' << glfwExtensions[i] << std::endl;
+			_logger.info("\t{}", glfwExtensions[i]);
 		}
 	} else {
-		std::cerr << "GLFW reported no required extensions" << std::endl;
+		_logger.info("GLFW reported no reported extensions");
 	}
 
 	vk::InstanceCreateInfo info {
@@ -117,23 +119,23 @@ SwapChainSupportDetails GraphDevice::_querySwapChainSupport(const vk::raii::Phys
 // this.)
 bool GraphDevice::pDevSupported(const vk::raii::PhysicalDevice& device) const {
 	if (!queryQueueFamilies(device).isComplete()) {
-		std::cerr << "device does not support required queue types" << std::endl;
+		_logger.error("device does not support required queue types");
 		return false;
 	}
 
 	// FIXME: checking for surface support after creating surface...
 	if (!pdevHasRequiredExtensions(device)) {
-		std::cerr << "device does not support required extensions" << std::endl;
+		_logger.error("device does not support required extensions");
 		return false;
 	}
 
 	SwapChainSupportDetails scSupportDetails = _querySwapChainSupport(device);
 	if (scSupportDetails.formats.empty()) {
-		std::cerr << "window surface supports no formats" << std::endl;
+		_logger.error("window surface supports no formats");
 		return false;
 	}
 	if (scSupportDetails.presentModes.empty()) {
-		std::cerr << "window surface supports no presentation modes" << std::endl;
+		_logger.error("window surface supports no presentation modes");
 		return false;
 	}
 
@@ -147,7 +149,11 @@ vk::raii::PhysicalDevice& GraphDevice::pickPhysicalDevice(vk::raii::PhysicalDevi
 
 	for (auto& device : devices) {
 		if (pDevSupported(device)) {
-			std::cerr << "found suitable device: " << device.getProperties().deviceName << std::endl;
+			_logger.info(
+				"found suitable device: {:s}",
+				device.getProperties().deviceName
+			);
+
 			return device;
 		}
 	}

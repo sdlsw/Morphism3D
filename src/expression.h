@@ -2,6 +2,7 @@
 #include "global_defines.h"
 
 #include "event.h"
+#include "logging.h"
 
 #include <format>
 #include <memory>
@@ -16,6 +17,10 @@
 #include <glm/trigonometric.hpp>
 
 namespace g3d {
+namespace expression::detail {
+Logger& logger();
+}
+
 constexpr char ADD_CHAR = '+';
 constexpr char SUB_CHAR = '-';
 constexpr char DIV_CHAR = '/';
@@ -76,7 +81,9 @@ public:
 	template<typename T>
 	void registerSymbol() {
 		std::string s { T::s };
-		std::cerr << "TokenRegistry: register symbol \"" << s << '"' << std::endl;
+		expression::detail::logger().debug(
+			"TokenRegistry: register symbol \"{}\"", s
+		);
 		auto factory = std::make_unique<TokenFactory<T>>();
 		symbols.emplace(std::move(s), std::move(factory));
 	}

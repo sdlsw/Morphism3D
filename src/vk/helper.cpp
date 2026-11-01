@@ -1,9 +1,12 @@
 #include "vk/helper.h"
 
+#include "logging.h"
 #include "vk/constants.h"
 
 #include <fstream>
 #include <iostream>
+
+static g3d::Logger _logger { "vk.helper" };
 
 static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -19,7 +22,7 @@ static std::vector<char> readFile(const std::string& filename) {
 	file.read(buffer.data(), file_size);
 	file.close();
 
-	std::cerr << "read file \"" << filename << "\", " << buffer.size() << " bytes" << std::endl;
+	_logger.info("read file \"{}\", {} bytes", filename, buffer.size());
 
 	return buffer;
 }
