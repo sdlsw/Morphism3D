@@ -218,6 +218,8 @@ ParseNode emptyExpression();
 
 struct EndToken : public Token {
 	EndToken() : Token("{{ END }}") {}
+
+	ParseNode nud(Parser& parser);
 };
 
 struct LiteralToken : public Token {

@@ -270,6 +270,10 @@ ParseNode emptyExpression() {
 
 // SPECIAL TOKEN IMPLEMENTATIONS
 
+ParseNode EndToken::nud(Parser& parser) {
+	throw std::runtime_error("Unexpected end of expression");
+}
+
 ParseNode LiteralToken::nud(Parser& parser) {
 	return { std::make_unique<LiteralToken>(*this) };
 }
