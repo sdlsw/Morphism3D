@@ -316,6 +316,10 @@ ParseNode StartParenToken::nud(Parser& parser) {
 	return node;
 }
 
+ParseNode EndParenToken::nud(Parser& parser) {
+	throw std::runtime_error("Unexpected end of parenthesized expression");
+}
+
 // TESTS
 
 void tokenizerTest(const std::string& expression) {

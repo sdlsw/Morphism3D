@@ -264,6 +264,8 @@ struct StartParenToken : public Token {
 struct EndParenToken : public Token {
 	static constexpr char s[] = { ")" };
 	EndParenToken() : Token(s) {}
+
+	ParseNode nud(Parser& parser) override;
 };
 
 struct FuncSin {
