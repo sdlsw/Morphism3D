@@ -23,6 +23,11 @@ void StatusBar::showBody() {
 		ImGui::SetCursorScreenPos(newCursor);
 
 		ImGui::Text(_message.c_str());
+
+		// If mouse hovers over message, leave message on screen.
+		if (ImGui::IsItemHovered()) {
+			_messageStart = now();
+		}
 	}
 }
 
