@@ -66,6 +66,7 @@ private:
 	bool render();
 public:
 	Application(VkTop& vkTop) :
+	_ui { _eventRouter },
 	_window {
 		_eventRouter,
 		vkTop.appInfo().pApplicationName,

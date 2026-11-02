@@ -143,11 +143,7 @@ void Application::mainloop() {
 		if (!didRender) continue;
 		_perfTimers.stop("frame");
 
-		_window.title(std::format(
-			"{} | {:.2f} FPS",
-			APPLICATION_NAME,
-			1.0f / _perfTimers.getAverage("frame")
-		));
+		_ui.statusBar().fpsReading(1.0f / _perfTimers.getAverage("frame"));
 	}
 
 	_graphDevice.logicalDevice().waitIdle();

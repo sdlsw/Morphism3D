@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expression.h"
+#include "status.h"
 #include "temporal.h"
 
 #include <span>
@@ -94,8 +95,14 @@ public:
 			_updated.set();
 
 			logger.info("Success.");
+
+			_vars->eventRouter().routeEvent(StatusMessageEvent::clear());
 		} catch (const std::exception& e) {
 			logger.warning("Failed! Reason: {}", e.what());
+
+			_vars->eventRouter().routeEvent(StatusMessageEvent(
+				std::format("Expression parse failure: {}", e.what())
+			));
 		}
 	}
 };
