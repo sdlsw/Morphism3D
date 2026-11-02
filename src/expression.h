@@ -219,7 +219,7 @@ ParseNode emptyExpression();
 struct EndToken : public Token {
 	EndToken() : Token("{{ END }}") {}
 
-	ParseNode nud(Parser& parser);
+	ParseNode nud(Parser& parser) override;
 };
 
 struct LiteralToken : public Token {
