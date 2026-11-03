@@ -7,23 +7,25 @@ void AnimatorFigure::handleFigureRemoved(const FigureRemovedEvent& e) {
 }
 
 void AnimatorFigure::reset() {
-	_startTime = now();
-}
-
-float AnimatorFigure::currentTime() {
-	return secondsSince(_startTime);
+	_rawValue = 0.0f;
 }
 
 void AnimatorFigure::update() {
+	float deltaTime = secondsSince(_lastFrameTime);
+	_lastFrameTime = now();
+
+	if (paused) return;
+
+	_rawValue += deltaTime;
+
 	auto& r = _varRange;
 	float value;
-
-	if (_varRange.maxLimited) {
-		value = glm::mod(currentTime() - r.min, r.max - r.min) + r.min;
+	if (r.maxLimited) {
+		value = glm::mod(_rawValue - r.min, r.max - r.min) + r.min;
 	} else {
-		value = currentTime();
+		value = _rawValue;
 	}
 
-	_varRange.variableStore().set(_varRange.var(), value);
+	r.variableStore().set(r.var(), value);
 }
 }

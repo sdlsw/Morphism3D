@@ -17,7 +17,8 @@ class AnimatorFigure : public MathFigure {
 private:
 	VariableRange _varRange;
 
-	TimePoint _startTime;
+	TimePoint _lastFrameTime;
+	float _rawValue = 0.0f;
 
 	void handleFigureRemoved(const FigureRemovedEvent& e);
 
@@ -29,10 +30,12 @@ private:
 
 	unsigned int _id;
 public:
+	bool paused;
+
 	AnimatorFigure(unsigned int id, VariableStore& variableStore, char v)
 	: _id { id },
 	  _varRange { variableStore, v, 0.0f, 2*glm::pi<float>() },
-	  _startTime { now() }
+	  _lastFrameTime { now() }
 	{
 		_eventHandlers.addToRouter(variableStore.eventRouter());
 		// Disable looping by default.
@@ -43,7 +46,7 @@ public:
 	: _id { other._id },
 	  _varRange { other._varRange },
 	  _eventHandlers { std::move(other._eventHandlers) },
-	  _startTime { other._startTime }
+	  _lastFrameTime { other._lastFrameTime }
 	{
 		_eventHandlers.updateThis(this);
 	}
@@ -51,7 +54,6 @@ public:
 	unsigned int id() const override { return _id; }
 
 	void reset();
-	float currentTime();
 	void update() override;
 
 	VariableRange& varRange() { return _varRange; }

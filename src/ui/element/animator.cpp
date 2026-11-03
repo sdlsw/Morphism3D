@@ -11,16 +11,27 @@ void AnimatorElement::show() {
 	bool varChanged = variableRangePanel(range, _guiIds);
 	if (varChanged) updateTitle();
 
-	ImGui::Text(std::format(
-		"{} = {}",
+	std::string pausedIndicator;
+	if (_figure->paused) {
+		pausedIndicator = " (paused)";
+	}
+
+	ImGui::Text(
+		"%c = %.4f%s",
 		range.var(),
-		range.variableStore().get(range.var())
-	).c_str());
+		range.variableStore().get(range.var()),
+		pausedIndicator.c_str()
+	);
 
 	ImGui::Checkbox(_guiIds.c_str("Loop"), &range.maxLimited);
 
-	if (ImGui::Button(_guiIds.c_str("Reset"))) {
-		_figure->reset();
+	if (ImGui::Button(_guiIds.c_str("Reset"))) _figure->reset();
+
+	ImGui::SameLine();
+	if (_figure->paused) {
+		if (ImGui::Button(_guiIds.c_str("Unpause"))) _figure->paused = false;
+	} else {
+		if (ImGui::Button(_guiIds.c_str("Pause"))) _figure->paused = true;
 	}
 }
 }
