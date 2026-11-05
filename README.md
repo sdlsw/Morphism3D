@@ -1,12 +1,13 @@
 # Overview
 
-Morphism3D is a real time, interactive visualization program that can graph arbitrary functions of two variables (more graph types planned).
+Morphism3D is a real time, interactive visualization program that can graph arbitrary functions of the following types:
+
+- Two input variables (`x`, `y`), one output variable (`z`)
+- One input variable (`x`), two output variables (`y`, `z`)
 
 # Download
 
-See [Releases](https://github.com/sdlsw/Morphism3D/releases). Pick the
-appropriate ZIP file for your platform, extract it, and run. No install
-necessary.
+See [Releases](https://github.com/sdlsw/Morphism3D/releases). Pick the appropriate ZIP file for your platform, extract it, and run. No install necessary.
 
 # Tour
 
@@ -16,19 +17,19 @@ Here's a brief demo of some of the current features of Morphism3D.
 
 Morphism3D understands a miniature expression language that can be used to express a wide variety of functions. The graph is updated as soon as a valid expression is detected.
 
-https://github.com/user-attachments/assets/a00e2b8a-78ee-4aa7-a7cb-24d47dc88092
+https://github.com/user-attachments/assets/472fa3ab-2a36-4ace-8098-cfa9bb0d16b5
 
 ### Variable Sliders
 
 Variables may be inserted into expressions, which can be manipulated interactively with UI elements.
 
-https://github.com/user-attachments/assets/b206ae87-a43d-4f0d-abe7-9b6d514329ed
+https://github.com/user-attachments/assets/d68c3e93-6018-4b80-a799-2b976ea83689
 
 ### Real-time Animation
 
-The variable `t` is always set to the number of seconds since the application started. This may be used in periodic functions to animate the graph.
+The "Animator" figure may be used to animate arbitrary variables.
 
-https://github.com/user-attachments/assets/36815dff-9304-4fb7-a5e7-7ebc919a65eb
+https://github.com/user-attachments/assets/993c0e61-746a-4861-a809-8625edb04172
 
 ### Orthographic Projection
 
@@ -46,7 +47,13 @@ https://github.com/user-attachments/assets/f3e6716f-7867-47a9-b2a4-591e0ea2bff6
 
 A variety of different render modes and options are supported.
 
-https://github.com/user-attachments/assets/d1717643-5797-4116-bbbc-ea617571c2d7
+https://github.com/user-attachments/assets/9cf87d63-66d7-4db7-bd01-12e943e9e825
+
+### Alternate Graphing Modes
+
+The "Line Graph" figure allows plotting functions of one variable:
+
+https://github.com/user-attachments/assets/f2dd211a-e76b-47a9-8cbf-3a1d82cb898d
 
 # Dependencies
 
@@ -66,7 +73,7 @@ All dependencies except the Vulkan SDK are included as submodules at [`lib`](lib
 > If CMake complains that Vulkan can't be found, the `VULKAN_SDK` environment variable must be set to the root directory of the installed SDK. Some platforms will set this variable automatically.
 
 Morphism3D uses the [CMake](https://cmake.org/) build system. See the first line of [CMakeLists.txt](CMakeLists.txt) for the minimum required version of CMake.
-The only officially supported compiler is GCC, used on Windows through the [MSYS2](https://www.msys2.org/) environment.
+The only officially supported compiler is GCC. On Windows, the build is accomplished through the [MSYS2](https://www.msys2.org/) environment.
 
 To set up the build:
 ```sh
