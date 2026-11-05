@@ -11,6 +11,8 @@ void AnimatorElement::show() {
 	bool varChanged = variableRangePanel(range, _guiIds);
 	if (varChanged) updateTitle();
 
+	ImGui::DragFloat(_guiIds.c_str("Speed"), &_figure->speed, 0.1f);
+
 	std::string pausedIndicator;
 	if (_figure->paused) {
 		pausedIndicator = " (paused)";

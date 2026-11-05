@@ -31,6 +31,7 @@ private:
 	unsigned int _id;
 public:
 	bool paused;
+	float speed = 1.0f;
 
 	AnimatorFigure(unsigned int id, VariableStore& variableStore, char v)
 	: _id { id },

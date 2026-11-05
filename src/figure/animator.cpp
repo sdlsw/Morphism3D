@@ -16,7 +16,7 @@ void AnimatorFigure::update() {
 
 	if (paused) return;
 
-	_rawValue += deltaTime;
+	_rawValue += deltaTime*speed;
 
 	auto& r = _varRange;
 	float value;
