@@ -55,6 +55,12 @@ The "Line Graph" figure allows plotting functions of one variable:
 
 https://github.com/user-attachments/assets/f2dd211a-e76b-47a9-8cbf-3a1d82cb898d
 
+# Screenshots
+
+### Full UI
+
+<img width="1920" height="1017" alt="morphism_UI" src="https://github.com/user-attachments/assets/7790f1cd-4011-4e12-8d60-9d43aca42358" />
+
 # Dependencies
 
 Morphism3D depends on the following components:
