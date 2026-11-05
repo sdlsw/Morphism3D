@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(morphism3d VERSION 0.1.0)
+project(morphism3d VERSION 0.2.0)
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
