@@ -1,19 +1,31 @@
 #include "camera_control.h"
 
+bool windowMouseCaptured(GLFWwindow* window) {
+	return glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+}
+
+bool windowMouseCaptured(g3d::Window& window) {
+	return window.cursorMode() == GLFW_CURSOR_DISABLED;
+}
+
+void windowCaptureMouse(GLFWwindow* window, bool captured) {
+	int mode = captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL;
+	glfwSetInputMode(window, GLFW_CURSOR, mode);
+}
+
 namespace g3d {
 void CameraController::handleMouseButtonEvent(const MouseButtonEvent& e) {
 	if (glfwGetWindowAttrib(e.window, GLFW_HOVERED)) {
-		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		windowCaptureMouse(e.window, true);
 	}
 }
 
 void CameraController::handleKeyEvent(const KeyEvent& e) {
-	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
-	if (inMode != GLFW_CURSOR_DISABLED) return;
+	if (!windowMouseCaptured(e.window)) return;
 
 	// Escape cursor capture
 	if (e.key == GLFW_KEY_ESCAPE && e.action == GLFW_PRESS) {
-		glfwSetInputMode(e.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		windowCaptureMouse(e.window, false);
 		hasPreviousPos = false;
 		return;
 	}
@@ -45,8 +57,7 @@ void CameraController::handleKeyEvent(const KeyEvent& e) {
 }
 
 void CameraController::handleMousePositionEvent(const MousePositionEvent& e) {
-	int inMode = glfwGetInputMode(e.window, GLFW_CURSOR);
-	if (inMode == GLFW_CURSOR_DISABLED) {
+	if (windowMouseCaptured(e.window)) {
 		if (hasPreviousPos) {
 			float xoffset = static_cast<float>(e.xpos - lastxpos);
 			float yoffset = static_cast<float>(e.ypos - lastypos);
@@ -124,7 +135,7 @@ void CameraController::update() {
 }
 
 bool CameraController::mouseCaptured() {
-	return _window->cursorMode() == GLFW_CURSOR_DISABLED;
+	return windowMouseCaptured(*_window);
 }
 
 void CameraController::reset() {
