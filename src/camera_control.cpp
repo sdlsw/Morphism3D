@@ -15,8 +15,15 @@ void windowCaptureMouse(GLFWwindow* window, bool captured) {
 
 namespace g3d {
 void CameraController::handleMouseButtonEvent(const MouseButtonEvent& e) {
-	if (glfwGetWindowAttrib(e.window, GLFW_HOVERED)) {
+	if (e.action == GLFW_RELEASE) return;
+
+	bool mouseCaptured = windowMouseCaptured(e.window);
+
+	if (glfwGetWindowAttrib(e.window, GLFW_HOVERED) && !mouseCaptured) {
 		windowCaptureMouse(e.window, true);
+	} else if (mouseCaptured) {
+		windowCaptureMouse(e.window, false);
+		hasPreviousPos = false;
 	}
 }
 
