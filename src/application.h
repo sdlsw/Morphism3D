@@ -46,6 +46,7 @@ private:
 		1.0f
 	}};
 
+	EventPrinter<MouseButtonEvent> _clickDumper;
 	EventPrinter<MousePositionEvent> _posDumper;
 	EventPrinter<KeyEvent> _keyDumper;
 	EventPrinter<ScrollEvent> _scrollDumper;
@@ -73,6 +74,7 @@ public:
 		_initialWindowWidth,
 		_initialWindowHeight
 	},
+	_clickDumper { _eventRouter },
 	_posDumper { _eventRouter },
 	_keyDumper { _eventRouter },
 	_scrollDumper { _eventRouter },
@@ -110,6 +112,7 @@ public:
 		_ui.addWindow<AboutWindow>();
 
 		// Set up event dumpers
+		_clickDumper.enabled = false;
 		_posDumper.enabled = false;
 		_keyDumper.enabled = false;
 		_scrollDumper.enabled = false;
