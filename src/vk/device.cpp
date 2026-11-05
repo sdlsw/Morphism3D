@@ -151,7 +151,7 @@ vk::raii::PhysicalDevice& GraphDevice::pickPhysicalDevice(vk::raii::PhysicalDevi
 		if (pDevSupported(device)) {
 			_logger.info(
 				"found suitable device: {:s}",
-				device.getProperties().deviceName
+				std::string(device.getProperties().deviceName)
 			);
 
 			return device;
