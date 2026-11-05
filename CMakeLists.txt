@@ -122,7 +122,24 @@ target_include_directories(main PRIVATE "lib/imgui")
 target_include_directories(main PRIVATE "lib/imgui/backends")
 target_include_directories(main PRIVATE "lib/stb")
 
-target_link_libraries(main PRIVATE compiler-flags glfw Vulkan::Vulkan)
+target_link_libraries(main PRIVATE compiler-flags glfw)
+
+# Link vulkan
+if(PLATFORM_ID STREQUAL Windows)
+    target_link_libraries(main PRIVATE Vulkan::Vulkan)
+else()
+    # TODO: Find a way to do this with multi-config generators
+    if(CMAKE_BUILD_TYPE STREQUAL Debug)
+        target_link_libraries(main PRIVATE Vulkan::Vulkan)
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL Release)
+        # For release builds on linux, we must link against the vulkan loader
+        # installed on the system instead of the one provided by the SDK.
+        find_library(vulkan-external libvulkan.so.1 NO_CMAKE_ENVIRONMENT_PATH)
+        target_link_libraries(main PRIVATE ${vulkan-external})
+    endif()
+endif()
 
 # Compile shaders
 function(add_shader SOURCE OUTNAME)
