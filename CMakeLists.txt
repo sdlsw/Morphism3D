@@ -125,7 +125,7 @@ target_include_directories(main PRIVATE "lib/stb")
 target_link_libraries(main PRIVATE compiler-flags glfw)
 
 # Link vulkan
-if(PLATFORM_ID STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     target_link_libraries(main PRIVATE Vulkan::Vulkan)
 else()
     # TODO: Find a way to do this with multi-config generators
